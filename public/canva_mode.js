@@ -714,10 +714,62 @@ window.AT_CANVA_MODE = {
       this._moveStart = null;
     });
 
-    // Click on canvas bg → deselect
+    // Click on canvas bg → deselect OR create text if text tool active
     area.addEventListener('mousedown', (e) => {
-      if (e.target === area || e.target.id === 'cm-stage-wrap'
-          || e.target.id === 'cm-stage-bg' || e.target.id === 'cm-stage-bg-overlay') {
+      const bgTargets = [area.id, 'cm-stage-wrap', 'cm-stage-bg', 'cm-stage-bg-overlay'];
+      const clickedBg = bgTargets.includes(e.target.id) || e.target === area;
+
+      if (clickedBg) {
+        // If text tool is active, create a text element at click position
+        if (this._tool === 'text') {
+          const wrap = document.getElementById('cm-stage-wrap');
+          if (wrap) {
+            const rect = wrap.getBoundingClientRect();
+            const scale = (this._baseScale || 1) * this._zoom;
+            const x = Math.max(2, Math.min(80, ((e.clientX - rect.left) / scale / this._stageW * 100)));
+            const y = Math.max(2, Math.min(85, ((e.clientY - rect.top) / scale / this._stageH * 100)));
+
+            const page = this._st().pages[this._currentPage];
+            if (page) {
+              const el = {
+                id: 'el_' + Date.now(),
+                type: 'teks',
+                icon: '🔤',
+                label: 'Teks',
+                x, y, w: 35, h: 10,
+                text: 'Ketik teks…',
+                fontSize: 20,
+                opacity: 100,
+              };
+              page.elements.push(el);
+              this._renderStage();
+              this._renderLayerList();
+              this._renderLeftPanel();
+              this._selectEl(el.id);
+              AT_EDITOR.markDirty?.();
+              AT_UTIL.toast?.('✅ Teks ditambahkan');
+
+              // Auto-focus the text element for editing
+              setTimeout(() => {
+                const teksEl = document.querySelector('#cm-el-' + el.id + ' .cm-teks-el');
+                if (teksEl) {
+                  teksEl.focus();
+                  const range = document.createRange();
+                  range.selectNodeContents(teksEl);
+                  const sel = window.getSelection();
+                  sel.removeAllRanges();
+                  sel.addRange(range);
+                }
+              }, 100);
+
+              // Switch back to select tool after placing text
+              this.setTool('select');
+            }
+          }
+          return;
+        }
+
+        // Default: deselect
         this._sel = null;
         document.querySelectorAll('.cm-el').forEach(el => {
           el.classList.remove('cm-selected');
@@ -821,6 +873,11 @@ window.AT_CANVA_MODE = {
     ['select','text'].forEach(t => {
       document.getElementById('cmtool-' + t)?.classList.toggle('active', t === tool);
     });
+    // Set cursor on canvas area based on active tool
+    const area = document.getElementById('cm-canvas-area');
+    if (area) {
+      area.style.cursor = tool === 'text' ? 'text' : 'default';
+    }
   },
 
   /* ── Status bar ──────────────────────────────────────────────── */
