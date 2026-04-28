@@ -63,6 +63,8 @@ window.AT_SPLITVIEW = {
       if (btn)  btn.classList.remove("active");
       const loading = document.getElementById("splitLoading");
       if (loading) loading.style.display = "none";
+      // Reset auto-open flag so split can re-open when returning to content panels
+      this._autoOpened = false;
     }
   },
 
@@ -266,6 +268,14 @@ window.AT_SPLITVIEW = {
     const sel = document.getElementById("splitPageSelect");
     if (sel && pageId) sel.value = pageId;
     this._navigateFrame();
+    // Also directly postMessage with the explicit pageId (not from dropdown)
+    // This ensures navigation works even if dropdown doesn't have the option
+    const frame = document.getElementById("split-frame");
+    try {
+      if (frame && frame.contentWindow && pageId) {
+        frame.contentWindow.postMessage({ goPage: pageId }, "*");
+      }
+    } catch(e) {}
   },
 
   /* ── Resizable Split Pane ─────────────────────────────────── */

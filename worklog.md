@@ -144,3 +144,23 @@ Stage Summary:
 - Perbaikan di liveview.js v4.2: Hapus _patchSwitchKontenTab, hapus AT_NAV.go patch, hapus setInterval periodic check, hapus auto-open logic, throttle MutationObserver (500ms + skip jika debounce timer aktif), tingkatkan debounce dari 80ms/250ms ke 120ms/350ms
 - Perbaikan di liveview_enhancements.js v6.1: Konsolidasi SEMUA patch (AT_NAV.go, switchKontenTab, auto-open) sebagai SINGLE SOURCE, hapus duplikasi
 - Sync ke /home/z/my-project/public/
+
+---
+Task ID: 2
+Agent: main
+Task: Perbaiki halaman yang tidak sync ke live view
+
+Work Log:
+- Investigasi mapping panel→preview di AT_PAGE_SYNC._MAP
+- Temukan: panel 'konten' sudah ada mapping ke 'smat', tapi ada bug lain
+- Temukan BUG KRITIS: _autoOpened flag tidak direset saat split view ditutup → saat kembali ke panel konten, split tidak re-open
+- Temukan: halaman Skenario (ssk) tidak ada di dropdown page select
+- Temukan: goPage() hanya mengandalkan _navigateFrame() yang baca dari dropdown → gagal jika option tidak ada
+
+Stage Summary:
+- liveview.js: toggle() reset _autoOpened = false saat split ditutup
+- liveview.js: goPage() sekarang juga kirim postMessage langsung dengan pageId (bukan hanya dari dropdown)
+- liveview_enhancements.js: tambah 'konten': 'smat' mapping, smart detection active sub-tab
+- liveview_enhancements.js: tambah ssk dan sgame_0 di _REVERSE_MAP
+- index.html: tambah opsi Skenario (ssk) di dropdown page select
+- Sync ke /home/z/my-project/public/

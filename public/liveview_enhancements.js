@@ -28,6 +28,7 @@ window.AT_PAGE_SYNC = {
   _MAP: {
     'dashboard':  'sc',       // Cover
     'dokumen':    'scp',      // Dokumen
+    'konten':     'smat',     // Konten (default → sub-tab Materi, auto-detected below)
     'autogen':    'scp',      // Dokumen (auto-generate isi dokumen)
     'import':     'sc',       // Cover (import tidak punya halaman spesifik)
     'versions':   'sc',       // Cover
@@ -46,6 +47,8 @@ window.AT_PAGE_SYNC = {
     'smods': 'konten-tab-modules',
     'skuis': 'konten-tab-kuis',
     'shas':  'konten-tab-kuis',
+    'ssk':   'konten-tab-materi',
+    'sgame_0': 'konten-tab-modules',
   },
 
   // Dipanggil saat panel navigasi berubah
@@ -55,7 +58,16 @@ window.AT_PAGE_SYNC = {
       this._userManualOverride = false;
       return;
     }
-    const pageId = this._MAP[panelId];
+    let pageId = this._MAP[panelId];
+
+    // Smart detection: if panel is 'konten', find the currently active sub-tab
+    if (panelId === 'konten') {
+      const activeTab = document.querySelector('.konten-tab-panel.active');
+      if (activeTab) {
+        pageId = this._MAP[activeTab.id] || pageId;
+      }
+    }
+
     if (!pageId) return;
     this._lastSyncedPanel = panelId;
     AT_SPLITVIEW?.goPage(pageId);
