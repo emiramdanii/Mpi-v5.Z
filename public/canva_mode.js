@@ -66,6 +66,7 @@ window.AT_CANVA_MODE = {
   },
 
   /* ── Init ────────────────────────────────────────────────────── */
+  _initDone: false,
   init() {
     // Sync ratio from state
     const st = this._st();
@@ -76,7 +77,11 @@ window.AT_CANVA_MODE = {
     this._renderStage();
     this._renderLayerList();
     this._setupStageDnD();
-    this._setupMouseEvents();
+    // Only setup mouse events once to avoid stacking listeners
+    if (!this._initDone) {
+      this._setupMouseEvents();
+      this._initDone = true;
+    }
     this._updateStatusBar();
 
     // Defer ratio sizing until canvas area has real dimensions
@@ -1062,27 +1067,53 @@ window.AT_CANVA_MODE = {
 
 /* ── Register: init when canva panel becomes active ─────────────── */
 document.addEventListener('DOMContentLoaded', () => {
-  // Use MutationObserver to detect when p-canva becomes visible
   const panel = document.getElementById('p-canva');
-  if (panel) {
-    let _inited = false;
-    const observer = new MutationObserver(() => {
-      if (panel.classList.contains('active')) {
-        document.body.classList.add('canva-mode-active');
-        if (!_inited) {
-          _inited = true;
-          setTimeout(() => AT_CANVA_MODE.init(), 80);
-        }
+  if (!panel) return;
+
+  let _inited = false;
+
+  // Robust init: try multiple times until it succeeds
+  function tryInit() {
+    document.body.classList.add('canva-mode-active');
+    const area = document.getElementById('cm-canvas-area');
+    if (!area || area.clientWidth < 10) {
+      // Panel not yet laid out, retry
+      if (!_inited) {
+        setTimeout(() => tryInit(), 120);
       } else {
-        document.body.classList.remove('canva-mode-active');
+        // Already inited before, just re-apply ratio
+        setTimeout(() => AT_CANVA_MODE._setupResizeObserver(), 60);
       }
-    });
-    observer.observe(panel, { attributes: true, attributeFilter: ['class'] });
+      return;
+    }
+    if (!_inited) {
+      _inited = true;
+      AT_CANVA_MODE.init();
+    } else {
+      // Re-init on subsequent visits to refresh UI
+      AT_CANVA_MODE.init();
+    }
+  }
+
+  // MutationObserver to detect when p-canva becomes visible
+  const observer = new MutationObserver(() => {
+    if (panel.classList.contains('active')) {
+      tryInit();
+    } else {
+      document.body.classList.remove('canva-mode-active');
+    }
+  });
+  observer.observe(panel, { attributes: true, attributeFilter: ['class'] });
+
+  // Also monkey-patch AT_NAV.go to ensure init on direct navigation
+  const _prevGo = AT_NAV.go;
+  AT_NAV.go = function(id) {
+    _prevGo.call(this, id);
+    if (id === 'canva') {
+      setTimeout(() => tryInit(), 60);
+    }
+  };
 
   // Map canva panel to AT_NAV._panelToPage
   if (AT_NAV._panelToPage) AT_NAV._panelToPage['canva'] = 'sc';
-
-  // Mark that AT_NAV.go should handle canva init on navigation
-  // (liveview_enhancements.js AT_NAV.go patch will call this)
-  this._needsReinit = true;
 });
