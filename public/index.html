@@ -78,7 +78,7 @@
   <div class="sidebar-logo">
     <div class="sidebar-logo-text">Authoring Tool</div>
     <div class="sidebar-logo-sub">Media Pembelajaran Interaktif</div>
-    <div class="sidebar-logo-badge">v2.0</div>
+    <div class="sidebar-logo-badge">v3.0</div>
   </div>
   <div id="sidebar-nav">
 
@@ -141,9 +141,23 @@
     <div class="panel" id="p-dashboard">
       <div class="panel-header">
         <div class="panel-title">Dashboard</div>
-        <div class="panel-desc">Ringkasan proyek dan status kelengkapan media pembelajaran.</div>
+        <div class="panel-desc">Kelola proyek, pantau kelengkapan, dan export media pembelajaran interaktif.</div>
       </div>
-      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:18px">
+      <div class="welcome-banner" id="welcomeBanner">
+        <div class="welcome-banner-icon">&#x1F44B;</div>
+        <div class="welcome-banner-content">
+          <div class="welcome-banner-title">Selamat Datang di Authoring Tool v3!</div>
+          <div class="welcome-banner-text">Buat media pembelajaran interaktif dengan mudah. Ikuti langkah-langkah berikut untuk memulai:</div>
+          <div class="welcome-banner-steps">
+            <div class="welcome-step"><div class="welcome-step-num">1</div> Lengkapi Identitas Media</div>
+            <div class="welcome-step"><div class="welcome-step-num">2</div> Isi CP / TP / ATP</div>
+            <div class="welcome-step"><div class="welcome-step-num">3</div> Tambahkan Konten & Game</div>
+            <div class="welcome-step"><div class="welcome-step-num">4</div> Preview & Export</div>
+          </div>
+        </div>
+        <button class="welcome-close" onclick="document.getElementById('welcomeBanner').style.display='none'" title="Tutup">&#x2715;</button>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:24px">
         <div class="preset-card" onclick="AT_PROJECTS.newProject()" style="text-align:center">
           <div class="preset-card-icon">✨</div><div class="preset-card-label">Proyek Baru</div><div class="preset-card-sub">Mulai dari nol</div>
         </div>
