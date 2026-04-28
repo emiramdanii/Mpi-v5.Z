@@ -22,6 +22,14 @@ window.AT_MATERI_EDITOR = {
     { id:"tabel",     icon:"📊", label:"Tabel",             color:"var(--p)"      },
     { id:"kutipan",   icon:"💬", label:"Kutipan / Quote",   color:"var(--g)"      },
     { id:"gambar",    icon:"🖼️", label:"Gambar dari URL",  color:"var(--o)"      },
+    // v2.0 — Dynamic content blocks (auto icon + warna + animasi)
+    { id:"timeline",  icon:"🔄", label:"Timeline / Alur",   color:"var(--c)"      },
+    { id:"highlight", icon:"⚡", label:"Highlight Card",    color:"var(--y)"      },
+    { id:"compare",   icon:"⚖️", label:"Perbandingan",      color:"var(--p)"      },
+    { id:"infobox",   icon:"💡", label:"Info / Tips Box",    color:"var(--b)"      },
+    { id:"checklist", icon:"✅", label:"Checklist",          color:"var(--g)"      },
+    { id:"statistik", icon:"📈", label:"Statistik Angka",   color:"var(--o)"      },
+    { id:"studi",     icon:"📖", label:"Studi Kasus",       color:"var(--r)"      },
   ],
 
   ensureState() {
@@ -118,6 +126,169 @@ window.AT_MATERI_EDITOR = {
           ${b.isi?`<img src="${e(b.isi)}" alt="preview" style="margin-top:8px;max-width:100%;max-height:150px;border-radius:8px;border:1px solid var(--border)" onerror="this.style.display='none'">`:
           `<div style="margin-top:8px;background:rgba(255,255,255,.04);border:2px dashed var(--border);border-radius:8px;padding:16px;text-align:center;color:var(--muted);font-size:.78rem">🖼️ Preview gambar akan muncul setelah URL diisi</div>`}
         </div>`;
+    // ── v2.0 Dynamic Block Editors ──
+    } else if (b.tipe === "timeline") {
+      const steps = b.langkah || [];
+      contentFields = `
+        <div class="field-group">
+          <label class="field-label">Judul Timeline</label>
+          <input class="field-input" value="${e(b.judul||"")}" placeholder="Alur Peristiwa…"
+            oninput="AT_MATERI_EDITOR._up(${i},'judul',this.value)">
+        </div>
+        <div class="field-group">
+          <label class="field-label">Langkah-Langkah</label>
+          ${steps.map((s,si) => `
+            <div style="display:flex;gap:6px;margin-bottom:8px;align-items:flex-start;padding:8px;background:rgba(255,255,255,.03);border-radius:8px;border:1px solid var(--border)">
+              <input class="field-input" value="${e(s.icon||"📍")}" style="width:50px;text-align:center;flex-shrink:0;font-size:1.1rem" placeholder="📍"
+                oninput="AT_MATERI_EDITOR._upLangkah(${i},${si},'icon',this.value)">
+              <div style="flex:1;display:flex;flex-direction:column;gap:4px">
+                <input class="field-input" value="${e(s.judul||"")}" placeholder="Judul langkah…"
+                  oninput="AT_MATERI_EDITOR._upLangkah(${i},${si},'judul',this.value)">
+                <input class="field-input" value="${e(s.isi||"")}" placeholder="Deskripsi…"
+                  oninput="AT_MATERI_EDITOR._upLangkah(${i},${si},'isi',this.value)">
+              </div>
+              <button class="icon-btn del" onclick="AT_MATERI_EDITOR._remLangkah(${i},${si})">×</button>
+            </div>`).join("")}
+          <button class="btn btn-ghost btn-xs" style="margin-top:4px" onclick="AT_MATERI_EDITOR._addLangkah(${i})">＋ Tambah Langkah</button>
+        </div>`;
+    } else if (b.tipe === "highlight") {
+      contentFields = `
+        <div class="field-group">
+          <label class="field-label">Judul</label>
+          <input class="field-input" value="${e(b.judul||"")}" placeholder="Konsep Penting…"
+            oninput="AT_MATERI_EDITOR._up(${i},'judul',this.value)">
+        </div>
+        <div class="field-group">
+          <label class="field-label">Icon Emoji</label>
+          <input class="field-input" value="${e(b.icon||"⚡")}" style="font-size:1.2rem;width:60px;text-align:center" placeholder="⚡"
+            oninput="AT_MATERI_EDITOR._up(${i},'icon',this.value)">
+        </div>
+        <div class="field-group">
+          <label class="field-label">Warna Aksen</label>
+          <div style="display:flex;gap:6px;margin-top:4px;flex-wrap:wrap">
+            ${["var(--y)","var(--c)","var(--g)","var(--p)","var(--r)","var(--o)","var(--b)"].map(c =>
+              `<div onclick="AT_MATERI_EDITOR._up(${i},'warna','${c}')" style="width:28px;height:28px;border-radius:50%;background:${c};cursor:pointer;border:2px solid ${(b.warna||"var(--y)")===c?"#fff":"transparent"};transition:border .15s"></div>`
+            ).join("")}
+          </div>
+        </div>
+        <div class="field-group">
+          <label class="field-label">Isi</label>
+          <textarea class="field-textarea" rows="3" placeholder="Jelaskan konsep di sini…"
+            oninput="AT_MATERI_EDITOR._up(${i},'isi',this.value)">${e(b.isi||"")}</textarea>
+        </div>`;
+    } else if (b.tipe === "compare") {
+      const kiri = b.kiri || {}; const kanan = b.kanan || {};
+      contentFields = `
+        <div class="field-group">
+          <label class="field-label">Judul Perbandingan</label>
+          <input class="field-input" value="${e(b.judul||"")}" placeholder="Perbandingan…"
+            oninput="AT_MATERI_EDITOR._up(${i},'judul',this.value)">
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+          <div style="background:rgba(96,165,250,.06);border:1px solid rgba(96,165,250,.2);border-radius:10px;padding:10px">
+            <div style="font-size:.72rem;font-weight:800;color:var(--b);margin-bottom:6px">🔵 KIRI</div>
+            <input class="field-input" value="${e(kiri.icon||"🔵")}" style="width:50px;text-align:center;font-size:1.1rem;margin-bottom:4px" placeholder="🔵"
+              oninput="AT_MATERI_EDITOR._upCompare(${i},'kiri','icon',this.value)">
+            <input class="field-input" value="${e(kiri.judul||"")}" placeholder="Judul…" style="margin-bottom:4px"
+              oninput="AT_MATERI_EDITOR._upCompare(${i},'kiri','judul',this.value)">
+            <textarea class="field-textarea" rows="2" placeholder="Isi…" oninput="AT_MATERI_EDITOR._upCompare(${i},'kiri','isi',this.value)">${e(kiri.isi||"")}</textarea>
+          </div>
+          <div style="background:rgba(255,107,107,.06);border:1px solid rgba(255,107,107,.2);border-radius:10px;padding:10px">
+            <div style="font-size:.72rem;font-weight:800;color:var(--r);margin-bottom:6px">🔴 KANAN</div>
+            <input class="field-input" value="${e(kanan.icon||"🔴")}" style="width:50px;text-align:center;font-size:1.1rem;margin-bottom:4px" placeholder="🔴"
+              oninput="AT_MATERI_EDITOR._upCompare(${i},'kanan','icon',this.value)">
+            <input class="field-input" value="${e(kanan.judul||"")}" placeholder="Judul…" style="margin-bottom:4px"
+              oninput="AT_MATERI_EDITOR._upCompare(${i},'kanan','judul',this.value)">
+            <textarea class="field-textarea" rows="2" placeholder="Isi…" oninput="AT_MATERI_EDITOR._upCompare(${i},'kanan','isi',this.value)">${e(kanan.isi||"")}</textarea>
+          </div>
+        </div>`;
+    } else if (b.tipe === "infobox") {
+      contentFields = `
+        <div class="field-group">
+          <label class="field-label">Judul</label>
+          <input class="field-input" value="${e(b.judul||"")}" placeholder="Tips Penting…"
+            oninput="AT_MATERI_EDITOR._up(${i},'judul',this.value)">
+        </div>
+        <div class="field-group">
+          <label class="field-label">Gaya Box</label>
+          <div style="display:flex;gap:6px;margin-top:4px">
+            ${[{id:"info",icon:"💡",label:"Info"},{id:"tips",icon:"🎯",label:"Tips"},{id:"warning",icon:"⚠️",label:"Peringatan"},{id:"success",icon:"✅",label:"Sukses"}].map(s =>
+              `<div onclick="AT_MATERI_EDITOR._up(${i},'style','${s.id}')" style="padding:6px 12px;border-radius:8px;cursor:pointer;border:1px solid ${(b.style||"info")===s.id?"var(--y)":"var(--border)"};background:${(b.style||"info")===s.id?"rgba(249,193,46,.1)":"rgba(255,255,255,.03)"};font-size:.74rem;font-weight:700">${s.icon} ${s.label}</div>`
+            ).join("")}
+          </div>
+        </div>
+        <div class="field-group">
+          <label class="field-label">Isi</label>
+          <textarea class="field-textarea" rows="3" placeholder="Tulis isi info/tips di sini…"
+            oninput="AT_MATERI_EDITOR._up(${i},'isi',this.value)">${e(b.isi||"")}</textarea>
+        </div>`;
+    } else if (b.tipe === "checklist") {
+      contentFields = `
+        <div class="field-group">
+          <label class="field-label">Judul Checklist</label>
+          <input class="field-input" value="${e(b.judul||"")}" placeholder="Hal yang Perlu Diingat…"
+            oninput="AT_MATERI_EDITOR._up(${i},'judul',this.value)">
+        </div>
+        <div class="field-group">
+          <label class="field-label">Item Checklist</label>
+          ${(b.butir||[]).map((bt,bi) => `
+            <div style="display:flex;gap:6px;margin-bottom:5px;align-items:center">
+              <span style="color:var(--g);font-size:1rem;flex-shrink:0">☑</span>
+              <input class="field-input" value="${e(bt)}" placeholder="Item ${bi+1}…"
+                oninput="AT_MATERI_EDITOR._upButir(${i},${bi},this.value)">
+              <button class="icon-btn del" onclick="AT_MATERI_EDITOR._remButir(${i},${bi})">×</button>
+            </div>`).join("")}
+          <button class="btn btn-ghost btn-xs" style="margin-top:5px" onclick="AT_MATERI_EDITOR._addButir(${i})">＋ Tambah Item</button>
+        </div>`;
+    } else if (b.tipe === "statistik") {
+      const items = b.items || [];
+      contentFields = `
+        <div class="field-group">
+          <label class="field-label">Judul</label>
+          <input class="field-input" value="${e(b.judul||"")}" placeholder="Data Menarik…"
+            oninput="AT_MATERI_EDITOR._up(${i},'judul',this.value)">
+        </div>
+        <div class="field-group">
+          <label class="field-label">Item Statistik</label>
+          ${items.map((it,ii) => `
+            <div style="display:flex;gap:6px;margin-bottom:8px;align-items:center;padding:8px;background:rgba(255,255,255,.03);border-radius:8px;border:1px solid var(--border)">
+              <input class="field-input" value="${e(it.icon||"📊")}" style="width:50px;text-align:center;font-size:1.1rem;flex-shrink:0" placeholder="📊"
+                oninput="AT_MATERI_EDITOR._upStatItem(${i},${ii},'icon',this.value)">
+              <input class="field-input" value="${e(it.angka||"")}" style="width:70px;text-align:center;font-weight:900;flex-shrink:0" placeholder="80%"
+                oninput="AT_MATERI_EDITOR._upStatItem(${i},${ii},'angka',this.value)">
+              <input class="field-input" value="${e(it.label||"")}" placeholder="Label…"
+                oninput="AT_MATERI_EDITOR._upStatItem(${i},${ii},'label',this.value)">
+              <button class="icon-btn del" onclick="AT_MATERI_EDITOR._remStatItem(${i},${ii})">×</button>
+            </div>`).join("")}
+          <button class="btn btn-ghost btn-xs" style="margin-top:4px" onclick="AT_MATERI_EDITOR._addStatItem(${i})">＋ Tambah Item</button>
+        </div>`;
+    } else if (b.tipe === "studi") {
+      contentFields = `
+        <div class="field-group">
+          <label class="field-label">Judul</label>
+          <input class="field-input" value="${e(b.judul||"")}" placeholder="Studi Kasus…"
+            oninput="AT_MATERI_EDITOR._up(${i},'judul',this.value)">
+        </div>
+        <div class="field-group">
+          <label class="field-label">Karakter (Emoji)</label>
+          <input class="field-input" value="${e(b.karakter||"👨‍🏫")}" style="font-size:1.2rem;width:60px;text-align:center" placeholder="👨‍🏫"
+            oninput="AT_MATERI_EDITOR._up(${i},'karakter',this.value)">
+        </div>
+        <div class="field-group">
+          <label class="field-label">Situasi</label>
+          <textarea class="field-textarea" rows="3" placeholder="Deskripsikan situasi kasus…"
+            oninput="AT_MATERI_EDITOR._up(${i},'situasi',this.value)">${e(b.situasi||"")}</textarea>
+        </div>
+        <div class="field-group">
+          <label class="field-label">Pertanyaan</label>
+          <input class="field-input" value="${e(b.pertanyaan||"")}" placeholder="Apa yang sebaiknya dilakukan?"
+            oninput="AT_MATERI_EDITOR._up(${i},'pertanyaan',this.value)">
+        </div>
+        <div class="field-group">
+          <label class="field-label">Pesan Moral</label>
+          <input class="field-input" value="${e(b.pesan||"")}" placeholder="Pesan moral dari kasus…"
+            oninput="AT_MATERI_EDITOR._up(${i},'pesan',this.value)">
+        </div>`;
     }
 
     return `
@@ -139,12 +310,26 @@ window.AT_MATERI_EDITOR = {
   add(tipe) {
     this.ensureState();
     const defaults = {
-      teks:     { tipe:"teks",     judul:"", isi:"" },
-      definisi: { tipe:"definisi", judul:"", isi:"" },
-      poin:     { tipe:"poin",     judul:"", butir:["","",""] },
-      tabel:    { tipe:"tabel",    judul:"", baris:[["Kolom A","Kolom B"],["",""]] },
-      kutipan:  { tipe:"kutipan",  judul:"", isi:"" },
-      gambar:   { tipe:"gambar",   judul:"", isi:"" },
+      teks:      { tipe:"teks",      judul:"", isi:"" },
+      definisi:  { tipe:"definisi",  judul:"", isi:"" },
+      poin:      { tipe:"poin",      judul:"", butir:["","",""] },
+      tabel:     { tipe:"tabel",     judul:"", baris:[["Kolom A","Kolom B"],["",""]] },
+      kutipan:   { tipe:"kutipan",   judul:"", isi:"" },
+      gambar:    { tipe:"gambar",    judul:"", isi:"" },
+      // v2.0 dynamic blocks
+      timeline:  { tipe:"timeline",  judul:"Alur Peristiwa", langkah:[
+        {icon:"📍",judul:"Langkah 1",isi:"Deskripsi langkah pertama"},
+        {icon:"📍",judul:"Langkah 2",isi:"Deskripsi langkah kedua"},
+        {icon:"📍",judul:"Langkah 3",isi:"Deskripsi langkah ketiga"}
+      ]},
+      highlight: { tipe:"highlight", judul:"Konsep Penting", icon:"⚡", warna:"var(--y)", isi:"Jelaskan konsep penting di sini. Blok ini otomatis tampil dengan icon, warna, dan animasi." },
+      compare:   { tipe:"compare",   judul:"Perbandingan", kiri:{judul:"Konsep A",isi:"Isi konsep A",icon:"🔵"}, kanan:{judul:"Konsep B",isi:"Isi konsep B",icon:"🔴"} },
+      infobox:   { tipe:"infobox",   judul:"Tips Penting", isi:"Tulis tips atau informasi penting di sini.", style:"info" },
+      checklist: { tipe:"checklist", judul:"Hal yang Perlu Diingat", butir:["Poin pertama","Poin kedua","Poin ketiga"] },
+      statistik: { tipe:"statistik", judul:"Data Menarik", items:[
+        {icon:"📊",angka:"80%",label:"Persentase"},{icon:"👥",angka:"100+",label:"Jumlah"},{icon:"⭐",angka:"4.5",label:"Rating"}
+      ]},
+      studi:     { tipe:"studi",     judul:"Studi Kasus", karakter:"👨‍🏫", situasi:"Deskripsikan situasi kasus di sini.", pertanyaan:"Apa yang sebaiknya dilakukan?", pesan:"Pesan moral dari kasus ini." },
     };
     AT_STATE.materi.blok.push(defaults[tipe] || { tipe, judul:"", isi:"" });
     this.render();
@@ -163,6 +348,14 @@ window.AT_MATERI_EDITOR = {
   _rem(i)                   { AT_STATE.materi.blok.splice(i,1); this.render(); AT_EDITOR.markDirty(); },
   _moveUp(i)                { if(i>0){[AT_STATE.materi.blok[i-1],AT_STATE.materi.blok[i]]=[AT_STATE.materi.blok[i],AT_STATE.materi.blok[i-1]]; this.render(); AT_EDITOR.markDirty();} },
   _moveDn(i)                { const b=AT_STATE.materi.blok; if(i<b.length-1){[b[i],b[i+1]]=[b[i+1],b[i]]; this.render(); AT_EDITOR.markDirty();} },
+  // v2.0 dynamic block mutators
+  _upLangkah(i, si, key, val) { const b=AT_STATE.materi.blok[i]; if(!b.langkah)b.langkah=[]; b.langkah[si][key]=val; AT_EDITOR.markDirty(); },
+  _addLangkah(i) { const b=AT_STATE.materi.blok[i]; if(!b.langkah)b.langkah=[]; b.langkah.push({icon:"📍",judul:"",isi:""}); this.render(); AT_EDITOR.markDirty(); },
+  _remLangkah(i, si) { AT_STATE.materi.blok[i].langkah.splice(si,1); this.render(); AT_EDITOR.markDirty(); },
+  _upCompare(i, side, key, val) { const b=AT_STATE.materi.blok[i]; if(!b[side])b[side]={}; b[side][key]=val; AT_EDITOR.markDirty(); },
+  _upStatItem(i, ii, key, val) { const b=AT_STATE.materi.blok[i]; if(!b.items)b.items=[]; b.items[ii][key]=val; AT_EDITOR.markDirty(); },
+  _addStatItem(i) { const b=AT_STATE.materi.blok[i]; if(!b.items)b.items=[]; b.items.push({icon:"📊",angka:"",label:""}); this.render(); AT_EDITOR.markDirty(); },
+  _remStatItem(i, ii) { AT_STATE.materi.blok[i].items.splice(ii,1); this.render(); AT_EDITOR.markDirty(); },
 
   // Render HTML for student preview
   renderHtml() {
@@ -187,6 +380,114 @@ window.AT_MATERI_EDITOR = {
         return `<div style="border-left:4px solid var(--g);background:rgba(52,211,153,.06);border-radius:0 10px 10px 0;padding:13px 15px;margin:12px 0;font-style:italic;font-size:.88rem;line-height:1.7">"${e(b.isi||"")}"${b.judul?`<div style="font-style:normal;font-size:.75rem;color:var(--muted);margin-top:5px">— ${e(b.judul)}</div>`:""}</div>`;
       case "gambar":
         return `<div style="margin:12px 0;text-align:center">${b.isi?`<img src="${e(b.isi)}" alt="${e(b.judul||"")}" style="max-width:100%;border-radius:10px;border:1px solid var(--border)">`:""}<div style="font-size:.74rem;color:var(--muted);margin-top:5px">${e(b.judul||"")}</div></div>`;
+
+      // ═══ v2.0 Dynamic Block Renderers ═══
+
+      case "timeline": {
+        const steps = b.langkah || [];
+        return `<div style="margin:14px 0">
+          ${b.judul?`<div style="font-weight:800;font-size:.88rem;margin-bottom:12px;display:flex;align-items:center;gap:6px"><span style="font-size:1.1rem">🔄</span>${e(b.judul)}</div>`:""}
+          <div style="position:relative;padding-left:28px">
+            <div style="position:absolute;left:10px;top:6px;bottom:6px;width:3px;background:linear-gradient(180deg,var(--c),var(--y),var(--g));border-radius:99px"></div>
+            ${steps.map((s,si) => `<div style="position:relative;margin-bottom:14px">
+              <div style="position:absolute;left:-23px;top:2px;width:18px;height:18px;border-radius:50%;background:var(--bg);border:3px solid var(--c);display:flex;align-items:center;justify-content:center;font-size:.55rem">${e(s.icon||"📍")}</div>
+              <div style="background:rgba(62,207,207,.06);border:1px solid rgba(62,207,207,.15);border-radius:10px;padding:10px 13px">
+                <div style="font-weight:800;font-size:.83rem;color:var(--c);margin-bottom:3px">${e(s.judul||"")}</div>
+                <div style="font-size:.82rem;color:var(--muted);line-height:1.6">${e(s.isi||"")}</div>
+              </div>
+            </div>`).join("")}
+          </div>
+        </div>`;
+      }
+
+      case "highlight": {
+        const ic = b.icon || "⚡";
+        return `<div style="margin:14px 0">
+          <div style="background:rgba(249,193,46,.08);border:2px solid rgba(249,193,46,.25);border-radius:14px;padding:16px 18px;display:flex;gap:14px;align-items:flex-start">
+            <div style="font-size:2.2rem;flex-shrink:0;animation:float 3s ease-in-out infinite">${e(ic)}</div>
+            <div style="flex:1">
+              <div style="font-weight:900;font-size:.92rem;margin-bottom:5px">${e(b.judul||"")}</div>
+              <div style="font-size:.84rem;color:var(--muted);line-height:1.7">${e(b.isi||"")}</div>
+            </div>
+          </div>
+        </div>`;
+      }
+
+      case "compare": {
+        const kiri = b.kiri || {}; const kanan = b.kanan || {};
+        return `<div style="margin:14px 0">
+          ${b.judul?`<div style="font-weight:800;font-size:.88rem;margin-bottom:10px;text-align:center">⚖️ ${e(b.judul)}</div>`:""}
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+            <div style="background:rgba(96,165,250,.07);border:2px solid rgba(96,165,250,.2);border-radius:12px;padding:13px 14px">
+              <div style="font-size:1.5rem;margin-bottom:6px">${e(kiri.icon||"🔵")}</div>
+              <div style="font-weight:800;font-size:.85rem;color:var(--b);margin-bottom:5px">${e(kiri.judul||"")}</div>
+              <div style="font-size:.82rem;color:var(--muted);line-height:1.65">${e(kiri.isi||"")}</div>
+            </div>
+            <div style="background:rgba(255,107,107,.07);border:2px solid rgba(255,107,107,.2);border-radius:12px;padding:13px 14px">
+              <div style="font-size:1.5rem;margin-bottom:6px">${e(kanan.icon||"🔴")}</div>
+              <div style="font-weight:800;font-size:.85rem;color:var(--r);margin-bottom:5px">${e(kanan.judul||"")}</div>
+              <div style="font-size:.82rem;color:var(--muted);line-height:1.65">${e(kanan.isi||"")}</div>
+            </div>
+          </div>
+        </div>`;
+      }
+
+      case "infobox": {
+        const styles = {
+          info:    { icon:"💡", color:"var(--b)", bg:"rgba(96,165,250,.07)", border:"rgba(96,165,250,.2)" },
+          tips:    { icon:"🎯", color:"var(--y)", bg:"rgba(249,193,46,.07)", border:"rgba(249,193,46,.2)" },
+          warning: { icon:"⚠️", color:"var(--o)", bg:"rgba(251,146,60,.07)", border:"rgba(251,146,60,.2)" },
+          success: { icon:"✅", color:"var(--g)", bg:"rgba(52,211,153,.07)", border:"rgba(52,211,153,.2)" },
+        };
+        const s = styles[b.style||"info"] || styles.info;
+        return `<div style="margin:14px 0;background:${s.bg};border:2px solid ${s.border};border-radius:12px;padding:14px 16px;display:flex;gap:12px;align-items:flex-start">
+          <div style="font-size:1.6rem;flex-shrink:0">${s.icon}</div>
+          <div style="flex:1">
+            <div style="font-weight:800;font-size:.85rem;color:${s.color};margin-bottom:4px">${e(b.judul||"Info")}</div>
+            <div style="font-size:.83rem;color:var(--muted);line-height:1.7">${e(b.isi||"")}</div>
+          </div>
+        </div>`;
+      }
+
+      case "checklist":
+        return `<div style="margin:14px 0">
+          ${b.judul?`<div style="font-weight:800;font-size:.88rem;margin-bottom:10px;display:flex;align-items:center;gap:6px"><span style="color:var(--g)">✅</span>${e(b.judul)}</div>`:""}
+          <div style="background:rgba(52,211,153,.05);border:2px solid rgba(52,211,153,.15);border-radius:12px;padding:12px 14px">
+            ${(b.butir||[]).map((bt,bi) => `<div style="display:flex;gap:10px;align-items:center;padding:7px 0;${bi<(b.butir||[]).length-1?"border-bottom:1px solid rgba(52,211,153,.1)":""}">
+              <div style="width:22px;height:22px;border-radius:6px;background:rgba(52,211,153,.15);border:2px solid rgba(52,211,153,.3);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:.7rem;color:var(--g)">✓</div>
+              <span style="font-size:.84rem;line-height:1.5">${e(bt)}</span>
+            </div>`).join("")}
+          </div>
+        </div>`;
+
+      case "statistik": {
+        const items = b.items || [];
+        return `<div style="margin:14px 0">
+          ${b.judul?`<div style="font-weight:800;font-size:.88rem;margin-bottom:12px">📈 ${e(b.judul)}</div>`:""}
+          <div style="display:grid;grid-template-columns:repeat(${Math.min(items.length||3,3)},1fr);gap:10px">
+            ${items.map(it => `<div style="background:rgba(251,146,60,.06);border:2px solid rgba(251,146,60,.15);border-radius:12px;padding:14px 10px;text-align:center">
+              <div style="font-size:1.6rem;margin-bottom:4px">${e(it.icon||"📊")}</div>
+              <div style="font-family:Fredoka One,cursive;font-size:1.6rem;color:var(--o);line-height:1.2">${e(it.angka||"")}</div>
+              <div style="font-size:.72rem;color:var(--muted);font-weight:600;margin-top:3px">${e(it.label||"")}</div>
+            </div>`).join("")}
+          </div>
+        </div>`;
+      }
+
+      case "studi":
+        return `<div style="margin:14px 0;background:linear-gradient(135deg,rgba(167,139,250,.06),rgba(255,107,107,.04));border:2px solid rgba(167,139,250,.2);border-radius:14px;padding:16px 18px">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">
+            <div style="width:44px;height:44px;border-radius:12px;background:rgba(167,139,250,.12);display:flex;align-items:center;justify-content:center;font-size:1.8rem;flex-shrink:0">${e(b.karakter||"👨‍🏫")}</div>
+            <div>
+              <div style="font-weight:900;font-size:.9rem">📖 ${e(b.judul||"Studi Kasus")}</div>
+              <div style="font-size:.68rem;color:var(--p);font-weight:700">DISKUSI</div>
+            </div>
+          </div>
+          <div style="font-size:.85rem;line-height:1.7;margin-bottom:10px;padding:10px 12px;background:rgba(255,255,255,.03);border-radius:8px;border-left:3px solid var(--p)">${e(b.situasi||"")}</div>
+          <div style="font-size:.85rem;font-weight:800;color:var(--p);margin-bottom:6px">🤔 ${e(b.pertanyaan||"")}</div>
+          ${b.pesan?`<div style="font-size:.78rem;color:var(--muted);padding:8px 12px;background:rgba(52,211,153,.05);border-radius:8px;margin-top:8px"><strong style="color:var(--g)">📌 Pesan:</strong> ${e(b.pesan)}</div>`:""}
+        </div>`;
+
       default: // teks
         return `<div style="margin:12px 0">${b.judul?`<div style="font-weight:800;font-size:.9rem;margin-bottom:6px">${e(b.judul)}</div>`:""}
           <p style="font-size:.85rem;line-height:1.75;color:var(--muted)">${e(b.isi||"").replace(/\n/g,"<br>")}</p></div>`;
