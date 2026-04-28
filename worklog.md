@@ -164,3 +164,26 @@ Stage Summary:
 - liveview_enhancements.js: tambah ssk dan sgame_0 di _REVERSE_MAP
 - index.html: tambah opsi Skenario (ssk) di dropdown page select
 - Sync ke /home/z/my-project/public/
+---
+Task ID: 1
+Agent: main
+Task: Fix auto-sync for document section (Identitas sampai Alur Kegiatan)
+
+Work Log:
+- Analyzed AT_NAV.go patch chain (4 files: animations.js, modules.js, extras.js, liveview_enhancements.js)
+- Identified root cause: accordion clicks in dokumen panel did NOT sync to preview
+- Identified issue: refresh() early-returned when HTML unchanged, skipping navigation
+- Identified issue: dropdown not pre-set before iframe onload
+- Added _ACCORDION_PREVIEW_MAP mapping accordion titles to preview pages
+- Enhanced toggleAccordion patch to sync preview on accordion open
+- Added switchDocTab message handler in iframe navScript for sub-tab switching
+- Added scrollToEnd message handler for Alur Kegiatan section
+- Fixed refresh() to still navigate iframe even when HTML unchanged
+- Enhanced AT_NAV.go patch to pre-set dropdown before scheduleRefresh
+- Increased sync delay from 150ms to 200ms for better iframe load timing
+
+Stage Summary:
+- liveview.js v4.3: accordion sync, switchDocTab/scrollToEnd handlers, navigate on unchanged HTML
+- liveview_enhancements.js v6.2: pre-set dropdown before refresh, improved timing
+- Files synced to /home/z/my-project/public/
+

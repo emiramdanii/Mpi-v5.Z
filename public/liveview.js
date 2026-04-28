@@ -1,5 +1,5 @@
 // ═══════════════════════════════════════════════════════════════
-// LIVEVIEW.JS — Split-View Live Preview v4.1 (Robust Rewrite)
+// LIVEVIEW.JS — Split-View Live Preview v4.2 (Robust Rewrite)
 // Berisi:
 //   AT_SPLITVIEW  — live preview berdampingan dengan editor
 //   Preview patch, init code, MutationObserver, keyboard shortcuts
@@ -131,8 +131,9 @@ window.AT_SPLITVIEW = {
 
       // ── ANTI-FLICKER: skip refresh if HTML hasn't changed ──
       if (html === this._lastHTML) {
-        // Content unchanged — just navigate if needed, don't rewrite srcdoc
+        // Content unchanged — but still navigate iframe to correct page
         this._hideSyncPulse();
+        this._navigateFrame();
         return;
       }
 
@@ -159,6 +160,18 @@ window.AT_SPLITVIEW = {
         if(rs.ftTab!=null&&typeof window.swFt==='function')swFt(rs.ftTab);
         if(rs.scrollTop>0)window.scrollTo(0,rs.scrollTop);
       },150);
+    }
+    if(e.data&&e.data.switchDocTab){
+      var tabId=e.data.switchDocTab;
+      var tabEl=null;
+      document.querySelectorAll('.ktab').forEach(function(t){
+        var oc=t.getAttribute('onclick')||'';
+        if(oc.indexOf('"'+tabId+'"')>=0){tabEl=t;}
+      });
+      if(tabEl&&typeof kT==='function'){kT(tabId,tabEl);}
+    }
+    if(e.data&&e.data.scrollToEnd){
+      setTimeout(function(){window.scrollTo(0,document.body.scrollHeight);},100);
     }
   });
   var _og=window.go;
@@ -418,12 +431,50 @@ function _initMutationObserver() {
    NOTE: switchKontenTab patch moved to liveview_enhancements.js
    to prevent double-patching.
    ══════════════════════════════════════════════════════════════ */
+
+/* ── Accordion → Preview sync mapping ── */
+const _ACCORDION_PREVIEW_MAP = {
+  'Identitas Media':           { page: 'sc',   tab: null },
+  'Capaian Pembelajaran':      { page: 'scp',  tab: 'kcp'  },
+  'Tujuan Pembelajaran':       { page: 'scp',  tab: 'ktp'  },
+  'Alur Tujuan Pembelajaran':  { page: 'scp',  tab: 'katp' },
+  'Alur Kegiatan':             { page: 'scp',  tab: null,  scrollEnd: true },
+};
+
 function _patchAccordionToggle() {
   const origToggle = window.toggleAccordion;
   if (!origToggle) return;
   window.toggleAccordion = function(headerEl) {
+    const wasOpen = headerEl.closest('.acc-section')?.classList.contains('open');
     origToggle(headerEl);
     _recalcAfterRender();
+
+    // Auto-sync preview when accordion opens (not when closing)
+    if (!wasOpen && AT_SPLITVIEW?.active) {
+      const title = headerEl.querySelector('.acc-title')?.textContent?.trim();
+      const mapping = title ? _ACCORDION_PREVIEW_MAP[title] : null;
+      if (mapping) {
+        AT_SPLITVIEW.goPage(mapping.page);
+        // Also switch sub-tab inside scp page if needed
+        if (mapping.tab) {
+          setTimeout(() => {
+            const frame = document.getElementById('split-frame');
+            try {
+              frame?.contentWindow?.postMessage({ switchDocTab: mapping.tab }, '*');
+            } catch(e) {}
+          }, 200);
+        }
+        // Scroll to end for Alur Kegiatan
+        if (mapping.scrollEnd) {
+          setTimeout(() => {
+            const frame = document.getElementById('split-frame');
+            try {
+              frame?.contentWindow?.postMessage({ scrollToEnd: true }, '*');
+            } catch(e) {}
+          }, 300);
+        }
+      }
+    }
   };
 }
 
@@ -495,5 +546,5 @@ document.addEventListener("DOMContentLoaded", () => {
   // NOTE: Auto-open, AT_NAV.go patch, switchKontenTab patch
   // ALL handled in liveview_enhancements.js (loaded after this file)
 
-  console.log("liveview.js v4.2 loaded — markDirty hook, undo, MutationObserver, keyboard shortcuts");
+  console.log("liveview.js v4.3 loaded — markDirty hook, undo, MutationObserver, keyboard shortcuts, accordion sync");
 });

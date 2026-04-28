@@ -1,5 +1,5 @@
 // ═══════════════════════════════════════════════════════════════
-// LIVEVIEW_ENHANCEMENTS.JS v6.0 — Smart Auto-Sync + UX
+// LIVEVIEW_ENHANCEMENTS.JS v6.2 — Smart Auto-Sync + UX
 // ═══════════════════════════════════════════════════════════════
 // Berisi:
 //   AT_PAGE_SYNC  — deteksi halaman pintar: editor panel → preview page
@@ -388,11 +388,17 @@ document.addEventListener('DOMContentLoaded', () => {
         AT_SPLITVIEW.toggle();
       }
     }
-    // Schedule refresh for content panels
+    // Pre-set dropdown BEFORE refresh (so iframe onload reads correct page)
     if (AT_SPLITVIEW.active) {
+      const mappedPage = AT_PAGE_SYNC._MAP[id];
+      if (mappedPage && !AT_PAGE_SYNC._userManualOverride) {
+        const sel = document.getElementById('splitPageSelect');
+        if (sel) sel.value = mappedPage;
+      }
+      // Schedule refresh for content panels
       AT_SPLITVIEW.scheduleRefresh();
-      // Auto-sync preview page ke editor panel
-      setTimeout(() => AT_PAGE_SYNC.syncFromPanel(id), 150);
+      // Auto-sync preview page ke editor panel (delayed for iframe load)
+      setTimeout(() => AT_PAGE_SYNC.syncFromPanel(id), 200);
     }
   };
 
@@ -433,5 +439,5 @@ document.addEventListener('DOMContentLoaded', () => {
   // ── Inject Split View tip di Dashboard ──
   _injectSplitViewTip();
 
-  console.log('liveview_enhancements.js v6.1 — consolidated nav/tab patches, smart auto-sync, no double-patching');
+  console.log('liveview_enhancements.js v6.2 — consolidated nav/tab patches, smart auto-sync, pre-set dropdown, accordion sync');
 });
