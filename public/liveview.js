@@ -1,5 +1,5 @@
 // ═══════════════════════════════════════════════════════════════
-// LIVEVIEW.JS — Split-View Live Preview v4.5 (Typing Stability)
+// LIVEVIEW.JS — Split-View Live Preview v4.6 (Tab Persist + Typing Skip)
 // Berisi:
 //   AT_SPLITVIEW  — live preview berdampingan dengan editor
 //   Preview patch, init code, MutationObserver, keyboard shortcuts
@@ -9,16 +9,19 @@
 // Editor modules (AT_UNDO, AT_SK_EDITOR, AT_FUNGSI_EDITOR,
 // AT_JSON_IO, accordion helpers) are in liveview-editors.js
 //
-// v4.5 Typing Stability:
-//   - Typing-aware debounce: 800ms during typing, 300ms for clicks/navigation
-//   - Skip loading overlay during typing (no visual flicker)
+// v4.6 Tab Persist + Typing Skip:
+//   - COMPLETE SKIP rebuild during active typing (no iframe srcdoc write)
+//   - Typing indicator shows "Mengetik..." instead of full rebuild
+//   - Final rebuild triggered automatically when typing stops
+//   - Doc tab state (CP/TP/ATP) tracked via kT() patch → saved in preview state
+//   - _navigateFrame() restores doc tab after every rebuild
+//   - _forceNextRefresh flag for navigation actions to bypass typing skip
+//   - navigateToPage() saves doc tab to _savedPreviewState for persistence
 //   - Batch undo pushes during typing (avoid deep clone per keystroke)
-//   - Fix MutationObserver fallback (clear _debounceTimer after fire)
-//   - Move sync pulse after HTML comparison (reduce visual noise)
 // ═══════════════════════════════════════════════════════════════
 
 /* ══════════════════════════════════════════════════════════════
-   AT_SPLITVIEW — Live preview di sebelah editor  v4.5
+   AT_SPLITVIEW — Live preview di sebelah editor  v4.6
    Single entry point: scheduleRefresh() → debounced refresh()
    ══════════════════════════════════════════════════════════════ */
 window.AT_SPLITVIEW = {
@@ -40,23 +43,21 @@ window.AT_SPLITVIEW = {
   _errorRetries: 0,
   _savedPreviewState: null,
 
-  // ── Typing Detection: longer debounce during active typing ──
+  // ── Typing Detection ──
   _isTyping: false,
   _typingTimer: null,
-  _typingDebounce: 800,
-  _normalDebounce: 300,
+  _hasPendingRefresh: false,   // true when typing generated dirty state
+  _forceNextRefresh: false,   // true when navigation action needs immediate rebuild
 
   // ── Message Queue: prevents race condition with iframe rebuild ──
-  _pendingMessages: [],    // queued messages to send after iframe loads
-  _iframeReady: false,     // true after iframe.onload fires
+  _pendingMessages: [],
+  _iframeReady: false,
 
   /* ── Queue a message to iframe (safe even during rebuild) ── */
   _queueMessage(msg) {
     if (this._iframeReady) {
-      // Iframe already loaded, send immediately
       this._sendToFrame(msg);
     } else {
-      // Queue for after next iframe load
       this._pendingMessages.push(msg);
     }
   },
@@ -83,7 +84,6 @@ window.AT_SPLITVIEW = {
   /* ── Reset queue when iframe starts rebuilding ── */
   _resetIframeState() {
     this._iframeReady = false;
-    // Keep pending messages — they'll be flushed after new iframe loads
   },
 
   /* ── Toggle split view ─────────────────────────────────── */
@@ -107,7 +107,6 @@ window.AT_SPLITVIEW = {
       if (btn)  btn.classList.remove("active");
       const loading = document.getElementById("splitLoading");
       if (loading) loading.style.display = "none";
-      // Reset auto-open flag so split can re-open when returning to content panels
       this._autoOpened = false;
       this._pendingMessages = [];
       this._iframeReady = false;
@@ -122,13 +121,30 @@ window.AT_SPLITVIEW = {
     this.refresh();
   },
 
-  /* ── Detect active typing — use longer debounce ── */
+  /* ── Detect active typing — defer ALL rebuilds until typing stops ── */
   _startTyping() {
     this._isTyping = true;
+    this._forceNextRefresh = false;
     clearTimeout(this._typingTimer);
     this._typingTimer = setTimeout(() => {
       this._isTyping = false;
-    }, 1500);
+      // Typing ended — trigger final refresh if there were changes
+      if (this._hasPendingRefresh && this.active) {
+        this._hasPendingRefresh = false;
+        this.scheduleRefresh();
+      }
+    }, 1200);
+  },
+
+  /* ── Show typing indicator in sync area ── */
+  _showTypingIndicator() {
+    const dot = document.getElementById("syncDot");
+    const label = document.getElementById("syncLabel");
+    if (!dot) return;
+    dot.style.background = 'var(--muted)';
+    dot.style.transform = 'scale(0.8)';
+    dot.style.opacity = '0.5';
+    if (label) { label.textContent = 'Mengetik...'; label.style.color = 'var(--muted)'; }
   },
 
   /* ── Single entry point: dipanggil dari unified markDirty ── */
@@ -140,14 +156,25 @@ window.AT_SPLITVIEW = {
       }
       return;
     }
+
+    // During active typing, DON'T schedule rebuild — just flag pending
+    if (this._isTyping && !this._forceNextRefresh) {
+      this._hasPendingRefresh = true;
+      this._showTypingIndicator();
+      return;
+    }
+
     clearTimeout(this._debounceTimer);
-    // Typing mode = 800ms debounce, normal mode = 300ms
-    const delay = this._buildCount < 2 ? 120 : (this._isTyping ? this._typingDebounce : this._normalDebounce);
+    this._hasPendingRefresh = false;
+    const delay = this._buildCount < 2 ? 120 : 300;
     this._debounceTimer = setTimeout(() => this.refresh(), delay);
   },
 
   /* ── Force refresh — always rebuild ── */
   forceRefresh() {
+    this._forceNextRefresh = true;
+    this._isTyping = false;
+    this._hasPendingRefresh = false;
     this._lastHTML = "";
     this.refresh();
   },
@@ -161,8 +188,10 @@ window.AT_SPLITVIEW = {
   refresh() {
     if (!this.active) return;
 
-    // Clear debounce flag — timer has fired, allow MutationObserver fallback
+    // Clear flags
     this._debounceTimer = null;
+    this._forceNextRefresh = false;
+    this._hasPendingRefresh = false;
 
     const frame = document.getElementById("split-frame");
     const loading = document.getElementById("splitLoading");
@@ -185,7 +214,6 @@ window.AT_SPLITVIEW = {
 
       // ── ANTI-FLICKER: skip refresh if HTML hasn't changed ──
       if (html === this._lastHTML) {
-        // Flush any pending messages even when HTML unchanged
         if (this._pendingMessages.length > 0) {
           this._flushPendingMessages();
         } else {
@@ -194,21 +222,13 @@ window.AT_SPLITVIEW = {
         return;
       }
 
-      // HTML changed — show sync pulse ONLY now (not before comparison)
+      // HTML changed — show sync pulse
       this._showSyncPulse();
 
       this._lastHTML = html;
-
-      // Skip loading overlay during typing to prevent visual flicker
-      const isTypingRefresh = this._isTyping;
-      if (!isTypingRefresh && loading) loading.style.display = "flex";
+      if (loading) loading.style.display = "flex";
       this._resetIframeState();
-
-      // Hide iframe during srcdoc write to prevent white flash
-      // Skip during typing for smoother experience (anti-flicker CSS still applies)
-      if (!isTypingRefresh) {
-        frame.style.visibility = 'hidden';
-      }
+      frame.style.visibility = 'hidden';
 
       // ── Aggressive anti-flicker: kill ALL animations + transitions ──
       const antiFlicker = `<style>
@@ -219,7 +239,9 @@ window.AT_SPLITVIEW = {
 
       // ── Navigation script injected into student HTML ──
       // Handles: goPage, restoreState, switchDocTab, scrollToEnd, scroll tracking
+      // v4.6: patches kT() to track doc tab, includes docTab in state
       const navScript = `<script>(function(){
+  var _curDocTab=null;
   window.addEventListener('message',function(e){
     if(e.data&&e.data.goPage){var fn=window.go;if(fn)fn(e.data.goPage);}
     if(e.data&&e.data.goModP!==undefined){var fn=window.goModP;if(fn)fn(e.data.goModP);}
@@ -230,27 +252,30 @@ window.AT_SPLITVIEW = {
         if(rs.matPage!=null&&typeof window.goMatP==='function')goMatP(rs.matPage);
         if(rs.modPage!=null&&typeof window.goModP==='function')goModP(rs.modPage);
         if(rs.ftTab!=null&&typeof window.swFt==='function')swFt(rs.ftTab);
+        if(rs.docTab&&typeof kT==='function'){
+          var tabEl=null;
+          document.querySelectorAll('.ktab').forEach(function(t){
+            var oc=t.getAttribute('onclick')||'';
+            if(oc.indexOf('"'+rs.docTab+'"')>=0||oc.indexOf("'"+rs.docTab+"'")>=0){tabEl=t;}
+          });
+          if(tabEl){kT(rs.docTab,tabEl);_curDocTab=rs.docTab;}
+        }
         if(rs.scrollTop>0)window.scrollTo(0,rs.scrollTop);
       },150);
     }
     if(e.data&&e.data.switchDocTab){
       var tabId=e.data.switchDocTab;
-      // Robust: try multiple methods to find and click the right tab
       setTimeout(function(){
-        // Method 1: find .ktab with onclick containing the tabId
         var tabEl=null;
         document.querySelectorAll('.ktab').forEach(function(t){
           var oc=t.getAttribute('onclick')||'';
           if(oc.indexOf('"'+tabId+'"')>=0||oc.indexOf("'"+tabId+"'")>=0){tabEl=t;}
         });
-        // Method 2: if not found, try calling kT directly
-        if(tabEl&&typeof kT==='function'){kT(tabId,tabEl);}
+        if(tabEl&&typeof kT==='function'){kT(tabId,tabEl);_curDocTab=tabId;}
         else if(typeof kT==='function'){
-          // Fallback: kT function might work with just tabId
           var fakeEl={classList:{add:function(){},remove:function(){}}};
-          try{kT(tabId,fakeEl);}catch(ex){}
+          try{kT(tabId,fakeEl);_curDocTab=tabId;}catch(ex){}
         }
-        // Acknowledge back to parent
         try{window.parent.postMessage({docTabSwitched:tabId},'*');}catch(ex){}
       },80);
     }
@@ -265,6 +290,8 @@ window.AT_SPLITVIEW = {
   var _gmp=window.goModP;if(_gmp){window.goModP=function(i){_gmp(i);setTimeout(_rs,80);};}
   var _mdn=window.modNav;if(_mdn){window.modNav=function(d){_mdn(d);setTimeout(_rs,80);};}
   var _sf=window.swFt;if(_sf){window.swFt=function(i){_sf(i);setTimeout(_rs,80);};}
+  var _okT=window.kT;
+  if(_okT){window.kT=function(id,el){_okT(id,el);_curDocTab=id;setTimeout(_rs,80);};}
   function _rs(){
     var s={};
     var as=document.querySelector('.screen.active');
@@ -272,6 +299,7 @@ window.AT_SPLITVIEW = {
     if(typeof _matP!=='undefined')s.matPage=_matP;
     if(typeof _modP!=='undefined')s.modPage=_modP;
     if(typeof curFt!=='undefined')s.ftTab=curFt;
+    if(_curDocTab)s.docTab=_curDocTab;
     s.scrollTop=window.scrollY||document.documentElement.scrollTop;
     try{window.parent.postMessage({previewState:s},'*');}catch(e){}
   }
@@ -289,17 +317,17 @@ window.AT_SPLITVIEW = {
       // Remove old listeners to prevent stacking
       frame.onload = null;
       frame.addEventListener("load", () => {
-        if (!isTypingRefresh) frame.style.visibility = 'visible';
+        frame.style.visibility = 'visible';
         setTimeout(() => {
-          // 1. Navigate to correct page
+          // 1. Navigate to correct page + restore doc tab
           this._navigateFrame();
-          // 2. Restore saved state
+          // 2. Restore full saved state (matPage, modPage, ftTab, scroll, docTab)
           if (this._savedPreviewState) {
             try {
               frame.contentWindow.postMessage({ restoreState: this._savedPreviewState }, "*");
             } catch(e) {}
           }
-          // 3. Flush ALL queued messages (switchDocTab, scrollToEnd, etc.)
+          // 3. Flush queued messages (switchDocTab, scrollToEnd, etc.)
           this._flushPendingMessages();
           this._hideSyncPulse();
           if (loading) loading.style.display = "none";
@@ -308,9 +336,8 @@ window.AT_SPLITVIEW = {
 
       // Safety timeout
       setTimeout(() => {
-        if (!isTypingRefresh) frame.style.visibility = 'visible';
+        frame.style.visibility = 'visible';
         if (loading) loading.style.display = "none";
-        // Force flush if onload was missed
         if (!this._iframeReady) this._flushPendingMessages();
       }, 4000);
 
@@ -334,7 +361,6 @@ window.AT_SPLITVIEW = {
     const curVal = sel.value;
     const gameCount = (AT_STATE.games || []).length;
 
-    // Base pages (selalu ada)
     const pages = [
       { id: 'sc',   label: '🏠 Cover' },
       { id: 'scp',  label: '📋 Dokumen' },
@@ -342,7 +368,6 @@ window.AT_SPLITVIEW = {
       { id: 'smat', label: '📝 Materi' },
       { id: 'smods',label: '🧩 Modul' },
     ];
-    // Game pages (dinamis)
     for (let g = 0; g < gameCount; g++) {
       const gTitle = AT_STATE.games[g]?.title || '';
       pages.push({ id: 'sgame_' + g, label: '🎮 ' + (gTitle ? gTitle : 'Game ' + (g+1)) });
@@ -356,7 +381,6 @@ window.AT_SPLITVIEW = {
       `<option value="${p.id}">${p.label}</option>`
     ).join('');
 
-    // Restore selected value jika masih valid
     const validIds = pages.map(p => p.id);
     if (validIds.includes(curVal)) {
       sel.value = curVal;
@@ -378,6 +402,8 @@ window.AT_SPLITVIEW = {
     const label = document.getElementById("syncLabel");
     if (!dot) return;
     clearTimeout(this._syncTimer);
+    // Reset any typing indicator styles
+    dot.style.opacity = '1';
     dot.style.background = 'var(--y)';
     dot.style.transform = 'scale(1.3)';
     if (label) { label.textContent = 'Sinkron...'; label.style.color = 'var(--y)'; }
@@ -390,34 +416,49 @@ window.AT_SPLITVIEW = {
     if (!dot) return;
     dot.style.background = 'var(--g)';
     dot.style.transform = 'scale(1)';
+    dot.style.opacity = '1';
     if (label) { label.textContent = 'Tersinkron'; label.style.color = 'var(--muted)'; }
   },
 
+  /* ── Navigate iframe to current page + restore doc tab ── */
   _navigateFrame() {
-    const frame = document.getElementById("split-frame");
     const pageId = document.getElementById("splitPageSelect")?.value || "sc";
     this._sendToFrame({ goPage: pageId });
+
+    // Restore doc tab if on document page and we have a saved tab
+    if (pageId === 'scp' && this._savedPreviewState?.docTab) {
+      this._sendToFrame({ switchDocTab: this._savedPreviewState.docTab });
+    }
   },
 
   goPage(pageId) {
     const sel = document.getElementById("splitPageSelect");
     if (sel && pageId) sel.value = pageId;
     this._navigateFrame();
-    // Also directly postMessage with explicit pageId
     this._sendToFrame({ goPage: pageId });
   },
 
   /* ── Navigate to specific page + optional sub-tab (queued) ── */
   navigateToPage(pageId, options) {
-    // options: { tab: 'kcp', scrollEnd: true, scrollTop: 0 }
     options = options || {};
     const sel = document.getElementById("splitPageSelect");
     if (sel && pageId) sel.value = pageId;
 
+    // Save doc tab to persisted state so it survives iframe rebuilds
+    if (options.tab) {
+      this._savedPreviewState = this._savedPreviewState || {};
+      this._savedPreviewState.docTab = options.tab;
+    }
+
+    // Force immediate rebuild even during typing (user explicitly navigated)
+    this._forceNextRefresh = true;
+    this._isTyping = false;
+    clearTimeout(this._typingTimer);
+
     // Send goPage first
     this._queueMessage({ goPage: pageId });
 
-    // Then queue sub-tab switch if specified
+    // Queue sub-tab switch
     if (options.tab) {
       this._queueMessage({ switchDocTab: options.tab });
     }
@@ -428,10 +469,16 @@ window.AT_SPLITVIEW = {
       this._queueMessage({ restoreState: { scrollTop: options.scrollTop } });
     }
 
-    // If iframe is ready, also do immediate navigate for faster response
+    // If iframe is ready, also send immediately for faster response
     if (this._iframeReady) {
       this._sendToFrame({ goPage: pageId });
+      if (options.tab) {
+        this._sendToFrame({ switchDocTab: options.tab });
+      }
     }
+
+    // Schedule a refresh to rebuild if content changed
+    this.scheduleRefresh();
   },
 
   /* ── Resizable Split Pane ─────────────────────────────────── */
@@ -550,7 +597,6 @@ function _initMutationObserver() {
     if (now - _lastMutCheck < 800) return;
     _lastMutCheck = now;
     if (!AT_STATE.dirty) return;
-    // Only act as fallback if no debounce is already scheduled
     if (AT_SPLITVIEW._debounceTimer) return;
     clearTimeout(AT_SPLITVIEW._debounceTimer);
     AT_SPLITVIEW._debounceTimer = setTimeout(() => AT_SPLITVIEW.refresh(), 800);
@@ -568,7 +614,7 @@ function _initMutationObserver() {
 /* ══════════════════════════════════════════════════════════════
    ACCORDION → PREVIEW SYNC (with message queue)
    Maps accordion titles to preview pages and sub-tabs.
-   Uses navigateToPage() which queues messages safely.
+   Uses navigateToPage() which saves doc tab + force refresh.
    ══════════════════════════════════════════════════════════════ */
 
 const _ACCORDION_PREVIEW_MAP = {
@@ -592,7 +638,7 @@ function _patchAccordionToggle() {
       const title = headerEl.querySelector('.acc-title')?.textContent?.trim();
       const mapping = title ? _ACCORDION_PREVIEW_MAP[title] : null;
       if (mapping) {
-        // Use navigateToPage with message queue — safe during iframe rebuild
+        // navigateToPage saves doc tab + forces refresh (bypasses typing skip)
         AT_SPLITVIEW.navigateToPage(mapping.page, {
           tab: mapping.tab || null,
           scrollEnd: mapping.scrollEnd || false
@@ -635,7 +681,7 @@ document.addEventListener("DOMContentLoaded", () => {
     _recalcAfterRender();
   };
 
-  // ── Typing Detection: listen for input events to activate longer debounce ──
+  // ── Typing Detection: listen for input events ──
   document.getElementById("content")?.addEventListener("input", () => {
     AT_SPLITVIEW._startTyping();
   }, { passive: true });
@@ -664,11 +710,10 @@ document.addEventListener("DOMContentLoaded", () => {
 
   // ── Listen for messages from iframe ──
   window.addEventListener("message", (e) => {
-    // Retry button in error state
     if (e.data && e.data.action === "retry") {
       AT_SPLITVIEW.forceRefresh();
     }
-    // Track preview internal state (page, sub-page, scroll)
+    // Track preview internal state (page, sub-page, scroll, docTab)
     if (e.data && e.data.previewState) {
       AT_SPLITVIEW._savedPreviewState = e.data.previewState;
     }
@@ -676,11 +721,12 @@ document.addEventListener("DOMContentLoaded", () => {
       AT_SPLITVIEW._savedPreviewState = AT_SPLITVIEW._savedPreviewState || {};
       AT_SPLITVIEW._savedPreviewState.scrollTop = e.data.previewScroll;
     }
-    // Doc tab switch acknowledgment (for debug)
     if (e.data && e.data.docTabSwitched) {
-      // Successfully switched to sub-tab in iframe
+      // Doc tab changed in iframe — update saved state
+      AT_SPLITVIEW._savedPreviewState = AT_SPLITVIEW._savedPreviewState || {};
+      AT_SPLITVIEW._savedPreviewState.docTab = e.data.docTabSwitched;
     }
   });
 
-  console.log("liveview.js v4.5 loaded — typing-aware debounce (800ms), batched undo, loading skip during typing, MutationObserver fix");
+  console.log("liveview.js v4.6 — typing skip (no rebuild while typing), doc tab persist (CP/TP/ATP), auto-restore on rebuild");
 });

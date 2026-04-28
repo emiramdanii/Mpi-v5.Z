@@ -248,3 +248,31 @@ Stage Summary:
 - liveview.js v4.5 deployed with typing stability improvements
 - Phase 1 fully complete (9/9 items)
 - Key improvement: typing now uses 800ms debounce + no loading overlay = smooth editing experience
+---
+Task ID: 2
+Agent: Super Z (Main)
+Task: Fix doc tab state lost on rebuild + preview flicker while typing
+
+Work Log:
+- Root cause 1: kT() in student HTML doesn't track which doc tab (CP/TP/ATP) is active → after iframe rebuild, always shows CP
+- Root cause 2: Every keystroke triggers full iframe rebuild (srcdoc rewrite) → preview jumps/flickers
+- Fix 1: Patch kT() in navScript to track _curDocTab variable and send it in _rs() state
+- Fix 2: Add docTab to restoreState handler in navScript (restores doc tab on iframe load)
+- Fix 3: _navigateFrame() now also sends switchDocTab from saved state when on scp page
+- Fix 4: navigateToPage() saves tab to _savedPreviewState for persistence across rebuilds
+- Fix 5: COMPLETE typing skip — scheduleRefresh() returns immediately during typing, shows "Mengetik..." indicator
+- Fix 6: Final rebuild auto-triggered when typing timer expires (1200ms) if _hasPendingRefresh
+- Fix 7: _forceNextRefresh flag — set by navigation actions to bypass typing skip
+- Fix 8: AT_NAV.go patch sets _forceNextRefresh + clears typing state
+- Fix 9: switchKontenTab patch sets _forceNextRefresh + clears typing state
+- Fix 10: syncToEditor() clears typing state before navigating
+- Fix 11: docTabSwitched message from iframe updates _savedPreviewState
+- Version: liveview.js v4.6, liveview_enhancements.js v6.5
+
+Stage Summary:
+- Two critical UX issues fixed: doc tab persistence + typing stability
+- During typing: iframe is NOT rebuilt at all (zero visual disruption)
+- "Mengetik..." indicator shows while user types
+- Preview updates ~1.5s after user stops typing (1200ms typing timer + 300ms debounce)
+- Navigation actions (accordion, tab switch, panel switch) always force immediate refresh
+- Doc tab (CP/TP/ATP) is now tracked, saved, and restored across all iframe rebuilds

@@ -1,14 +1,14 @@
 // ═══════════════════════════════════════════════════════════════
-// LIVEVIEW_ENHANCEMENTS.JS v6.4 — Bidirectional Smart Auto-Sync
+// LIVEVIEW_ENHANCEMENTS.JS v6.5 — Bidirectional Smart Auto-Sync + Typing Bypass
 // ═══════════════════════════════════════════════════════════════
 // Berisi:
 //   AT_PAGE_SYNC  — deteksi halaman pintar: editor panel ↔ preview page
 //   AT_LAYOUT     — layout picker dengan injeksi CSS ke student HTML
 //
-// v6.4 Bidirectional Sync:
-//   - syncToEditor(): dropdown preview → editor panel/tab (REVERSE SYNC)
-//   - markManualOverride() timeout 500ms (suppress multi-sync during nav)
-//   - Dropdown change now navigates editor to matching panel/tab
+// v6.5 Typing Bypass:
+//   - Navigation actions (AT_NAV.go, switchKontenTab) force refresh bypass typing
+//   - syncToEditor() clears typing state before navigating
+//   - accordion sync uses navigateToPage() which auto-forces
 //
 // Arsitektur sinkronisasi:
 //   Form change → markDirty() → scheduleRefresh() → refresh() [350ms]
@@ -104,6 +104,11 @@ window.AT_PAGE_SYNC = {
   // Reverse sync: dari dropdown preview → editor panel/tab
   // Dipanggil saat user memilih halaman dari dropdown di live preview
   syncToEditor(pageId) {
+    // Clear typing state — user is navigating, not typing
+    AT_SPLITVIEW._forceNextRefresh = true;
+    AT_SPLITVIEW._isTyping = false;
+    clearTimeout(AT_SPLITVIEW._typingTimer);
+
     // Dynamic: handle sgame_N (game screens)
     let target = this._REVERSE_MAP[pageId];
     if (!target && pageId.startsWith('sgame_')) {
@@ -458,6 +463,11 @@ document.addEventListener('DOMContentLoaded', () => {
     _tryAutoOpenSplit();
 
     if (AT_SPLITVIEW.active) {
+      // Force refresh even during typing (user explicitly navigated)
+      AT_SPLITVIEW._forceNextRefresh = true;
+      AT_SPLITVIEW._isTyping = false;
+      clearTimeout(AT_SPLITVIEW._typingTimer);
+
       // Pre-set dropdown BEFORE refresh (so iframe onload reads correct page)
       const mappedPage = AT_PAGE_SYNC._MAP[id];
       if (mappedPage && !AT_PAGE_SYNC._userManualOverride) {
@@ -478,6 +488,11 @@ document.addEventListener('DOMContentLoaded', () => {
   window.switchKontenTab = function(tabId, btnEl) {
     _origSwitchTab(tabId, btnEl);
     _recalcAfterRender();
+
+    // Force refresh even during typing
+    AT_SPLITVIEW._forceNextRefresh = true;
+    AT_SPLITVIEW._isTyping = false;
+    clearTimeout(AT_SPLITVIEW._typingTimer);
 
     // Auto-open split if not yet active
     _tryAutoOpenSplit();
@@ -508,5 +523,5 @@ document.addEventListener('DOMContentLoaded', () => {
   // ── Inject Split View tip di Dashboard ──
   _injectSplitViewTip();
 
-  console.log('liveview_enhancements.js v6.4 — reverse sync (dropdown → editor), timeout-based override, bidirectional sync');
+  console.log('liveview_enhancements.js v6.5 — typing bypass on navigation, reverse sync, bidirectional sync');
 });
