@@ -378,6 +378,37 @@
   };
 
   // ── STATISTIK / ANGKA KUNCI renderer ─────────────────────────
+  M._htmlStatistik = function(m) {
+    const items = m.items || [];
+    const isGrid = m.layout !== 'row';
+
+    const itemsHtml = items.map((it, i) => {
+      const warna = it.warna || 'var(--y)';
+      const icon = it.icon || '📊';
+      const angka = it.angka || '—';
+      const satuan = it.satuan || '';
+      const label = it.label || '';
+      return `
+        <div style="background:${warna}10;border:1px solid ${warna}25;border-radius:14px;padding:18px 16px;text-align:center;transition:transform .2s,box-shadow .2s"
+          onmouseover="this.style.transform='translateY(-3px)';this.style.boxShadow='0 6px 20px ${warna}20'"
+          onmouseout="this.style.transform='none';this.style.boxShadow='none'">
+          <div style="font-size:1.6rem;margin-bottom:6px">${icon}</div>
+          <div style="font-family:'Space Grotesk',sans-serif;font-size:2rem;font-weight:800;color:${warna};line-height:1.1">${angka}</div>
+          ${satuan ? `<div style="font-size:.78rem;font-weight:700;color:${warna};margin-top:2px">${satuan}</div>` : ''}
+          <div style="font-size:.76rem;color:var(--muted);margin-top:6px;line-height:1.4">${label}</div>
+        </div>`;
+    }).join('');
+
+    return `<div class="card mt14">
+      <div class="h2">📊 <span class="hl">${m.title||"Statistik & Angka Kunci"}</span></div>
+      ${m.intro ? `<p class="sub mt8">${m.intro}</p>` : ""}
+      <div style="margin-top:16px;display:grid;grid-template-columns:repeat(auto-fill,minmax(${isGrid?'140px':'100%'},1fr));gap:12px">
+        ${itemsHtml}
+      </div>
+    </div>`;
+  };
+
+  // ── POLLING / VOTING renderer ─────────────────────────
   M._htmlPolling = function(m) {
     const isMultiple = m.tipe === "multiple";
     const opsiHtml = (m.opsi||[]).map((o, oi) => {
