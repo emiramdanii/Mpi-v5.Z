@@ -82,30 +82,12 @@ window.AT_LIVE_SYNC = {
   },
 
   _setState(state) {
-    // Update split pane indicator
-    if (this._indicator) {
-      this._indicator.classList.remove('syncing', 'synced');
-      if (state === 'syncing') this._indicator.classList.add('syncing');
-      if (state === 'synced') this._indicator.classList.add('synced');
-    }
-    if (this._textEl) {
-      this._textEl.textContent = state === 'syncing' ? 'Sinkronisasi...' : state === 'synced' ? 'Tersinkron' : 'Idle';
-    }
-    // Update header pill
-    const pill = document.getElementById('liveSyncPill');
-    if (pill) {
-      pill.classList.toggle('syncing', state === 'syncing');
-      if (this._pillLabel) {
-        this._pillLabel.textContent = state === 'syncing' ? 'Sinkronisasi...' : state === 'synced' ? 'Tersinkron' : 'Live';
-      }
-    }
+    // Sync indicator removed from split pane header for cleaner UI
+    // Status is now implicit — preview refreshes automatically
   },
 
   onSplitToggle(active) {
-    const pill = document.getElementById('liveSyncPill');
-    if (pill) {
-      pill.style.opacity = active ? '1' : '0.4';
-    }
+    // Live pill removed from header — no-op for compatibility
     if (active) {
       this._lastStateStr = '';
       this._setState('idle');
@@ -133,31 +115,9 @@ window.AT_PAGE_SYNC = {
   _lock: false,
 
   init() {
-    const splitSel   = document.getElementById('splitPageSelect');
-    const previewSel = document.getElementById('previewPageSelect');
-    if (!splitSel || !previewSel) return;
-
-    splitSel.addEventListener('change', () => {
-      if (this._lock) return;
-      this._lock = true;
-      previewSel.value = splitSel.value;
-      // Jika di halaman preview, navigasi frame preview juga
-      if (AT_NAV.current === 'preview') {
-        AT_PREVIEW.goPage(splitSel.value);
-      }
-      this._lock = false;
-    });
-
-    previewSel.addEventListener('change', () => {
-      if (this._lock) return;
-      this._lock = true;
-      splitSel.value = previewSel.value;
-      // Navigate split frame
-      AT_SPLITVIEW.goPage(previewSel.value);
-      this._lock = false;
-    });
-
-    console.log('✅ AT_PAGE_SYNC ready — dua arah');
+    // Preview panel removed — split pane is the single preview source
+    // No sync needed since there's only one page selector
+    console.log('✅ AT_PAGE_SYNC — preview panel consolidated, single source');
   }
 };
 
@@ -491,21 +451,28 @@ document.addEventListener('DOMContentLoaded', () => {
     AT_LIVE_SYNC.init();
     AT_LIVE_SYNC.onSplitToggle(false);
 
-    // 2. Page select sync
+    // 2. Page select sync (no-op — single preview source now)
     AT_PAGE_SYNC.init();
 
-    // 3. Layout — sync label dari saved state
+    // 3. Layout — sync dari saved state
     const state  = AT_LAYOUT._getState();
     const layout = AT_LAYOUT.LAYOUTS.find(l => l.id === (state?.global || 'classic'));
-    const label  = document.getElementById('layoutActiveLabel');
-    if (label && layout) label.textContent = layout.name;
+    // label moved to split pane, no header label to sync
 
-    // 4. Patch markDirty untuk trigger live sync juga (bukan hanya field events)
+    // 4. Patch markDirty untuk trigger live sync juga
     const _origMarkDirty = AT_EDITOR.markDirty.bind(AT_EDITOR);
     AT_EDITOR.markDirty = function() {
       _origMarkDirty();
       AT_LIVE_SYNC.scheduleSync('markDirty');
     };
+
+    // 5. Auto-open split view on first load
+    if (!AT_SPLITVIEW.active && !sessionStorage.getItem('splitViewDismissed')) {
+      setTimeout(() => {
+        AT_SPLITVIEW.toggle();
+        sessionStorage.setItem('splitViewDismissed', '1');
+      }, 500);
+    }
 
     console.log('✅ liveview_enhancements.js v4.0 — semua sistem aktif');
   }, 150);

@@ -109,7 +109,7 @@
     <div class="sidebar-section-items" id="sec-tools">
       <div class="nav-item nav-sub" data-panel="autogen"><span class="nav-icon">⚡</span> Auto-Generate</div>
       <div class="nav-item nav-sub" data-panel="import"><span class="nav-icon">📥</span> Import / Export</div>
-      <div class="nav-item nav-sub" data-panel="preview"><span class="nav-icon">👁️</span> Preview</div>
+      <!-- Preview dihapus — gunakan Live Preview di header (Ctrl+Shift+L) -->
       <div class="nav-item nav-sub" data-panel="versions"><span class="nav-icon">🕐</span> Riwayat</div>
     </div>
 
@@ -134,8 +134,6 @@
         <span class="btn-split-label">Live Preview</span>
         <span class="btn-split-shortcut">Ctrl+⇧+L</span>
       </button>
-      <button id="btnLayoutPicker" onclick="AT_LAYOUT.togglePicker()" title="Pilih Layout Halaman">📐 Layout <span id="layoutActiveLabel">Klasik</span></button>
-      <div class="live-pill" id="liveSyncPill"><span class="live-dot"></span> <span id="liveSyncLabel">Live</span></div>
       <button class="header-btn hbtn-export" onclick="AT_NAV.go('import')">📥 Import</button>
       <button class="header-btn hbtn-save" id="btnSave">💾 Simpan</button>
     </div>
@@ -602,26 +600,7 @@
       </div>
     </div>
 
-    <!-- PREVIEW -->
-    <div class="panel" id="p-preview">
-      <div class="panel-header"><div class="panel-title">👁️ Preview Media</div><div class="panel-desc">Tampilan media pembelajaran seperti yang dilihat siswa.</div></div>
-      <div class="preview-toolbar">
-        <button class="device-btn active" data-device="mobile" onclick="AT_PREVIEW.setDevice('mobile')">📱 Mobile</button>
-        <button class="device-btn" data-device="tablet" onclick="AT_PREVIEW.setDevice('tablet')">📟 Tablet</button>
-        <button class="device-btn" data-device="desktop" onclick="AT_PREVIEW.setDevice('desktop')">🖥️ Desktop</button>
-        <div style="flex:1"></div>
-        <select id="previewPageSelect" onchange="AT_PREVIEW.goPage(this.value)" style="padding:5px 9px;border-radius:8px;font-size:.75rem;font-weight:700;cursor:pointer;border:1px solid var(--border);background:var(--card2);color:var(--text);outline:none;margin-right:6px">
-          <option value="sc">🏠 Cover</option><option value="scp">📋 Dokumen</option>
-          <option value="ssk">🎭 Skenario</option><option value="smat">⚖️ Materi</option>
-          <option value="smods">🧩 Modul</option><option value="sgame_0">🎮 Game</option>
-          <option value="skuis">❓ Kuis</option><option value="shas">📊 Hasil</option>
-        </select>
-        <button class="btn btn-y btn-sm" onclick="AT_EXPORT.buildHtml()">💾 Download HTML</button>
-      </div>
-      <div id="previewFrameWrap" style="max-width:390px;margin:0 auto;transition:max-width .3s ease;border:2px solid var(--border);border-radius:var(--rad);overflow:hidden">
-        <iframe id="previewFrame" style="width:100%;height:calc(100vh - 220px);border:none;background:#0e1c2f"></iframe>
-      </div>
-    </div>
+    <!-- PREVIEW dihapus — gunakan Live Preview split pane di header -->
 
     <!-- RIWAYAT -->
     <div class="panel" id="p-versions">
@@ -668,31 +647,28 @@
         <option value="sgame_0">🎮 Game</option>
         <option value="skuis">❓ Kuis</option><option value="shas">📊 Hasil</option>
       </select>
-      <!-- Device buttons -->
+      <!-- Device buttons (simplified) -->
       <div class="split-device-group">
-        <button class="split-device-btn active" data-device="mobile" onclick="AT_SPLITVIEW?.setDevice('mobile')" title="Mobile (375px)">
+        <button class="split-device-btn active" data-device="mobile" onclick="AT_SPLITVIEW?.setDevice('mobile')" title="Mobile">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="2" width="14" height="20" rx="2" ry="2"/><line x1="12" y1="18" x2="12.01" y2="18"/></svg>
-          <span>Mobile</span>
         </button>
-        <button class="split-device-btn" data-device="tablet" onclick="AT_SPLITVIEW?.setDevice('tablet')" title="Tablet (768px)">
+        <button class="split-device-btn" data-device="tablet" onclick="AT_SPLITVIEW?.setDevice('tablet')" title="Tablet">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="2" width="16" height="20" rx="2" ry="2"/><line x1="12" y1="18" x2="12.01" y2="18"/></svg>
-          <span>Tablet</span>
         </button>
-        <button class="split-device-btn" data-device="desktop" onclick="AT_SPLITVIEW?.setDevice('desktop')" title="Desktop (1024px)">
+        <button class="split-device-btn" data-device="desktop" onclick="AT_SPLITVIEW?.setDevice('desktop')" title="Desktop">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
-          <span>Desktop</span>
         </button>
       </div>
-      <!-- Sync status -->
-      <div class="split-sync-indicator" id="splitSyncIndicator" title="Status sinkronisasi">
-        <span class="split-sync-dot" id="splitSyncDot"></span>
-        <span class="split-sync-text" id="splitSyncText">Idle</span>
-      </div>
-      <!-- Actions -->
-      <button class="split-action-btn" onclick="AT_SPLITVIEW?.refresh()" title="Refresh preview (Ctrl+Shift+R)">
-        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/></svg>
+      <!-- Layout picker (moved from header) -->
+      <button class="split-action-btn" onclick="AT_LAYOUT.togglePicker()" title="Pilih Layout">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
       </button>
-      <button class="split-action-btn split-close-btn" onclick="AT_SPLITVIEW?.toggle()" title="Tutup preview (Ctrl+Shift+L)">
+      <!-- Download HTML -->
+      <button class="split-action-btn" onclick="AT_EXPORT?.buildHtml()" title="Download HTML">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+      </button>
+      <!-- Close -->
+      <button class="split-action-btn split-close-btn" onclick="AT_SPLITVIEW?.toggle()" title="Tutup (Ctrl+Shift+L)">
         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
       </button>
     </div>

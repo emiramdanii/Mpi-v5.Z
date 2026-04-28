@@ -20,11 +20,15 @@ window.AT_NAV = {
       atp: "Alur Tujuan Pembelajaran", alur: "Alur Pembelajaran",
       skenario: "Skenario Interaktif", modules: "Modul Pembelajaran", kuis: "Editor Kuis", games: "Editor Game", autogen: "Auto-Generate",
       import: "Import Template", generate: "Generate AI",
-      preview: "Preview Media", projects: "Kelola Proyek",
+      preview: "Live Preview", projects: "Kelola Proyek",
     };
     document.getElementById("headerTitle").innerHTML =
       (titles[id] || id) + `<span>/ ${AT_STATE.meta.judulPertemuan || "Proyek Baru"}</span>`;
-    if (id === "preview") AT_PREVIEW.render();
+    if (id === "preview") {
+      // Open split view instead of separate panel
+      if (!AT_SPLITVIEW.active) AT_SPLITVIEW.toggle();
+      return;
+    }
     if (id === "dashboard") AT_DASH.render();
   }
 };
