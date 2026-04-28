@@ -1,22 +1,21 @@
 // ═══════════════════════════════════════════════════════════════
-// LIVEVIEW_ENHANCEMENTS.JS v6.3 — Smart Auto-Sync + UX (Stabilized)
+// LIVEVIEW_ENHANCEMENTS.JS v6.4 — Bidirectional Smart Auto-Sync
 // ═══════════════════════════════════════════════════════════════
 // Berisi:
-//   AT_PAGE_SYNC  — deteksi halaman pintar: editor panel → preview page
+//   AT_PAGE_SYNC  — deteksi halaman pintar: editor panel ↔ preview page
 //   AT_LAYOUT     — layout picker dengan injeksi CSS ke student HTML
 //
-// v6.3 Stabilization:
-//   - navigateToPage() for all sync (uses message queue)
-//   - Better konten sub-tab detection
-//   - Auto-open split for ALL content panels consistently
-//   - Deduplication of sync calls
-//   - autogen sync to scp page
+// v6.4 Bidirectional Sync:
+//   - syncToEditor(): dropdown preview → editor panel/tab (REVERSE SYNC)
+//   - markManualOverride() timeout 500ms (suppress multi-sync during nav)
+//   - Dropdown change now navigates editor to matching panel/tab
 //
 // Arsitektur sinkronisasi:
 //   Form change → markDirty() → scheduleRefresh() → refresh() [350ms]
 //   Panel switch → AT_NAV.go patch → scheduleRefresh + syncFromPanel
 //   Accordion click → toggleAccordion patch → navigateToPage (queued)
 //   Konten tab → switchKontenTab patch → syncFromTab
+//   Dropdown change → syncToEditor → AT_NAV.go / switchKontenTab (NEW)
 // ═══════════════════════════════════════════════════════════════
 
 /* ══════════════════════════════════════════════════════════════
@@ -58,10 +57,7 @@ window.AT_PAGE_SYNC = {
 
   // Dipanggil saat panel navigasi berubah
   syncFromPanel(panelId) {
-    if (this._userManualOverride) {
-      this._userManualOverride = false;
-      return;
-    }
+    if (this._userManualOverride) return;
     let pageId = this._MAP[panelId];
 
     // Smart detection: if panel is 'konten', find the currently active sub-tab
@@ -85,10 +81,7 @@ window.AT_PAGE_SYNC = {
 
   // Dipanggil saat konten tab berubah (Materi / Modul / Kuis)
   syncFromTab(tabId) {
-    if (this._userManualOverride) {
-      this._userManualOverride = false;
-      return;
-    }
+    if (this._userManualOverride) return;
     const pageId = this._MAP[tabId];
     if (!pageId) return;
 
@@ -101,8 +94,50 @@ window.AT_PAGE_SYNC = {
     AT_SPLITVIEW?.goPage(pageId);
   },
 
+  // Suppress semua auto-sync selama 500ms (untuk reverse sync dari dropdown)
   markManualOverride() {
     this._userManualOverride = true;
+    clearTimeout(this._manualTimer);
+    this._manualTimer = setTimeout(() => { this._userManualOverride = false; }, 500);
+  },
+
+  // Reverse sync: dari dropdown preview → editor panel/tab
+  // Dipanggil saat user memilih halaman dari dropdown di live preview
+  syncToEditor(pageId) {
+    const target = this._REVERSE_MAP[pageId];
+    if (!target) return;
+
+    // Suppress auto-sync agar tidak mengubah dropdown kembali
+    this.markManualOverride();
+
+    if (target.startsWith('konten-tab-')) {
+      // Jika belum di panel konten, navigasi ke sana dulu
+      if (AT_NAV.current !== 'konten') {
+        AT_NAV.go('konten');
+        // Tunggu panel konten terbuka, lalu switch tab
+        setTimeout(() => {
+          const tabBtn = document.querySelector(`.konten-tab[data-ktab="${target}"]`);
+          const tabPanel = document.getElementById(target);
+          if (tabPanel && !tabPanel.classList.contains('active')) {
+            if (typeof switchKontenTab === 'function') {
+              switchKontenTab(target, tabBtn);
+            }
+          }
+        }, 150);
+      } else {
+        // Sudah di panel konten, langsung switch tab
+        const tabBtn = document.querySelector(`.konten-tab[data-ktab="${target}"]`);
+        const tabPanel = document.getElementById(target);
+        if (tabPanel && !tabPanel.classList.contains('active')) {
+          if (typeof switchKontenTab === 'function') {
+            switchKontenTab(target, tabBtn);
+          }
+        }
+      }
+    } else {
+      // Navigasi ke panel utama (dashboard, dokumen)
+      AT_NAV.go(target);
+    }
   },
 
   // Update visual sync indicator di split header
@@ -447,11 +482,13 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   };
 
-  // ── Page select manual override detection ──
+  // ── Page select: reverse sync ke editor ──
   const pageSelect = document.getElementById('splitPageSelect');
   if (pageSelect) {
     pageSelect.addEventListener('change', () => {
-      AT_PAGE_SYNC.markManualOverride();
+      const selectedPage = pageSelect.value;
+      // Suppress auto-sync lalu arahkan editor ke halaman yang sesuai
+      AT_PAGE_SYNC.syncToEditor(selectedPage);
     });
   }
 
@@ -465,5 +502,5 @@ document.addEventListener('DOMContentLoaded', () => {
   // ── Inject Split View tip di Dashboard ──
   _injectSplitViewTip();
 
-  console.log('liveview_enhancements.js v6.3 — stabilized nav/tab patches, message queue support, dedup sync, reliable konten detection');
+  console.log('liveview_enhancements.js v6.4 — reverse sync (dropdown → editor), timeout-based override, bidirectional sync');
 });
