@@ -12,6 +12,7 @@
 <link rel="stylesheet" href="css/modules.css">
 <link rel="stylesheet" href="css/splitview.css">
 <link rel="stylesheet" href="css/wizard.css">
+<link rel="stylesheet" href="css/canva-mode.css">
 <!-- Legacy single-file fallback (aggregates all above via @import) -->
 <!-- <link rel="stylesheet" href="style.css"> -->
 </head>
@@ -351,15 +352,116 @@
 
     </div><!-- /p-konten -->
 
-    <!-- ═══ CANVA EDITOR ═══ -->
+    <!-- ═══ CANVA MODE — Visual Page Builder ═══ -->
     <div class="panel" id="p-canva">
       <div class="panel-header">
         <div class="panel-title">🎨 Canva Editor</div>
-        <div class="panel-desc">Desain halaman dengan background, tombol interaktif, dan preset siap pakai.</div>
+        <div class="panel-desc">Desain halaman visual dengan background Canva + elemen interaktif drag &amp; drop.</div>
       </div>
-      <!-- Will be rendered dynamically by canva-hybrid.js -->
-      <div id="canvaPanelContent"></div>
-    </div>
+
+      <!-- TOP TOOLBAR -->
+      <div id="cm-topbar">
+        <span style="font-size:.8rem;font-weight:800;color:var(--y)">🎨</span>
+        <span id="cm-page-title" style="font-size:.78rem;font-weight:700;color:var(--text)">Halaman 1</span>
+        <div class="cm-tb-sep"></div>
+        <button class="cm-tb-btn" onclick="AT_CANVA_MODE.setTool('select')" id="cmtool-select">↖ Pilih</button>
+        <button class="cm-tb-btn" onclick="AT_CANVA_MODE.setTool('text')" id="cmtool-text">T Teks</button>
+        <div class="cm-tb-sep"></div>
+        <button class="cm-tb-btn" onclick="AT_CANVA_MODE.previewCurrent()" title="Preview">👁</button>
+        <button class="cm-tb-btn" onclick="AT_CANVA_MODE.exportPage()" title="Export HTML">📤</button>
+        <button class="cm-tb-btn" onclick="AT_CANVA_MODE.exportSlideshow()" title="Export Slideshow">🎞</button>
+        <button class="cm-tb-btn danger" onclick="AT_CANVA_MODE.clearStage()" title="Bersihkan">🗑</button>
+        <span id="cm-ratio-badge" class="cm-ratio-badge">16:9</span>
+        <div class="cm-zoom-ctrl" style="margin-left:auto">
+          <button onclick="AT_CANVA_MODE.zoom(-0.1)">−</button>
+          <span id="cm-zoom-label">100%</span>
+          <button onclick="AT_CANVA_MODE.zoom(0.1)">+</button>
+        </div>
+      </div>
+
+      <!-- BUILDER ROW: Rail + Left + Canvas + Right -->
+      <div style="display:flex;gap:8px;flex:1;min-height:480px">
+
+        <!-- ICON RAIL -->
+        <div id="cm-icon-rail">
+          <div class="cm-ir-btn active" id="cmrail-pages" onclick="AT_CANVA_MODE.switchLeftTab('pages')" title="Halaman">📄</div>
+          <div class="cm-ir-btn" id="cmrail-elems" onclick="AT_CANVA_MODE.switchLeftTab('elems')" title="Elemen">🧩</div>
+          <div class="cm-ir-btn" id="cmrail-ratio" onclick="AT_CANVA_MODE.switchLeftTab('ratio')" title="Rasio">📐</div>
+          <div class="cm-ir-sep"></div>
+          <div class="cm-ir-btn" id="cmrail-layers" onclick="AT_CANVA_MODE.switchLeftTab('layers')" title="Layer">🔲</div>
+        </div>
+
+        <!-- LEFT PANEL -->
+        <div id="cm-left-panel">
+          <div class="cm-panel-tab-row">
+            <div class="cm-panel-tab active" id="cmtab-pages" onclick="AT_CANVA_MODE.switchLeftTab('pages')">Halaman</div>
+            <div class="cm-panel-tab" id="cmtab-elems" onclick="AT_CANVA_MODE.switchLeftTab('elems')">Elemen</div>
+            <div class="cm-panel-tab" id="cmtab-ratio" onclick="AT_CANVA_MODE.switchLeftTab('ratio')">Rasio</div>
+            <div class="cm-panel-tab" id="cmtab-layers" onclick="AT_CANVA_MODE.switchLeftTab('layers')">Layer</div>
+          </div>
+          <div class="cm-panel-body" id="cm-left-body"></div>
+        </div>
+
+        <!-- CANVAS AREA -->
+        <div id="cm-canvas-area">
+          <div id="cm-stage-wrap">
+            <div id="cm-stage-bg"></div>
+            <img id="cm-stage-bg-img" alt="">
+            <div id="cm-stage-bg-overlay"></div>
+            <div id="cm-stage-elements"></div>
+            <div id="cm-drop-hint">⬇ Seret elemen ke sini</div>
+          </div>
+        </div>
+
+        <!-- RIGHT PANEL -->
+        <div id="cm-right-panel">
+          <div class="cm-prop-group">
+            <div class="cm-prop-title">🖼️ Background</div>
+            <div class="cm-bg-upload" id="cmBgUpload">
+              <input type="file" accept="image/png,image/jpeg,image/webp"
+                onchange="AT_CANVA_MODE.handleBgUpload(this.files[0])">
+              <div style="font-size:.78rem;font-weight:700;color:var(--muted)">Upload PNG Canva</div>
+              <div style="font-size:.68rem;color:var(--muted);margin-top:3px">PNG · JPG · WEBP</div>
+            </div>
+            <img class="cm-bg-preview" id="cmBgPreview" alt="">
+            <div style="font-size:.72rem;color:var(--muted);margin-top:8px;margin-bottom:4px">Overlay gelap</div>
+            <input type="range" min="0" max="60" value="20"
+              oninput="AT_CANVA_MODE.setOverlay(this.value)"
+              style="width:100%">
+            <div style="font-size:.72rem;color:var(--muted);margin-top:8px;margin-bottom:4px">Warna BG</div>
+            <input type="color" value="#1a1a2e"
+              oninput="AT_CANVA_MODE.setBgColor(this.value)"
+              style="width:100%;height:28px;border:1px solid var(--border);border-radius:6px;cursor:pointer;background:var(--card2)">
+          </div>
+
+          <div class="cm-prop-group" id="cm-el-props" style="display:none">
+            <div class="cm-prop-title">⚙️ Properti Elemen</div>
+            <div class="cm-prop-row"><span class="cm-prop-label">X</span><input class="cm-prop-input" type="number" id="cmprop-x" oninput="AT_CANVA_MODE.updateElProp('x',this.value)"></div>
+            <div class="cm-prop-row"><span class="cm-prop-label">Y</span><input class="cm-prop-input" type="number" id="cmprop-y" oninput="AT_CANVA_MODE.updateElProp('y',this.value)"></div>
+            <div class="cm-prop-row"><span class="cm-prop-label">Lebar</span><input class="cm-prop-input" type="number" id="cmprop-w" oninput="AT_CANVA_MODE.updateElProp('w',this.value)"></div>
+            <div class="cm-prop-row"><span class="cm-prop-label">Tinggi</span><input class="cm-prop-input" type="number" id="cmprop-h" oninput="AT_CANVA_MODE.updateElProp('h',this.value)"></div>
+            <div class="cm-prop-row"><span class="cm-prop-label">Opacity</span><input class="cm-prop-input" type="number" min="0" max="100" id="cmprop-op" oninput="AT_CANVA_MODE.updateElProp('opacity',this.value)"></div>
+            <button class="btn btn-sm" style="background:rgba(255,107,107,.1);color:var(--r);border:1px solid rgba(255,107,107,.3);width:100%;margin-top:4px;font-size:.7rem"
+              onclick="AT_CANVA_MODE.deleteSelected()">🗑 Hapus Elemen</button>
+          </div>
+
+          <div class="cm-prop-group">
+            <div class="cm-prop-title">🔲 Layer</div>
+            <div class="cm-layer-list" id="cm-layer-list"></div>
+          </div>
+        </div>
+
+      </div><!-- /builder-row -->
+
+      <!-- STATUS BAR -->
+      <div id="cm-statusbar">
+        <span class="cm-status-item">📐 <span id="cm-stage-size-label">1280×720</span></span>
+        <span class="cm-status-item">🧩 <span id="cm-el-count">0 elemen</span></span>
+        <span class="cm-status-item">📄 <span id="cm-page-count">1/1 halaman</span></span>
+        <span style="margin-left:auto" id="cm-pos-display">x:0 y:0</span>
+      </div>
+
+    </div><!-- /p-canva -->
 
     <!-- ═══ AUTO-GENERATE WIZARD (kept as-is) ═══ -->
     <div class="panel" id="p-autogen">
@@ -754,7 +856,8 @@
 <script src="liveview-editors.js"></script>
 <script src="liveview.js"></script>
 <script src="liveview_enhancements.js"></script>
-<script src="canva-hybrid.js"></script>
+<script src="canva.js"></script>
+<script src="canva_mode.js"></script>
 
 <script>
 /* ══════════════════════════════════════════════════════
