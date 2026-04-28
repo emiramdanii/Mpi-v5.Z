@@ -134,7 +134,7 @@ window.AT_SPLITVIEW = {
         this._hasPendingRefresh = false;
         this.scheduleRefresh();
       }
-    }, 1200);
+    }, 400);  // 400ms — cukup cepat tapi tetap mencegah flicker
   },
 
   /* ── Show typing indicator in sync area ── */
@@ -167,7 +167,7 @@ window.AT_SPLITVIEW = {
 
     clearTimeout(this._debounceTimer);
     this._hasPendingRefresh = false;
-    const delay = this._buildCount < 2 ? 120 : 300;
+    const delay = this._buildCount < 2 ? 50 : 150;  // 150ms — fast response
     // Use requestAnimationFrame to avoid mid-frame rendering
     this._debounceTimer = setTimeout(() => {
       if (this._rafPending) return;
