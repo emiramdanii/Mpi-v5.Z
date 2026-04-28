@@ -69,15 +69,11 @@ window.AT_LIVE_SYNC = {
 
   scheduleSync(reason) {
     if (!AT_SPLITVIEW?.active) return;
-    this._setState('syncing');
+    // Force fresh build on next refresh
+    AT_SPLITVIEW._lastHTML = "";
     clearTimeout(this._timer);
     this._timer = setTimeout(() => {
       AT_SPLITVIEW.refresh();
-      this._setState('synced');
-      // Reset to idle after 2s
-      setTimeout(() => {
-        if (!this._timer) this._setState('idle');
-      }, 2000);
     }, this._delay);
   },
 

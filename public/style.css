@@ -1113,9 +1113,16 @@ option{ background:#111827; }
   transition: grid-template-columns .25s cubic-bezier(.4,0,.2,1);
   flex: 1;
   min-width: 0;
+  height: 100vh;
 }
-#app.split-active #header { grid-column: 1 / -1; }
-#app.split-active #content { overflow-y: auto; }
+#app.split-active #header { grid-column: 1 / -1; grid-row: 1; }
+#app.split-active #content {
+  overflow-y: auto;
+  grid-row: 2;
+  grid-column: 1;
+  min-width: 0;
+  min-height: 0;
+}
 #app.split-active #split-pane {
   display: flex;
   flex-direction: column;
@@ -1125,6 +1132,7 @@ option{ background:#111827; }
   background: var(--bg2);
   position: relative;
   overflow: hidden;
+  min-height: 0;
 }
 @keyframes splitSlideIn {
   from { opacity: 0; transform: translateX(20px); }

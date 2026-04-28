@@ -67,16 +67,15 @@ window.AT_SPLITVIEW = {
     this.refresh();
   },
 
-  // Called on any state change — debounced 400ms
+  // Called on any state change — debounced 300ms
   scheduleRefresh() {
     if (!this.active) return;
-    const dot = document.getElementById("syncDot");
-    if (dot) dot.classList.add("syncing");
+    // Clear cache so next refresh always rebuilds
+    this._lastHTML = "";
     clearTimeout(this._debounceTimer);
     this._debounceTimer = setTimeout(() => {
       this.refresh();
-      if (dot) setTimeout(() => dot.classList.remove("syncing"), 300);
-    }, 400);
+    }, 300);
   },
 
   refresh() {
