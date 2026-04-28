@@ -1115,15 +1115,15 @@ option{ background:#111827; }
   min-width: 0;
 }
 #app.split-active #header { grid-column: 1 / -1; }
-#app.split-active #content { overflow-y: auto; height: calc(100vh - var(--header-h)); }
+#app.split-active #content { overflow-y: auto; }
 #app.split-active #split-pane {
   display: flex;
   flex-direction: column;
-  height: calc(100vh - var(--header-h));
+  grid-row: 2;
+  grid-column: 2;
   border-left: 1px solid var(--border);
   background: var(--bg2);
   position: relative;
-  animation: splitSlideIn .3s cubic-bezier(.4,0,.2,1);
   overflow: hidden;
 }
 @keyframes splitSlideIn {
