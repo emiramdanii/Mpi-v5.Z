@@ -1,7 +1,8 @@
 // ═══════════════════════════════════════════════════════════════
-// CANVA-HYBRID.JS — Canva-Hybrid System v1.0
+// CANVA-HYBRID.JS — Canva-Hybrid System v2.0
 // Authoring Tool v3 — Dual-Mode Pages, Asset Gallery,
-// ATP Shortcut Dock, Drag-and-Drop Editor, Visual Customization
+// ATP Shortcut Dock, Drag-and-Drop Editor, Visual Customization,
+// Template Presets (Gradient BG, Layout Templates, Color Themes)
 // ═══════════════════════════════════════════════════════════════
 
 (function () {
@@ -32,6 +33,119 @@
 
   const MAX_ASSET_SIZE   = 2 * 1024 * 1024;   // 2 MB per asset
   const WARN_TOTAL_SIZE  = 5 * 1024 * 1024;   // 5 MB total warning
+
+  // ═══════════════════════════════════════════════════════════════
+  //  PRESET SYSTEM — Gradient Backgrounds, Layout Templates,
+  //  Color Themes for Canva-Hybrid
+  // ═══════════════════════════════════════════════════════════════
+
+  const GRADIENT_PRESETS = [
+    // ── Educational / Clean ──
+    { id: "edu-blue",     name: "Pendidikan Biru",    cat: "pendidikan",
+      gradient: ["#0f2027","#203a43","#2c5364"], angle: 135, aspect: "16:9", badge: "\u{1F4DA}" },
+    { id: "edu-teal",     name: "Akademik Teal",      cat: "pendidikan",
+      gradient: ["#134e5e","#71b280"], angle: 135, aspect: "16:9", badge: "\u{1F393}" },
+    { id: "edu-mint",     name: "Segar Mint",         cat: "pendidikan",
+      gradient: ["#0b8793","#360033"], angle: 160, aspect: "9:16", badge: "\u{1F331}" },
+    { id: "edu-navy",     name: "Navy Tegas",         cat: "pendidikan",
+      gradient: ["#1a1a2e","#16213e","#0f3460"], angle: 180, aspect: "16:9", badge: "\u{1F30A}" },
+    // ── Warm / Energetic ──
+    { id: "warm-sunset",  name: "Senja Hangat",       cat: "energik",
+      gradient: ["#f12711","#f5af19"], angle: 90, aspect: "16:9", badge: "\u{1F305}" },
+    { id: "warm-coral",   name: "Koral Ceria",        cat: "energik",
+      gradient: ["#ff9a9e","#fecfef"], angle: 135, aspect: "16:9", badge: "\u{1F338}" },
+    { id: "warm-gold",    name: "Emas Klasik",        cat: "energik",
+      gradient: ["#f7971e","#ffd200"], angle: 90, aspect: "4:3", badge: "\u{1F31F}" },
+    { id: "warm-peach",   name: "Peach Lembut",       cat: "energik",
+      gradient: ["#ee9ca7","#ffdde1"], angle: 120, aspect: "16:9", badge: "\u{1F351}" },
+    // ── Cool / Professional ──
+    { id: "cool-purple",  name: "Ungu Futuristik",    cat: "profesional",
+      gradient: ["#667eea","#764ba2"], angle: 135, aspect: "16:9", badge: "\u{1F30C}" },
+    { id: "cool-dark",    name: "Gelap Elegan",       cat: "profesional",
+      gradient: ["#0c0c1d","#1a1a3e","#2d2d6b"], angle: 180, aspect: "16:9", badge: "\u{1F311}" },
+    { id: "cool-slate",   name: "Slate Modern",       cat: "profesional",
+      gradient: ["#2c3e50","#4ca1af"], angle: 135, aspect: "4:3", badge: "\u{1F4F0}" },
+    { id: "cool-aurora",  name: "Aurora Borealis",    cat: "profesional",
+      gradient: ["#00c6ff","#0072ff"], angle: 135, aspect: "9:16", badge: "\u{2728}" },
+    // ── Fun / Playful ──
+    { id: "fun-rainbow",  name: "Pelangi Fun",        cat: "fun",
+      gradient: ["#fc466b","#3f5efb"], angle: 135, aspect: "16:9", badge: "\u{1F308}" },
+    { id: "fun-grape",    name: "Anggur Manis",       cat: "fun",
+      gradient: ["#8e2de2","#4a00e0"], angle: 135, aspect: "16:9", badge: "\u{1F347}" },
+    { id: "fun-ocean",    name: "Lautan Dalam",       cat: "fun",
+      gradient: ["#005c97","#363795"], angle: 135, aspect: "9:16", badge: "\u{1F41A}" },
+    { id: "fun-candy",    name: "Permen Pastel",      cat: "fun",
+      gradient: ["#a18cd1","#fbc2eb"], angle: 135, aspect: "16:9", badge: "\u{1F36C}" },
+    // ── Minimal / Clean ──
+    { id: "min-white",    name: "Putih Bersih",       cat: "minimal",
+      gradient: ["#e0eafc","#cfdef3"], angle: 135, aspect: "16:9", badge: "\u{1F7E2}" },
+    { id: "min-cream",    name: "Krim Hangat",        cat: "minimal",
+      gradient: ["#fff1eb","#ace0f9"], angle: 135, aspect: "4:3", badge: "\u{1F3E3}" },
+    { id: "min-gray",     name: "Abu Netral",         cat: "minimal",
+      gradient: ["#2b5876","#4e4376"], angle: 135, aspect: "16:9", badge: "\u{2699}\uFE0F" },
+    { id: "min-green",    name: "Hijau Alam",         cat: "minimal",
+      gradient: ["#11998e","#38ef7d"], angle: 135, aspect: "16:9", badge: "\u{1F33F}" },
+  ];
+
+  const LAYOUT_PRESETS = [
+    { id: "nav-basic",    name: "Navigasi Dasar",     icon: "\u{1F3A8}", desc: "Home, Kembali, Lanjut — posisi standar",
+      overlays: [
+        { type:"nav-home", x:8,  y:6,  icon:"\u{1F3E0}", label:"Home",    shape:"pill", color:"#FFFFFF", opacity:90, size:"small" },
+        { type:"nav-back", x:22, y:92, icon:"\u2190",     label:"Kembali", shape:"pill", color:"#F5C842", opacity:95, size:"small" },
+        { type:"nav-next", x:78, y:92, icon:"\u2192",     label:"Lanjut",  shape:"pill", color:"#F5C842", opacity:95, size:"small" },
+      ]},
+    { id: "nav-centered", name: "Tengah Simetris",    icon: "\u2795", desc: "Kembali + Lanjut di tengah bawah",
+      overlays: [
+        { type:"nav-home", x:50, y:5,  icon:"\u{1F3E0}", label:"Home",    shape:"pill", color:"#FFFFFF", opacity:85, size:"small" },
+        { type:"nav-back", x:35, y:92, icon:"\u2190",     label:"Kembali", shape:"pill", color:"#38D9D9", opacity:95, size:"medium" },
+        { type:"nav-next", x:65, y:92, icon:"\u2192",     label:"Lanjut",  shape:"pill", color:"#38D9D9", opacity:95, size:"medium" },
+      ]},
+    { id: "quiz-layout",  name: "Layout Kuis",        icon: "\u{1F9EA}", desc: "Tombol Kuis besar di tengah + navigasi",
+      overlays: [
+        { type:"quiz-btn", x:50, y:45, icon:"\u{1F9EA}", label:"Mulai Kuis", shape:"rounded", color:"#F5C842", opacity:100, size:"large", customW:140, customH:60, customFs:"1rem" },
+        { type:"nav-home", x:8,  y:6,  icon:"\u{1F3E0}", label:"Home",    shape:"pill", color:"#FFFFFF", opacity:80, size:"small" },
+        { type:"nav-back", x:25, y:92, icon:"\u2190",     label:"Kembali", shape:"pill", color:"#FFFFFF", opacity:90, size:"small" },
+      ]},
+    { id: "menu-corner",  name: "Menu Pojok",         icon: "\u2630", desc: "Menu di pojok kanan atas + navigasi bawah",
+      overlays: [
+        { type:"menu-btn", x:92, y:6,  icon:"\u2630",    label:"Menu",    shape:"rect", color:"#FFFFFF", opacity:90, size:"medium", customW:50, customH:40 },
+        { type:"nav-back", x:22, y:92, icon:"\u2190",     label:"Kembali", shape:"pill", color:"#A78BFA", opacity:95, size:"small" },
+        { type:"nav-next", x:78, y:92, icon:"\u2192",     label:"Lanjut",  shape:"pill", color:"#A78BFA", opacity:95, size:"small" },
+      ]},
+    { id: "game-play",    name: "Layout Game",         icon: "\u{1F3AE}", desc: "Tombol Kuis + Menu + Home berjajar atas",
+      overlays: [
+        { type:"nav-home", x:15, y:5,  icon:"\u{1F3E0}", label:"Home",    shape:"pill", color:"#FB923C", opacity:95, size:"small" },
+        { type:"menu-btn", x:50, y:5,  icon:"\u2630",    label:"Menu",    shape:"pill", color:"#FB923C", opacity:95, size:"small" },
+        { type:"quiz-btn", x:50, y:85, icon:"\u{1F9EA}", label:"Main!",   shape:"rounded", color:"#34D399", opacity:100, size:"large", customW:120, customH:52 },
+        { type:"nav-back", x:85, y:5,  icon:"\u2190",     label:"Keluar",  shape:"pill", color:"#FF5F6D", opacity:95, size:"small" },
+      ]},
+    { id: "full-nav",     name: "Navigasi Penuh",      icon: "\u{1F5FA}", desc: "Semua tombol navigasi + kuis + menu",
+      overlays: [
+        { type:"nav-home", x:12, y:5,  icon:"\u{1F3E0}", label:"Home",    shape:"pill", color:"#FFFFFF", opacity:90, size:"small" },
+        { type:"menu-btn", x:88, y:5,  icon:"\u2630",    label:"Menu",    shape:"pill", color:"#FFFFFF", opacity:90, size:"small" },
+        { type:"quiz-btn", x:50, y:45, icon:"\u{1F9EA}", label:"Kuis",    shape:"rounded", color:"#F5C842", opacity:100, size:"large", customW:100, customH:50 },
+        { type:"nav-back", x:25, y:92, icon:"\u2190",     label:"Kembali", shape:"pill", color:"#38D9D9", opacity:95, size:"small" },
+        { type:"nav-next", x:75, y:92, icon:"\u2192",     label:"Lanjut",  shape:"pill", color:"#38D9D9", opacity:95, size:"small" },
+      ]},
+    { id: "empty-canvas", name: "Kanvas Kosong",       icon: "\u{1F3A8}", desc: "Tidak ada overlay — mulai dari nol",
+      overlays: [] },
+    { id: "hero-cover",   name: "Hero / Cover",        icon: "\u{1F3AC}", desc: "Tombol besar Mulai Belajar di tengah",
+      overlays: [
+        { type:"quiz-btn", x:50, y:55, icon:"\u{1F680}", label:"Mulai Belajar", shape:"rounded", color:"#F5C842", opacity:100, size:"large", customW:180, customH:64, customFs:"1.1rem" },
+        { type:"menu-btn", x:50, y:92, icon:"\u2630",    label:"Daftar Isi", shape:"pill", color:"#FFFFFF", opacity:85, size:"small" },
+      ]},
+  ];
+
+  const COLOR_THEME_PRESETS = [
+    { id: "tema-pkn",      name: "PPKn Klasik",   icon: "\u{1F3DB}", colors: ["#F5C842","#38D9D9","#A78BFA","#34D399","#FF5F6D"] },
+    { id: "tema-warm",     name: "Hangat Cerah",   icon: "\u{1F31E}", colors: ["#FF6B6B","#FFA07A","#FFD93D","#6BCB77","#4D96FF"] },
+    { id: "tema-cool",     name: "Dingin Tenang",  icon: "\u{1F30A}", colors: ["#0f3460","#16213e","#533483","#e94560","#1a1a2e"] },
+    { id: "tema-nature",   name: "Alam Segar",     icon: "\u{1F333}", colors: ["#11998e","#38ef7d","#56ab2f","#a8e063","#f7ff00"] },
+    { id: "tema-pastel",   name: "Pastel Lembut",  icon: "\u{1F308}", colors: ["#a18cd1","#fbc2eb","#fad0c4","#ff9a9e","#f6d365"] },
+    { id: "tema-neon",     name: "Neon Kilat",     icon: "\u26A1",     colors: ["#00ff88","#00d4ff","#ff00ff","#ffff00","#ff3366"] },
+    { id: "tema-earth",    name: "Bumi Alami",     icon: "\u{1F30D}", colors: ["#8B4513","#D2691E","#DEB887","#2E8B57","#4682B4"] },
+    { id: "tema-monochrome", name:"Monokrom",       icon: "\u{1F3A8}", colors: ["#ffffff","#c0c0c0","#808080","#404040","#000000"] },
+  ];
 
   // ═══════════════════════════════════════════════════════════════
   //  PHASE 2 — AT_CANVA_ASSETS  (Asset Gallery)
@@ -141,6 +255,198 @@
       if (b < 1048576) return (b / 1024).toFixed(1) + " KB";
       return (b / 1048576).toFixed(2) + " MB";
     },
+  };
+
+  // ═══════════════════════════════════════════════════════════════
+  //  AT_CANVA_PRESETS — Preset Manager (Gradient BG + Layout + Theme)
+  // ═══════════════════════════════════════════════════════════════
+
+  window.AT_CANVA_PRESETS = {
+
+    /** Generate gradient dataURL from preset using Canvas API */
+    generateGradient(presetId) {
+      const p = GRADIENT_PRESETS.find(g => g.id === presetId);
+      if (!p) return null;
+
+      try {
+        // Parse aspect ratio to determine canvas dimensions
+        const aspectParts = p.aspect.split(":");
+        const arW = +(aspectParts[0] || 16);
+        const arH = +(aspectParts[1] || 9);
+        const w = 800;
+        const h = Math.round(w * (arH / Math.max(1, arW)));
+
+        const canvas = document.createElement("canvas");
+        canvas.width = w;
+        canvas.height = h;
+        const ctx = canvas.getContext("2d");
+
+        // Calculate gradient line from angle
+        const angleRad = (p.angle || 135) * Math.PI / 180;
+        const cx = w / 2;
+        const cy = h / 2;
+        const len = Math.sqrt(w * w + h * h) / 2;
+        const x1 = cx - Math.cos(angleRad) * len;
+        const y1 = cy - Math.sin(angleRad) * len;
+        const x2 = cx + Math.cos(angleRad) * len;
+        const y2 = cy + Math.sin(angleRad) * len;
+
+        const grad = ctx.createLinearGradient(x1, y1, x2, y2);
+        const colors = p.gradient;
+        colors.forEach((c, i) => {
+          grad.addColorStop(i / Math.max(1, colors.length - 1), c);
+        });
+
+        ctx.fillStyle = grad;
+        ctx.fillRect(0, 0, w, h);
+
+        // Optional: add subtle noise texture for richness
+        ctx.globalAlpha = 0.03;
+        for (let i = 0; i < 3000; i++) {
+          const nx = Math.random() * w;
+          const ny = Math.random() * h;
+          ctx.fillStyle = Math.random() > 0.5 ? "#ffffff" : "#000000";
+          ctx.fillRect(nx, ny, 1, 1);
+        }
+        ctx.globalAlpha = 1;
+
+        return canvas.toDataURL("image/png");
+      } catch (e) {
+        console.warn("Gradient generation failed:", e);
+        return null;
+      }
+    },
+
+    /** Generate thumbnail for gradient preset */
+    _gradientThumb(presetId) {
+      const p = GRADIENT_PRESETS.find(g => g.id === presetId);
+      if (!p) return "";
+      try {
+        const canvas = document.createElement("canvas");
+        canvas.width = 200;
+        canvas.height = 120;
+        const ctx = canvas.getContext("2d");
+        const angleRad = (p.angle || 135) * Math.PI / 180;
+        const len = Math.sqrt(200 * 200 + 120 * 120) / 2;
+        const cx = 100, cy = 60;
+        const grad = ctx.createLinearGradient(
+          cx - Math.cos(angleRad) * len, cy - Math.sin(angleRad) * len,
+          cx + Math.cos(angleRad) * len, cy + Math.sin(angleRad) * len
+        );
+        p.gradient.forEach((c, i) => grad.addColorStop(i / Math.max(1, p.gradient.length - 1), c));
+        ctx.fillStyle = grad;
+        ctx.fillRect(0, 0, 200, 120);
+        return canvas.toDataURL("image/jpeg", 0.8);
+      } catch (e) { return ""; }
+    },
+
+    /** Apply gradient as asset and set it for a page */
+    applyGradient(pageId, presetId) {
+      const dataUrl = this.generateGradient(presetId);
+      if (!dataUrl) { AT_UTIL.toast("Gagal generate gradient", "err"); return; }
+
+      const preset = GRADIENT_PRESETS.find(g => g.id === presetId);
+      const aspectParts = (preset && preset.aspect.split(":")) || ["16","9"];
+      const arW = +(aspectParts[0] || 16);
+      const arH = +(aspectParts[1] || 9);
+
+      const asset = {
+        id: AT_UTIL.uid(),
+        name: "Gradient: " + (preset ? preset.name : presetId),
+        dataUrl: dataUrl,
+        width: 800,
+        height: Math.round(800 * (arH / Math.max(1, arW))),
+        aspectRatio: +(arW / Math.max(1, arH)).toFixed(3),
+        thumbUrl: this._gradientThumb(presetId),
+        _preset: true,
+      };
+
+      AT_CANVA_ASSETS._ensure();
+      AT_CANVA_ASSETS._assets.push(asset);
+
+      // Set as background for page
+      if (!AT_STATE.canvaMode) AT_STATE.canvaMode = { global: "generic", pages: {} };
+      if (!AT_STATE.canvaMode.pages[pageId]) AT_STATE.canvaMode.pages[pageId] = {};
+      AT_STATE.canvaMode.pages[pageId].assetId = asset.id;
+      AT_STATE.canvaMode.pages[pageId]._mode = "canva";
+      AT_STATE.canvaMode.pages[pageId].mode = "canva";
+
+      AT_EDITOR.markDirty();
+      AT_SPLITVIEW && AT_SPLITVIEW.scheduleRefresh && AT_SPLITVIEW.scheduleRefresh();
+      AT_CANVA._updateModeToggleUI();
+      AT_UTIL.toast("\u{1F3A8} Gradient \"" + (preset ? preset.name : presetId) + "\" diterapkan");
+    },
+
+    /** Apply layout preset overlays to a page */
+    applyLayout(pageId, layoutId) {
+      const layout = LAYOUT_PRESETS.find(l => l.id === layoutId);
+      if (!layout) return;
+
+      // Deep clone overlays so edits don't mutate preset
+      const overlays = JSON.parse(JSON.stringify(layout.overlays));
+
+      // Set page to canva mode if not already
+      if (!AT_STATE.canvaMode) AT_STATE.canvaMode = { global: "generic", pages: {} };
+      if (!AT_STATE.canvaMode.pages[pageId]) AT_STATE.canvaMode.pages[pageId] = {};
+      if (AT_CANVA.getMode(pageId) !== "canva") {
+        AT_STATE.canvaMode.pages[pageId]._mode = "canva";
+        AT_STATE.canvaMode.pages[pageId].mode = "canva";
+        AT_CANVA._updateModeToggleUI();
+      }
+
+      // Set overlays
+      if (!AT_STATE.canvaOverlays) AT_STATE.canvaOverlays = {};
+      AT_STATE.canvaOverlays[pageId] = overlays;
+
+      AT_EDITOR.markDirty();
+      AT_SPLITVIEW && AT_SPLITVIEW.scheduleRefresh && AT_SPLITVIEW.scheduleRefresh();
+      AT_CANVA.renderEditor(pageId);
+      AT_UTIL.toast("\u2705 Layout \"" + layout.name + "\" diterapkan (" + overlays.length + " elemen)");
+    },
+
+    /** Apply color theme to all overlay elements on a page */
+    applyColorTheme(pageId, themeId) {
+      const theme = COLOR_THEME_PRESETS.find(t => t.id === themeId);
+      if (!theme) return;
+
+      const overlays = AT_CANVA.getOverlays(pageId);
+      if (!overlays.length) {
+        AT_UTIL.toast("Tidak ada elemen overlay di halaman ini", "err");
+        return;
+      }
+
+      overlays.forEach((el, i) => {
+        const color = theme.colors[i % theme.colors.length];
+        el.color = color;
+      });
+
+      AT_EDITOR.markDirty();
+      AT_SPLITVIEW && AT_SPLITVIEW.scheduleRefresh && AT_SPLITVIEW.scheduleRefresh();
+      AT_CANVA.renderEditor(pageId);
+      AT_UTIL.toast("\u{1F3A8} Tema \"" + theme.name + "\" diterapkan");
+    },
+
+    /** Quick-apply: gradient + layout in one click */
+    applyFullPreset(pageId, gradientId, layoutId) {
+      this.applyGradient(pageId, gradientId);
+      setTimeout(() => {
+        this.applyLayout(pageId, layoutId);
+      }, 50);
+    },
+
+    /** Get all presets by category */
+    getGradientsByCategory() {
+      const cats = {};
+      GRADIENT_PRESETS.forEach(g => {
+        if (!cats[g.cat]) cats[g.cat] = [];
+        cats[g.cat].push(g);
+      });
+      return cats;
+    },
+
+    getAllGradients() { return GRADIENT_PRESETS; },
+    getAllLayouts() { return LAYOUT_PRESETS; },
+    getAllThemes() { return COLOR_THEME_PRESETS; },
   };
 
   // ═══════════════════════════════════════════════════════════════
@@ -571,6 +877,70 @@ body.has-atp-dock #split-pane { padding-bottom: 72px; }
   font-size: .82rem;
 }
 .canva-empty-state-icon { font-size: 2.2rem; margin-bottom: 8px; }
+
+/* ── Preset Browser ── */
+.canva-preset-section {
+  background: var(--card2, #1a2338); border: 1px solid var(--border);
+  border-radius: var(--rad-sm); padding: 12px; margin-top: 16px;
+}
+.canva-preset-title {
+  font-size: .82rem; font-weight: 800; color: var(--y);
+  margin-bottom: 10px; display: flex; align-items: center; gap: 6px;
+}
+.canva-preset-tabs {
+  display: flex; gap: 4px; margin-bottom: 12px;
+  border-bottom: 1px solid var(--border); padding-bottom: 8px;
+}
+.canva-preset-tab {
+  padding: 5px 12px; font-size: .7rem; font-weight: 700;
+  background: none; color: var(--muted); border: none;
+  cursor: pointer; border-radius: 6px 6px 0 0;
+  transition: all .15s; border-bottom: 2px solid transparent;
+}
+.canva-preset-tab:hover { color: var(--text); background: rgba(255,255,255,.04); }
+.canva-preset-tab.active {
+  color: var(--y); border-bottom-color: var(--y);
+  background: rgba(249,200,66,.06);
+}
+.canva-preset-grid {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+  gap: 8px; margin-bottom: 8px;
+}
+.canva-preset-card {
+  position: relative; background: var(--card); border: 1px solid var(--border);
+  border-radius: var(--rad-sm); overflow: hidden; cursor: pointer;
+  transition: all .18s;
+}
+.canva-preset-card:hover {
+  border-color: var(--y); transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0,0,0,.3);
+}
+.canva-preset-thumb {
+  width: 100%; aspect-ratio: 5/3; display: block;
+  background: var(--bg2);
+}
+.canva-preset-thumb img {
+  width: 100%; height: 100%; object-fit: cover; display: block;
+}
+.canva-preset-icon {
+  width: 100%; aspect-ratio: 5/3; display: flex;
+  align-items: center; justify-content: center;
+  font-size: 1.8rem; background: rgba(255,255,255,.04);
+  border-bottom: 1px solid var(--border);
+}
+.canva-preset-theme-swatches {
+  display: flex; gap: 4px; justify-content: center;
+  padding: 12px 8px; background: rgba(255,255,255,.03);
+  border-bottom: 1px solid var(--border);
+}
+.canva-preset-info {
+  padding: 5px 8px; font-size: .68rem; font-weight: 700; color: var(--text);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.canva-preset-meta {
+  padding: 0 8px 6px; font-size: .58rem; color: var(--muted);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
 `;
       document.head.appendChild(style);
     },
@@ -888,6 +1258,9 @@ body.has-atp-dock #split-pane { padding-bottom: 72px; }
       });
       html += "</div>";
 
+      // ── PRESET BROWSER ──
+      html += this._renderPresetBrowser(pageId);
+
       // Customization panel for selected element
       if (this._selectedOverlay && this._selectedOverlay.pageId === pageId) {
         const selEl = overlays[this._selectedOverlay.idx];
@@ -1011,6 +1384,88 @@ body.has-atp-dock #split-pane { padding-bottom: 72px; }
 
       html += "</div>";
       return html;
+    },
+
+    // ── Overlay CRUD helpers ──
+
+    // ───────────────────────────────────────────────────────────
+    //  PRESET BROWSER UI
+    // ───────────────────────────────────────────────────────────
+
+    _renderPresetBrowser(pageId) {
+      let html = "<div class=\"canva-preset-section\" style=\"margin-top:16px\">";
+      html += "<div class=\"canva-preset-title\">\u{1F4C1} Template Preset</div>";
+
+      // ── Tab switcher ──
+      html += "<div class=\"canva-preset-tabs\">";
+      html += "<button class=\"canva-preset-tab active\" onclick=\"AT_CANVA._switchPresetTab(this,'gradients')\">\u{1F3A8} Background</button>";
+      html += "<button class=\"canva-preset-tab\" onclick=\"AT_CANVA._switchPresetTab(this,'layouts')\">\u{1F3AF} Layout</button>";
+      html += "<button class=\"canva-preset-tab\" onclick=\"AT_CANVA._switchPresetTab(this,'themes')\">\u{1F30A} Tema Warna</button>";
+      html += "</div>";
+
+      // ── Gradient presets panel ──
+      html += "<div class=\"canva-preset-panel\" id=\"presetPanelGradients\">";
+      const cats = AT_CANVA_PRESETS.getGradientsByCategory();
+      const catLabels = { pendidikan: "\u{1F393} Pendidikan", energik: "\u{1F525} Energik", profesional: "\u{1F4BC} Profesional", fun: "\u{1F389} Fun", minimal: "\u2795 Minimal" };
+      Object.keys(cats).forEach(cat => {
+        html += "<div style=\"font-size:.7rem;font-weight:700;color:var(--muted);margin:10px 0 6px;text-transform:uppercase;letter-spacing:.05em\">" + (catLabels[cat] || cat) + "</div>";
+        html += "<div class=\"canva-preset-grid\">";
+        cats[cat].forEach(g => {
+          const thumb = AT_CANVA_PRESETS._gradientThumb(g.id);
+          html += "<div class=\"canva-preset-card\" onclick=\"AT_CANVA_PRESETS.applyGradient('" + pageId + "','" + g.id + "');AT_CANVA.renderEditor('" + pageId + "')\" title=\"" + this._esc(g.name) + " (" + g.aspect + ")\">"
+            + "<div class=\"canva-preset-thumb\"><img src=\"" + thumb + "\" alt=\"\" loading=\"lazy\"></div>"
+            + "<div class=\"canva-preset-info\">" + g.badge + " " + this._esc(g.name) + "</div>"
+            + "<div class=\"canva-preset-meta\">" + g.aspect + " \u2022 " + g.gradient.length + " warna</div>"
+            + "</div>";
+        });
+        html += "</div>";
+      });
+      html += "</div>";
+
+      // ── Layout presets panel ──
+      html += "<div class=\"canva-preset-panel\" id=\"presetPanelLayouts\" style=\"display:none\">";
+      html += "<div class=\"canva-preset-grid\">";
+      LAYOUT_PRESETS.forEach(l => {
+        const count = l.overlays.length;
+        html += "<div class=\"canva-preset-card canva-preset-layout\" onclick=\"AT_CANVA_PRESETS.applyLayout('" + pageId + "','" + l.id + "')\" title=\"" + this._esc(l.desc) + "\">"
+          + "<div class=\"canva-preset-icon\">" + l.icon + "</div>"
+          + "<div class=\"canva-preset-info\">" + this._esc(l.name) + "</div>"
+          + "<div class=\"canva-preset-meta\">" + this._esc(l.desc) + " (" + count + " elemen)</div>"
+          + "</div>";
+      });
+      html += "</div>";
+      html += "</div>";
+
+      // ── Color theme presets panel ──
+      html += "<div class=\"canva-preset-panel\" id=\"presetPanelThemes\" style=\"display:none\">";
+      html += "<div class=\"canva-preset-grid\">";
+      COLOR_THEME_PRESETS.forEach(t => {
+        const swatches = t.colors.map(c => "<div style=\"width:16px;height:16px;border-radius:50%;background:" + c + ";border:1px solid rgba(255,255,255,.15)\"></div>").join("");
+        html += "<div class=\"canva-preset-card canva-preset-theme\" onclick=\"AT_CANVA_PRESETS.applyColorTheme('" + pageId + "','" + t.id + "')\" title=\"" + this._esc(t.name) + "\">"
+          + "<div class=\"canva-preset-theme-swatches\">" + swatches + "</div>"
+          + "<div class=\"canva-preset-info\">" + t.icon + " " + this._esc(t.name) + "</div>"
+          + "<div class=\"canva-preset-meta\">" + t.colors.length + " warna</div>"
+          + "</div>";
+      });
+      html += "</div>";
+      html += "</div>";
+
+      html += "</div>";
+      return html;
+    },
+
+    _switchPresetTab(btn, tabId) {
+      const tabs = btn.parentElement.querySelectorAll(".canva-preset-tab");
+      tabs.forEach(t => t.classList.remove("active"));
+      btn.classList.add("active");
+
+      const section = btn.closest(".canva-preset-section");
+      if (!section) return;
+      section.querySelectorAll(".canva-preset-panel").forEach(p => p.style.display = "none");
+
+      const map = { gradients: "Gradients", layouts: "Layouts", themes: "Themes" };
+      const target = document.getElementById("presetPanel" + map[tabId]);
+      if (target) target.style.display = "block";
     },
 
     // ── Overlay CRUD helpers ──
