@@ -18,6 +18,7 @@
   ];
 
   const OVERLAY_ELEMENT_TYPES = [
+    { id: "navbar",  icon: " ",          label: "Navbar",       defaultLabel: "" },
     { id: "quiz-btn", icon: "\u{1F9EA}", label: "Tombol Kuis", defaultLabel: "Kuis" },
     { id: "nav-home", icon: "\u{1F3E0}", label: "Home",        defaultLabel: "Home" },
     { id: "nav-next", icon: "\u2192",     label: "Next",        defaultLabel: "Lanjut" },
@@ -88,9 +89,10 @@
   ];
 
   const LAYOUT_PRESETS = [
-    { id: "nav-basic",    name: "Navigasi Dasar",     icon: "\u{1F3A8}", desc: "Home, Kembali, Lanjut — posisi standar",
+    { id: "nav-basic",    name: "Navigasi Dasar",     icon: "\u{1F3A8}", desc: "Navbar + Home, Kembali, Lanjut — posisi standar",
       overlays: [
-        { type:"nav-home", x:8,  y:6,  icon:"\u{1F3E0}", label:"Home",    shape:"pill", color:"#FFFFFF", opacity:90, size:"small" },
+        { type:"navbar", x:0,  y:0,  label:"", shape:"pill", color:"#FFFFFF", opacity:100, size:"medium" },
+        { type:"nav-home", x:8,  y:8,  icon:"\u{1F3E0}", label:"Home",    shape:"pill", color:"#FFFFFF", opacity:90, size:"small" },
         { type:"nav-back", x:22, y:92, icon:"\u2190",     label:"Kembali", shape:"pill", color:"#F5C842", opacity:95, size:"small" },
         { type:"nav-next", x:78, y:92, icon:"\u2192",     label:"Lanjut",  shape:"pill", color:"#F5C842", opacity:95, size:"small" },
       ]},
@@ -100,10 +102,10 @@
         { type:"nav-back", x:35, y:92, icon:"\u2190",     label:"Kembali", shape:"pill", color:"#38D9D9", opacity:95, size:"medium" },
         { type:"nav-next", x:65, y:92, icon:"\u2192",     label:"Lanjut",  shape:"pill", color:"#38D9D9", opacity:95, size:"medium" },
       ]},
-    { id: "quiz-layout",  name: "Layout Kuis",        icon: "\u{1F9EA}", desc: "Tombol Kuis besar di tengah + navigasi",
+    { id: "quiz-layout",  name: "Layout Kuis",        icon: "\u{1F9EA}", desc: "Navbar + Tombol Kuis besar di tengah + navigasi",
       overlays: [
+        { type:"navbar", x:0,  y:0,  label:"", shape:"pill", color:"#FFFFFF", opacity:100, size:"medium" },
         { type:"quiz-btn", x:50, y:45, icon:"\u{1F9EA}", label:"Mulai Kuis", shape:"rounded", color:"#F5C842", opacity:100, size:"large", customW:140, customH:60, customFs:"1rem" },
-        { type:"nav-home", x:8,  y:6,  icon:"\u{1F3E0}", label:"Home",    shape:"pill", color:"#FFFFFF", opacity:80, size:"small" },
         { type:"nav-back", x:25, y:92, icon:"\u2190",     label:"Kembali", shape:"pill", color:"#FFFFFF", opacity:90, size:"small" },
       ]},
     { id: "menu-corner",  name: "Menu Pojok",         icon: "\u2630", desc: "Menu di pojok kanan atas + navigasi bawah",
@@ -112,14 +114,23 @@
         { type:"nav-back", x:22, y:92, icon:"\u2190",     label:"Kembali", shape:"pill", color:"#A78BFA", opacity:95, size:"small" },
         { type:"nav-next", x:78, y:92, icon:"\u2192",     label:"Lanjut",  shape:"pill", color:"#A78BFA", opacity:95, size:"small" },
       ]},
-    { id: "game-play",    name: "Layout Game",         icon: "\u{1F3AE}", desc: "Tombol Kuis + Menu + Home berjajar atas",
+    { id: "game-play",    name: "Layout Game",         icon: "\u{1F3AE}", desc: "Navbar + Tombol Kuis + Home berjajar atas",
       overlays: [
-        { type:"nav-home", x:15, y:5,  icon:"\u{1F3E0}", label:"Home",    shape:"pill", color:"#FB923C", opacity:95, size:"small" },
-        { type:"menu-btn", x:50, y:5,  icon:"\u2630",    label:"Menu",    shape:"pill", color:"#FB923C", opacity:95, size:"small" },
+        { type:"navbar", x:0,  y:0,  label:"", shape:"pill", color:"#FFFFFF", opacity:100, size:"medium" },
+        { type:"nav-home", x:15, y:8,  icon:"\u{1F3E0}", label:"Home",    shape:"pill", color:"#FB923C", opacity:95, size:"small" },
+        { type:"menu-btn", x:50, y:8,  icon:"\u2630",    label:"Menu",    shape:"pill", color:"#FB923C", opacity:95, size:"small" },
         { type:"quiz-btn", x:50, y:85, icon:"\u{1F9EA}", label:"Main!",   shape:"rounded", color:"#34D399", opacity:100, size:"large", customW:120, customH:52 },
-        { type:"nav-back", x:85, y:5,  icon:"\u2190",     label:"Keluar",  shape:"pill", color:"#FF5F6D", opacity:95, size:"small" },
+        { type:"nav-back", x:85, y:8,  icon:"\u2190",     label:"Keluar",  shape:"pill", color:"#FF5F6D", opacity:95, size:"small" },
       ]},
-    { id: "full-nav",     name: "Navigasi Penuh",      icon: "\u{1F5FA}", desc: "Semua tombol navigasi + kuis + menu",
+    { id: "full-nav",     name: "Navigasi Penuh",      icon: "\u{1F5FA}", desc: "Navbar + semua tombol navigasi + kuis + menu",
+      overlays: [
+        { type:"navbar", x:0,  y:0, label:"", shape:"pill", color:"#FFFFFF", opacity:100, size:"medium" },
+        { type:"nav-home", x:12, y:8, icon:"\u{1F3E0}", label:"Home",    shape:"pill", color:"#FFFFFF", opacity:90, size:"small" },
+        { type:"menu-btn", x:88, y:8, icon:"\u2630",    label:"Menu",    shape:"pill", color:"#FFFFFF", opacity:90, size:"small" },
+        { type:"quiz-btn", x:50, y:45, icon:"\u{1F9EA}", label:"Kuis",    shape:"rounded", color:"#F5C842", opacity:100, size:"large", customW:100, customH:50 },
+        { type:"nav-back", x:25, y:92, icon:"\u2190",     label:"Kembali", shape:"pill", color:"#38D9D9", opacity:95, size:"small" },
+        { type:"nav-next", x:75, y:92, icon:"\u2192",     label:"Lanjut",  shape:"pill", color:"#38D9D9", opacity:95, size:"small" },
+      ]},
       overlays: [
         { type:"nav-home", x:12, y:5,  icon:"\u{1F3E0}", label:"Home",    shape:"pill", color:"#FFFFFF", opacity:90, size:"small" },
         { type:"menu-btn", x:88, y:5,  icon:"\u2630",    label:"Menu",    shape:"pill", color:"#FFFFFF", opacity:90, size:"small" },
@@ -131,6 +142,7 @@
       overlays: [] },
     { id: "hero-cover",   name: "Hero / Cover",        icon: "\u{1F3AC}", desc: "Tombol besar Mulai Belajar di tengah",
       overlays: [
+        { type:"navbar", x:0,  y:0,  label:"", shape:"pill", color:"#FFFFFF", opacity:100, size:"medium" },
         { type:"quiz-btn", x:50, y:55, icon:"\u{1F680}", label:"Mulai Belajar", shape:"rounded", color:"#F5C842", opacity:100, size:"large", customW:180, customH:64, customFs:"1.1rem" },
         { type:"menu-btn", x:50, y:92, icon:"\u2630",    label:"Daftar Isi", shape:"pill", color:"#FFFFFF", opacity:85, size:"small" },
       ]},
@@ -1088,6 +1100,65 @@ body.has-atp-dock #split-pane { padding-bottom: 72px; }
   display: flex; align-items: center; justify-content: space-between;
   margin-bottom: 10px;
 }
+
+/* ── App-style overlay buttons (mirrors real app btn/navbar) ── */
+.canva-app-btn {
+  position: absolute; cursor: grab; user-select: none;
+  display: inline-flex; align-items: center; justify-content: center; gap: 5px;
+  padding: 9px 20px; border-radius: 99px;
+  font-family: 'Nunito', sans-serif; font-weight: 800; font-size: .85rem;
+  border: none; transition: box-shadow .15s, opacity .15s; touch-action: none;
+  text-shadow: none; backdrop-filter: none; letter-spacing: .01em;
+  transform: translate(-50%, -50%);
+  box-shadow: 0 2px 8px rgba(0,0,0,.2);
+}
+.canva-app-btn:hover { box-shadow: 0 6px 16px rgba(0,0,0,.35); }
+.canva-app-btn.selected { box-shadow: 0 0 0 3px var(--y), 0 0 16px rgba(249,200,66,.4); }
+.canva-app-btn.dragging { cursor: grabbing; opacity: .85; z-index: 10; }
+.canva-app-btn.canva-el-rounded { border-radius: 14px; }
+.canva-app-btn.canva-el-rect { border-radius: 6px; }
+
+/* ── App-style navbar overlay ── */
+.canva-app-navbar {
+  position: absolute; top: 0; left: 0; right: 0;
+  background: rgba(14,28,47,.96); backdrop-filter: blur(12px);
+  border-bottom: 1px solid rgba(255,255,255,.1);
+  padding: 10px 16px; display: flex; align-items: center; gap: 10px;
+  cursor: grab; user-select: none; touch-action: none; z-index: 5;
+  height: 48px; box-sizing: border-box;
+}
+.canva-app-navbar .canva-nav-logo {
+  font-family: 'Fredoka One', cursive; font-size: .85rem; color: var(--y, #f5c842);
+  flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.canva-app-navbar .canva-nav-bar {
+  width: 60px; height: 4px; background: rgba(255,255,255,.08);
+  border-radius: 99px; overflow: hidden; flex-shrink: 0;
+}
+.canva-app-navbar .canva-nav-fill {
+  height: 100%; width: 0%; background: linear-gradient(90deg, var(--y, #f5c842), var(--c, #38d9d9));
+  border-radius: 99px;
+}
+.canva-app-navbar.selected {
+  box-shadow: inset 0 0 0 2px var(--y), 0 0 12px rgba(249,200,66,.25);
+}
+.canva-app-navbar.dragging { cursor: grabbing; opacity: .85; z-index: 10; }
+
+/* ── Element palette (add buttons) ── */
+.canva-el-palette {
+  display: flex; gap: 6px; flex-wrap: wrap; margin-top: 10px; align-items: center;
+}
+.canva-el-palette-item {
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 6px 12px; border-radius: 99px;
+  font-family: 'Nunito', sans-serif; font-weight: 800; font-size: .72rem;
+  border: none; cursor: pointer; transition: all .15s;
+  box-shadow: 0 2px 6px rgba(0,0,0,.2);
+}
+.canva-el-palette-item:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(0,0,0,.3); }
+.canva-el-palette-sep {
+  width: 1px; height: 24px; background: var(--border); margin: 0 4px; flex-shrink: 0;
+}
 `;
       document.head.appendChild(style);
     },
@@ -1293,7 +1364,7 @@ body.has-atp-dock #split-pane { padding-bottom: 72px; }
       html += "<span style=\"font-size:.68rem;font-weight:700;color:var(--p)\">Canva</span>";
       html += "</div>";
       if (isCanva) {
-        html += "<button class=\"btn btn-ghost btn-sm\" style=\"margin-left:auto;font-size:.68rem\" onclick=\"AT_CANVA._openGallery()\">\u{1F5BC} Upload</button>";
+        html += "<button class=\"btn btn-y btn-sm\" style=\"margin-left:auto;font-size:.68rem\" onclick=\"AT_CANVA._openGallery()\">\u{1F5BC} Upload BG</button>";
       }
       html += "</div>";
 
@@ -1302,16 +1373,16 @@ body.has-atp-dock #split-pane { padding-bottom: 72px; }
         html += "<div class=\"at-card\" style=\"text-align:center;padding:40px 20px\">";
         html += "<div style=\"font-size:3rem;margin-bottom:12px\">\u{1F3A8}</div>";
         html += "<div style=\"font-size:.92rem;font-weight:700;color:var(--text);margin-bottom:6px\">Aktifkan Mode Canva</div>";
-        html += "<div style=\"font-size:.78rem;color:var(--muted);line-height:1.6\">Nyalakan toggle di atas untuk mulai desain halaman dengan<br>background gambar dan tombol interaktif.</div>";
+        html += "<div style=\"font-size:.78rem;color:var(--muted);line-height:1.6\">Nyalakan toggle di atas untuk mulai desain slide dengan<br>background gambar dan tombol interaktif dari app.</div>";
         html += "</div>";
         container.innerHTML = html;
         return;
       }
 
-      // ── PRESET SIAP PAKAI (one-click = background + tombol) ──
+      // ── PRESET SIAP PAKAI (one-click = background + tombol app) ──
       html += "<div class=\"at-card\">";
       html += "<div class=\"canva-canvas-header\"><div class=\"at-card-title\">\u{26A1} Preset Siap Pakai</div>";
-      html += "<div style=\"font-size:.66rem;color:var(--muted)\">Klik = background + tombol jadi</div></div>";
+      html += "<div style=\"font-size:.66rem;color:var(--muted)\">Klik = background + elemen app jadi</div></div>";
       html += "<div class=\"canva-full-preset-grid\">";
       FULL_PRESETS.forEach(p => {
         const thumb = p.gradient ? AT_CANVA_PRESETS._gradientThumb(p.gradient) : "";
@@ -1327,18 +1398,16 @@ body.has-atp-dock #split-pane { padding-bottom: 72px; }
       });
       html += "</div>";
 
-      // Quick color themes
-      html += "<div style=\"margin-top:12px\">";
-      html += "<div style=\"font-size:.7rem;font-weight:700;color:var(--muted);margin-bottom:6px\">\u{1F30A} Ganti Warna Semua Tombol:</div>";
-      html += "<div style=\"display:flex;gap:6px;flex-wrap:wrap\">";
+      // Color theme quick row
+      html += "<div style=\"margin-top:10px;display:flex;gap:4px;flex-wrap:wrap\">";
       COLOR_THEME_PRESETS.forEach(t => {
-        const swatches = t.colors.slice(0, 3).map(c => "<div style=\"width:10px;height:10px;border-radius:50%;background:" + c + "\"></div>").join("");
-        html += "<div style=\"display:flex;align-items:center;gap:3px;padding:4px 8px;background:rgba(255,255,255,.04);border:1px solid var(--border);border-radius:99px;cursor:pointer;font-size:.6rem;font-weight:700;color:var(--muted);transition:all .15s\" "
+        const dots = t.colors.slice(0,3).map(c => "<span style=\"width:8px;height:8px;border-radius:50%;background:" + c + ";display:inline-block\"></span>").join("");
+        html += "<div style=\"display:flex;align-items:center;gap:3px;padding:3px 8px;background:rgba(255,255,255,.04);border:1px solid var(--border);border-radius:99px;cursor:pointer;font-size:.58rem;font-weight:700;color:var(--muted);transition:all .15s\" "
           + "onclick=\"AT_CANVA_PRESETS.applyColorTheme('" + pageId + "','" + t.id + "');setTimeout(()=>AT_CANVA._renderCanvaPanel(),60)\" "
-          + "onmouseover=\"this.style.borderColor='var(--y)';this.style.color='var(--text)'\" onmouseout=\"this.style.borderColor='var(--border)';this.style.color='var(--muted)'\">"
-          + swatches + " " + this._esc(t.name) + "</div>";
+          + "onmouseover=\"this.style.borderColor='var(--y)'\" onmouseout=\"this.style.borderColor='var(--border)'\">"
+          + dots + " " + this._esc(t.name) + "</div>";
       });
-      html += "</div></div>";
+      html += "</div>";
 
       html += "</div>";
 
@@ -1351,9 +1420,9 @@ body.has-atp-dock #split-pane { padding-bottom: 72px; }
       html += "<div class=\"canva-canvas-header\">";
       html += "<div class=\"at-card-title\">\u{1F4CB} Canvas</div>";
       if (asset) {
-        html += "<div style=\"font-size:.66rem;color:var(--g)\">\u2705 " + overlays.length + " tombol \u2022 geser untuk atur posisi</div>";
+        html += "<div style=\"font-size:.66rem;color:var(--g)\">\u2705 " + overlays.length + " elemen \u2022 geser untuk atur posisi</div>";
       } else {
-        html += "<div style=\"font-size:.66rem;color:var(--muted)\">Pilih preset di atas</div>";
+        html += "<div style=\"font-size:.66rem;color:var(--muted)\">Pilih preset atau upload background</div>";
       }
       html += "</div>";
 
@@ -1365,7 +1434,7 @@ body.has-atp-dock #split-pane { padding-bottom: 72px; }
       if (asset) {
         html += "<img class=\"canva-canvas-bg " + (displayMode === "cover" ? "cover" : "") + "\" src=\"" + asset.dataUrl + "\" alt=\"bg\">";
       } else {
-        html += "<div style=\"position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:var(--muted);font-size:.82rem;text-align:center;padding:20px\">\u{1F3A8}<br>Pilih preset atau upload background</div>";
+        html += "<div style=\"position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:var(--muted);font-size:.82rem;text-align:center;padding:20px\">\u{1F3A8}<br>Pilih preset atau upload background PNG</div>";
       }
 
       overlays.forEach((el, idx) => {
@@ -1373,61 +1442,81 @@ body.has-atp-dock #split-pane { padding-bottom: 72px; }
       });
       html += "</div>";
 
-      // Quick action buttons
-      html += "<div style=\"display:flex;gap:6px;flex-wrap:wrap;margin-top:10px\">";
+      // ── ELEMENT PALETTE: app-style buttons to add ──
+      html += "<div style=\"font-size:.72rem;font-weight:700;color:var(--muted);margin-top:12px\">\u{1F4A1} Tambah Elemen (style app asli)</div>";
+      html += "<div class=\"canva-el-palette\">";
+
+      // Navbar
+      html += "<div class=\"canva-el-palette-item\" style=\"background:rgba(14,28,47,.96);color:var(--y);font-family:'Fredoka One',cursive\" onclick=\"AT_CANVA._addOverlayElement('" + pageId + "','navbar');setTimeout(()=>AT_CANVA._renderCanvaPanel(),80)\" title=\"Navbar (bar atas seperti app)\">Navbar</div>";
+      html += "<div class=\"canva-el-palette-sep\"></div>";
+
+      // Buttons styled like real app buttons
       OVERLAY_ELEMENT_TYPES.forEach(t => {
-        html += "<button class=\"canva-add-btn\" onclick=\"AT_CANVA._addOverlayElement('" + pageId + "','" + t.id + "');setTimeout(()=>AT_CANVA._renderCanvaPanel(),80)\">" + t.icon + " " + t.label + "</button>";
+        if (t.id === "navbar") return;
+        const bg = t.id === "quiz-btn" ? "#F5C842" : t.id === "nav-home" ? "#FFFFFF" : t.id === "nav-next" ? "#F5C842" : t.id === "nav-back" ? "#F5C842" : t.id === "menu-btn" ? "#FFFFFF" : "#F5C842";
+        const txt = this._getTextColor(bg);
+        html += "<div class=\"canva-el-palette-item\" style=\"background:" + bg + ";color:" + txt + "\" onclick=\"AT_CANVA._addOverlayElement('" + pageId + "','" + t.id + "');setTimeout(()=>AT_CANVA._renderCanvaPanel(),80)\" title=\"" + this._esc(t.label) + "\">" + t.icon + " " + t.label + "</div>";
       });
+
       if (overlays.length > 0) {
-        html += "<button class=\"canva-add-btn\" style=\"margin-left:auto;color:var(--r)\" onclick=\"AT_STATE.canvaOverlays['" + pageId + "']=[];AT_CANVA._selectedOverlay=null;AT_EDITOR.markDirty();AT_CANVA._renderCanvaPanel();AT_UTIL.toast('Semua tombol dihapus')\">\u{1F5D1} Kosongkan</button>";
+        html += "<div class=\"canva-el-palette-sep\"></div>";
+        html += "<div class=\"canva-el-palette-item\" style=\"background:rgba(255,107,107,.15);color:var(--r);margin-left:auto\" onclick=\"AT_STATE.canvaOverlays['" + pageId + "']=[];AT_CANVA._selectedOverlay=null;AT_EDITOR.markDirty();AT_CANVA._renderCanvaPanel();AT_UTIL.toast('Semua elemen dihapus')\">\u{1F5D1} Kosongkan</div>";
       }
+
       html += "</div>";
 
-      // ── SELECTED ELEMENT QUICK EDIT (simplified) ──
+      // ── SELECTED ELEMENT QUICK EDIT ──
       if (this._selectedOverlay && this._selectedOverlay.pageId === pageId) {
         const selEl = overlays[this._selectedOverlay.idx];
         if (selEl) {
           const idx = this._selectedOverlay.idx;
+          const isNavbar = selEl.type === "navbar";
+
           html += "<div class=\"canva-custom-panel\" style=\"margin-top:12px\">";
-          html += "<div style=\"font-size:.76rem;font-weight:800;color:var(--y);margin-bottom:8px\">\u{1F527} Edit: " + this._esc(selEl.label || selEl.type) + "</div>";
-          // Label + Icon row
+          html += "<div style=\"font-size:.76rem;font-weight:800;color:var(--y);margin-bottom:8px\">\u{1F527} Edit: " + this._esc(selEl.type === "navbar" ? "Navbar" : (selEl.label || selEl.type)) + "</div>";
+
+          // Label
           html += "<div class=\"canva-custom-row\">";
-          html += "<span class=\"canva-custom-label\">Label</span>";
+          html += "<span class=\"canva-custom-label\">" + (isNavbar ? "Judul" : "Label") + "</span>";
           html += "<input class=\"field-input\" value=\"" + this._esc(selEl.label || "") + "\" oninput=\"AT_CANVA._quickUpdateProp('" + pageId + "'," + idx + ",'label',this.value)\" style=\"flex:1\">";
-          html += "<span class=\"canva-custom-label\" style=\"min-width:auto\">Icon</span>";
-          html += "<input class=\"field-input\" value=\"" + this._esc(selEl.icon || "") + "\" maxlength=\"4\" oninput=\"AT_CANVA._quickUpdateProp('" + pageId + "'," + idx + ",'icon',this.value)\" style=\"width:50px\">";
+          if (!isNavbar) {
+            html += "<span class=\"canva-custom-label\" style=\"min-width:auto\">Icon</span>";
+            html += "<input class=\"field-input\" value=\"" + this._esc(selEl.icon || "") + "\" maxlength=\"4\" oninput=\"AT_CANVA._quickUpdateProp('" + pageId + "'," + idx + ",'icon',this.value)\" style=\"width:50px\">";
+          }
           html += "</div>";
-          // Color row
-          html += "<div class=\"canva-custom-row\">";
-          html += "<span class=\"canva-custom-label\">Warna</span>";
-          html += "<div class=\"canva-custom-colors\">";
-          COLOR_PRESETS.forEach(c => {
-            const active = (selEl.color || "#F5C842").toUpperCase() === c.toUpperCase();
-            html += "<div class=\"canva-color-swatch" + (active ? " active" : "") + "\" style=\"background:" + c + ";border-color:" + (active ? "#fff" : c + "44") + "\" onclick=\"AT_CANVA._quickUpdateProp('" + pageId + "'," + idx + ",'color','" + c + "')\"></div>";
-          });
-          html += "<input class=\"canva-color-input\" type=\"color\" value=\"" + (selEl.color || "#F5C842") + "\" onchange=\"AT_CANVA._quickUpdateProp('" + pageId + "'," + idx + ",'color',this.value)\">";
-          html += "</div></div>";
-          // Shape + Size row
-          html += "<div class=\"canva-custom-row\">";
-          html += "<span class=\"canva-custom-label\">Bentuk</span>";
-          ["pill", "rounded", "rect"].forEach(s => {
-            const active = (selEl.shape || "pill") === s;
-            const label = s === "rect" ? "Kotak" : s === "rounded" ? "Rounded" : "Pill";
-            html += "<button class=\"canva-shape-btn" + (active ? " active" : "") + "\" onclick=\"AT_CANVA._quickUpdateProp('" + pageId + "'," + idx + ",'shape','" + s + "')\">" + label + "</button>";
-          });
-          html += "</div>";
-          html += "<div class=\"canva-custom-row\">";
-          html += "<span class=\"canva-custom-label\">Ukuran</span>";
-          ["small", "medium", "large"].forEach(s => {
-            const active = (selEl.size || "medium") === s;
-            html += "<button class=\"canva-size-btn" + (active ? " active" : "") + "\" onclick=\"AT_CANVA._quickUpdateProp('" + pageId + "'," + idx + ",'size','" + s + "')\">" + s.charAt(0).toUpperCase() + "</button>";
-          });
-          // Position display
-          html += "<span style=\"margin-left:auto;font-size:.66rem;color:var(--muted)\">X:" + (selEl.x||50).toFixed(0) + "% Y:" + (selEl.y||50).toFixed(0) + "%</span>";
-          html += "</div>";
+
+          if (!isNavbar) {
+            // Color row
+            html += "<div class=\"canva-custom-row\">";
+            html += "<span class=\"canva-custom-label\">Warna</span>";
+            html += "<div class=\"canva-custom-colors\">";
+            COLOR_PRESETS.forEach(c => {
+              const active = (selEl.color || "#F5C842").toUpperCase() === c.toUpperCase();
+              html += "<div class=\"canva-color-swatch" + (active ? " active" : "") + "\" style=\"background:" + c + ";border-color:" + (active ? "#fff" : c + "44") + "\" onclick=\"AT_CANVA._quickUpdateProp('" + pageId + "'," + idx + ",'color','" + c + "')\"></div>";
+            });
+            html += "<input class=\"canva-color-input\" type=\"color\" value=\"" + (selEl.color || "#F5C842") + "\" onchange=\"AT_CANVA._quickUpdateProp('" + pageId + "'," + idx + ",'color',this.value)\">";
+            html += "</div></div>";
+
+            // Shape + Size row
+            html += "<div class=\"canva-custom-row\">";
+            html += "<span class=\"canva-custom-label\">Bentuk</span>";
+            ["pill", "rounded", "rect"].forEach(s => {
+              const active = (selEl.shape || "pill") === s;
+              const label = s === "rect" ? "Kotak" : s === "rounded" ? "Rounded" : "Pill";
+              html += "<button class=\"canva-shape-btn" + (active ? " active" : "") + "\" onclick=\"AT_CANVA._quickUpdateProp('" + pageId + "'," + idx + ",'shape','" + s + "')\">" + label + "</button>";
+            });
+            html += "<span style=\"margin-left:auto;font-size:.66rem;color:var(--muted)\">X:" + (selEl.x||50).toFixed(0) + " Y:" + (selEl.y||50).toFixed(0) + "</span>";
+            html += "</div>";
+          } else {
+            html += "<div class=\"canva-custom-row\">";
+            html += "<span class=\"canva-custom-label\">Posisi Y</span>";
+            html += "<span style=\"font-size:.72rem;color:var(--text)\">Top: " + (selEl.y != null ? selEl.y : 0).toFixed(0) + "%</span>";
+            html += "</div>";
+          }
+
           // Delete
           html += "<div style=\"margin-top:8px\">";
-          html += "<button class=\"btn btn-ghost btn-sm\" style=\"color:var(--r)\" onclick=\"AT_CANVA.removeOverlay('" + pageId + "'," + idx + ");AT_UTIL.toast('Tombol dihapus')\">\u{1F5D1} Hapus Tombol</button>";
+          html += "<button class=\"btn btn-ghost btn-sm\" style=\"color:var(--r)\" onclick=\"AT_CANVA.removeOverlay('" + pageId + "'," + idx + ");AT_UTIL.toast('Elemen dihapus')\">\u{1F5D1} Hapus</button>";
           html += "</div>";
           html += "</div>";
         }
@@ -1632,23 +1721,38 @@ body.has-atp-dock #split-pane { padding-bottom: 72px; }
     },
 
     _renderOverlayElement(el, idx, pageId) {
-      const size = SIZE_MAP[el.size] || SIZE_MAP.medium;
-      const shapeClass = "canva-el-" + (el.shape || "pill");
       const selectedClass = (this._selectedOverlay && this._selectedOverlay.pageId === pageId && this._selectedOverlay.idx === idx) ? " selected" : "";
+      const navLabel = el.label || (AT_STATE.m && AT_STATE.m.namaBab) || "PPKn Kelas VII";
 
-      return "<div class=\"canva-overlay-el " + shapeClass + selectedClass + "\" "
+      // ── NAVBAR type: full-width top bar (like real app navbar) ──
+      if (el.type === "navbar") {
+        return "<div class=\"canva-app-navbar canva-overlay-el" + selectedClass + "\" "
+          + "data-idx=\"" + idx + "\" data-page=\"" + pageId + "\" "
+          + "style=\"left:0;top:" + (el.y != null ? el.y : 0) + "%;transform:none;\">"
+          + "<div class=\"canva-nav-logo\">" + this._esc(navLabel) + "</div>"
+          + "<div class=\"canva-nav-bar\"><div class=\"canva-nav-fill\"></div></div>"
+          + "</div>";
+      }
+
+      // ── BUTTON types: styled like real app .btn ──
+      const size = SIZE_MAP[el.size] || SIZE_MAP.medium;
+      const shapeClass = el.shape === "rounded" ? " canva-el-rounded" : el.shape === "rect" ? " canva-el-rect" : "";
+      const textColor = this._getTextColor(el.color || "#F5C842");
+      const isLarge = el.size === "large" || el.customW > 80;
+      const padH = isLarge ? 16 : 10;
+      const padV = isLarge ? 10 : 7;
+      const fs = el.customFs || (isLarge ? ".92rem" : size.fs);
+
+      return "<div class=\"canva-app-btn" + shapeClass + selectedClass + "\" "
         + "data-idx=\"" + idx + "\" data-page=\"" + pageId + "\" "
         + "style=\""
         + "left:" + (el.x || 50) + "%;"
         + "top:" + (el.y || 50) + "%;"
-        + "transform:translate(-50%,-50%);"
-        + "width:" + (el.customW || size.w) + "px;"
-        + "height:" + (el.customH || size.h) + "px;"
-        + "font-size:" + (el.customFs || size.fs) + ";"
+        + "padding:" + padV + "px " + padH + "px;"
+        + "font-size:" + fs + ";"
         + "background:" + (el.color || "#F5C842") + ";"
+        + "color:" + textColor + ";"
         + "opacity:" + ((el.opacity != null ? el.opacity : 100) / 100) + ";"
-        + "color:" + this._getTextColor(el.color || "#F5C842") + ";"
-        + "gap:5px;"
         + "\">"
         + "<span>" + (el.icon || "") + "</span> <span>" + this._esc(el.label || "Btn") + "</span>"
         + "</div>";
@@ -1829,6 +1933,25 @@ body.has-atp-dock #split-pane { padding-bottom: 72px; }
     _addOverlayElement(pageId, typeId) {
       const typeDef = OVERLAY_ELEMENT_TYPES.find(t => t.id === typeId);
       if (!typeDef) return;
+
+      // Navbar: special defaults (full-width top bar)
+      if (typeId === "navbar") {
+        const navLabel = (AT_STATE.m && AT_STATE.m.namaBab) || "";
+        const element = {
+          type: "navbar",
+          x: 0,
+          y: 0,
+          label: navLabel,
+          icon: "",
+          opacity: 100,
+        };
+        this.addOverlay(pageId, element);
+        this._selectedOverlay = { pageId, idx: this.getOverlays(pageId).length - 1 };
+        this._renderCanvaPanel();
+        AT_UTIL.toast("\u2705 Navbar ditambahkan");
+        return;
+      }
+
       const element = {
         type: typeId,
         x: 50,
@@ -1845,7 +1968,7 @@ body.has-atp-dock #split-pane { padding-bottom: 72px; }
       };
       this.addOverlay(pageId, element);
       this._selectedOverlay = { pageId, idx: this.getOverlays(pageId).length - 1 };
-      this.renderEditor(pageId);
+      this._renderCanvaPanel();
       AT_UTIL.toast("\u2705 Elemen \"" + typeDef.label + "\" ditambahkan");
     },
 
@@ -1893,10 +2016,10 @@ body.has-atp-dock #split-pane { padding-bottom: 72px; }
       canvas.parentNode.replaceChild(newCanvas, canvas);
 
       newCanvas.addEventListener("pointerdown", (e) => {
-        const el = e.target.closest(".canva-overlay-el");
+        const el = e.target.closest(".canva-overlay-el, .canva-app-btn, .canva-app-navbar");
         if (!el) {
           this._selectedOverlay = null;
-          newCanvas.querySelectorAll(".canva-overlay-el.selected").forEach(s => s.classList.remove("selected"));
+          newCanvas.querySelectorAll(".selected").forEach(s => s.classList.remove("selected"));
           return;
         }
 
@@ -1904,7 +2027,7 @@ body.has-atp-dock #split-pane { padding-bottom: 72px; }
         this._selectedOverlay = { pageId, idx };
 
         // Visual selection only — no re-render during drag
-        newCanvas.querySelectorAll(".canva-overlay-el.selected").forEach(s => s.classList.remove("selected"));
+        newCanvas.querySelectorAll(".selected").forEach(s => s.classList.remove("selected"));
         el.classList.add("selected");
 
         e.preventDefault();
@@ -2009,13 +2132,23 @@ body.has-atp-dock #split-pane { padding-bottom: 72px; }
         + ".canva-page-bg.contain img{object-fit:contain;}"
         + ".canva-page-bg.cover img{object-fit:cover;}"
         + ".canva-page-bg.manual img{object-fit:contain;}"
-        + ".canva-overlay-btn{position:absolute;z-index:10;display:flex;align-items:center;justify-content:center;"
-        + "font-family:'Nunito',sans-serif;font-weight:800;cursor:pointer;user-select:none;"
-        + "transition:transform .15s,box-shadow .15s;"
-        + "border:1px solid rgba(255,255,255,.12);box-shadow:0 2px 8px rgba(0,0,0,.25);"
-        + "backdrop-filter:blur(4px);text-shadow:0 1px 2px rgba(0,0,0,.15);letter-spacing:.01em;}"
-        + ".canva-overlay-btn:hover{transform:translate(-50%,-50%) scale(1.06);box-shadow:0 4px 16px rgba(0,0,0,.4);}"
-        + ".canva-overlay-btn:active{transform:translate(-50%,-50%) scale(.96);}"
+        /* App-style buttons in student output */
+        + ".canva-s-btn{position:absolute;z-index:10;display:inline-flex;align-items:center;justify-content:center;gap:5px;"
+        + "padding:9px 20px;border-radius:99px;font-family:'Nunito',sans-serif;font-weight:800;font-size:.85rem;"
+        + "cursor:pointer;user-select:none;border:none;box-shadow:0 2px 8px rgba(0,0,0,.2);"
+        + "transition:transform .15s,box-shadow .15s;letter-spacing:.01em;}"
+        + ".canva-s-btn:hover{transform:translate(-50%,-50%) translateY(-1px);box-shadow:0 6px 16px rgba(0,0,0,.35);}"
+        + ".canva-s-btn:active{transform:translate(-50%,-50%) scale(.96);}"
+        + ".canva-s-btn.canva-el-rounded{border-radius:14px;}"
+        + ".canva-s-btn.canva-el-rect{border-radius:6px;}"
+        /* Navbar in student output */
+        + ".canva-s-navbar{position:absolute;top:0;left:0;right:0;z-index:10;"
+        + "background:rgba(14,28,47,.96);backdrop-filter:blur(12px);"
+        + "border-bottom:1px solid rgba(255,255,255,.1);"
+        + "padding:10px 16px;display:flex;align-items:center;gap:10px;height:48px;box-sizing:border-box;}"
+        + ".canva-s-navbar .canva-s-nav-logo{font-family:'Fredoka One',cursive;font-size:.85rem;color:#f5c842;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}"
+        + ".canva-s-navbar .canva-s-nav-bar{width:60px;height:4px;background:rgba(255,255,255,.08);border-radius:99px;overflow:hidden;flex-shrink:0;}"
+        + ".canva-s-navbar .canva-s-nav-fill{height:100%;width:0%;background:linear-gradient(90deg,#f5c842,#38d9d9);border-radius:99px;}"
         + "</style>";
     },
 
@@ -2245,12 +2378,21 @@ body.has-atp-dock #split-pane { padding-bottom: 72px; }
       + "bgDiv.innerHTML='<img src=\"'+cfg.dataUrl+'\" alt=\"bg\">';"
       + "var overlays=OV[pageId]||[];"
       + "overlays.forEach(function(el,i){"
+      // ── NAVBAR type: render as app navbar ──
+      + "if(el.type==='navbar'){"
+      + "var nav=document.createElement('div');"
+      + "nav.className='canva-s-navbar';"
+      + "nav.style.top=(el.y||0)+'%';"
+      + "nav.innerHTML='<div class=\"canva-s-nav-logo\">'+(el.label||'PPKn Kelas VII')+'</div>'"
+      + "+'<div class=\"canva-s-nav-bar\"><div class=\"canva-s-nav-fill\"></div></div>';"
+      + "screen.appendChild(nav);"
+      + "return;"
+      + "}"
+      // ── BUTTON types: render as app-style buttons ──
       + "var btn=document.createElement('div');"
-      + "btn.className='canva-overlay-btn canva-el-'+(el.shape||'pill');"
+      + "btn.className='canva-s-btn canva-el-'+(el.shape||'pill');"
       + "btn.style.left=(el.x||50)+'%';btn.style.top=(el.y||50)+'%';"
       + "btn.style.transform='translate(-50%,-50%)';"
-      + "btn.style.width=(el.customW||64)+'px';btn.style.height=(el.customH||64)+'px';"
-      + "btn.style.fontSize=(el.customFs||'.88rem');"
       + "btn.style.background=el.color||'#F5C842';"
       + "btn.style.opacity=((el.opacity!=null?el.opacity:100)/100);"
       + "var c=el.color||'#F5C842',ch=c.replace('#','');"
