@@ -263,6 +263,9 @@ interface AuthoringState {
   // Navigation
   activePanel: PanelId;
 
+  // Mode tracking
+  activePreset: string | null; // null = project mode, string = preset key
+
   // Data
   meta: MetaState;
   cp: CpState;
@@ -366,6 +369,7 @@ interface AuthoringState {
 export const useAuthoringStore = create<AuthoringState>((set, get) => ({
   // ── Initial state ──────────────────────────────────────────────
   activePanel: 'dashboard' as PanelId,
+  activePreset: null as string | null,
 
   meta: {
     judulPertemuan: '', subjudul: '', ikon: '\uD83D\uDCDA', durasi: '',
@@ -769,6 +773,7 @@ export const useAuthoringStore = create<AuthoringState>((set, get) => ({
       if (!raw) return false;
       const data = JSON.parse(raw);
       set({
+        activePreset: null, // Loaded data is always a project, not a preset
         meta: data.meta || get().meta,
         cp: data.cp || get().cp,
         tp: data.tp || [],
@@ -819,15 +824,24 @@ export const useAuthoringStore = create<AuthoringState>((set, get) => ({
     const kuis = PRESETS_KUIS[mapping.kuis];
 
     set({
+      activePreset: presetKey === 'blank' ? null : presetKey,
       meta: mp ? deepClone(mp) : get().meta,
       cp: cp ? deepClone(cp) : get().cp,
       tp: tp ? deepClone(tp.items) : [],
       atp: atp ? deepClone(atp) : get().atp,
       alur: alur ? deepClone(alur.steps) : [],
       kuis: kuis ? deepClone(kuis.soal) : [],
-      dirty: true,
+      skenario: [],
+      materi: { blok: [] },
+      modules: [],
+      games: [],
+      dirty: false,
     });
-    toast.success(`\u26A1 Preset diterapkan: ${presetKey}`);
+    if (presetKey === 'blank') {
+      toast.success('\u2728 Proyek kosong dibuat');
+    } else {
+      toast.success(`\u26A1 Preset diterapkan: ${presetKey}`);
+    }
   },
 
   applyKuisPreset: (presetKey) => {
@@ -874,6 +888,7 @@ export const useAuthoringStore = create<AuthoringState>((set, get) => ({
 
   newProject: () => {
     set({
+      activePreset: null,
       meta: { judulPertemuan: '', subjudul: '', ikon: '\uD83D\uDCDA', durasi: '', namaBab: '', mapel: '', kelas: '', kurikulum: '' },
       cp: { elemen: '', subElemen: '', capaianFase: '', profil: [], fase: 'D', kelas: '' },
       tp: [],

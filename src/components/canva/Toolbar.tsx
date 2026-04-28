@@ -106,9 +106,18 @@ export default function Toolbar() {
       </button>
       <div className="w-px h-5 bg-zinc-700 mx-1" />
 
-      {/* Action buttons */}
-      <button onClick={handlePreview} title="Preview" className="p-1.5 rounded hover:bg-zinc-800 text-zinc-400 hover:text-zinc-200 transition-colors">👁</button>
-      <button onClick={handleExport} title="Export HTML" className="p-1.5 rounded hover:bg-zinc-800 text-zinc-400 hover:text-zinc-200 transition-colors">📤</button>
+      {/* Action buttons — clearly labeled as Canva Design Preview */}
+      <button
+        onClick={handlePreview}
+        title="Preview Desain Canva (buka di tab baru)"
+        className="p-1.5 rounded hover:bg-amber-500/10 text-amber-400 hover:text-amber-300 transition-colors border border-transparent hover:border-amber-500/30"
+      >
+        <span className="flex items-center gap-1">
+          <span>🎨</span>
+          <span className="hidden xl:inline text-[10px] font-semibold">Preview Desain</span>
+        </span>
+      </button>
+      <button onClick={handleExport} title="Export Halaman HTML" className="p-1.5 rounded hover:bg-zinc-800 text-zinc-400 hover:text-zinc-200 transition-colors">📤</button>
       <button onClick={handleExportSlideshow} title="Export Slideshow" className="p-1.5 rounded hover:bg-zinc-800 text-zinc-400 hover:text-zinc-200 transition-colors">🎞</button>
       <button
         onClick={() => { if (confirm('Bersihkan semua elemen di halaman ini?')) clearStage(); }}
@@ -121,7 +130,12 @@ export default function Toolbar() {
       {/* Ratio badge */}
       <span className="px-2 py-0.5 rounded bg-zinc-800 text-amber-400 font-bold text-[10px] ml-1">{ratioId}</span>
 
-      {/* Keyboard hints */}
+      {/* Tip: clearly label this as Canva Design tool */}
+      <div className="hidden xl:flex items-center gap-1 ml-2 text-[9px] text-amber-500/60 bg-amber-500/5 rounded px-1.5 py-0.5 border border-amber-500/10">
+        <span>🎨 Mode Desain Canva</span>
+        <span>&middot;</span>
+        <span>Preview di atas = desain slide</span>
+      </div>
       <div className="hidden lg:flex items-center gap-2 ml-2 text-[9px] text-zinc-600">
         <span>Del=hapus</span>
         <span>Arrow=nudge</span>

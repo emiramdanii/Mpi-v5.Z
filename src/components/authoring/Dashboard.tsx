@@ -11,6 +11,7 @@ export default function Dashboard() {
   const modules = useAuthoringStore((s) => s.modules);
   const games = useAuthoringStore((s) => s.games);
   const materi = useAuthoringStore((s) => s.materi);
+  const activePreset = useAuthoringStore((s) => s.activePreset);
   const calcCompleteness = useAuthoringStore((s) => s.calcCompleteness);
   const applyFullPreset = useAuthoringStore((s) => s.applyFullPreset);
   const setActivePanel = useAuthoringStore((s) => s.setActivePanel);
@@ -18,6 +19,7 @@ export default function Dashboard() {
   const saveToStorage = useAuthoringStore((s) => s.saveToStorage);
 
   const completeness = calcCompleteness();
+  const isPresetMode = activePreset !== null;
 
   const stats = [
     { label: 'TP', val: tp.length, icon: '🎯', color: 'text-amber-400' },
@@ -55,8 +57,48 @@ export default function Dashboard() {
     URL.revokeObjectURL(url);
   };
 
+  const presetLabels: Record<string, string> = {
+    'hakikat-norma': 'Bab 3 P1: Hakikat Norma',
+    'macam-norma': 'Bab 3 P2: Macam Norma',
+  };
+
   return (
     <div className="p-6 space-y-5 max-w-5xl">
+      {/* ── MODE INDICATOR ──────────────────────────────────────── */}
+      <div className={`rounded-xl p-4 flex items-center gap-3 border ${
+        isPresetMode
+          ? 'bg-amber-500/10 border-amber-500/30'
+          : 'bg-emerald-500/10 border-emerald-500/30'
+      }`}>
+        <div className={`w-10 h-10 rounded-lg flex items-center justify-center text-lg ${
+          isPresetMode ? 'bg-amber-500/20' : 'bg-emerald-500/20'
+        }`}>
+          {isPresetMode ? '⚡' : '📁'}
+        </div>
+        <div className="flex-1">
+          <div className={`text-sm font-bold ${isPresetMode ? 'text-amber-400' : 'text-emerald-400'}`}>
+            {isPresetMode ? `Mode Preset: ${presetLabels[activePreset || ''] || activePreset}` : 'Mode Proyek'}
+          </div>
+          <div className="text-xs text-zinc-400 mt-0.5">
+            {isPresetMode
+              ? 'Anda sedang mengedit berdasarkan template preset. Simpan sebagai proyek untuk memisahkan dari preset.'
+              : 'Anda sedang mengerjakan proyek mandiri. Semua perubahan tersimpan otomatis.'
+            }
+          </div>
+        </div>
+        {isPresetMode && (
+          <button
+            onClick={() => {
+              saveToStorage();
+              useAuthoringStore.setState({ activePreset: null });
+            }}
+            className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold rounded-lg transition-colors"
+          >
+            Simpan sebagai Proyek
+          </button>
+        )}
+      </div>
+
       {/* Panel Header */}
       <div>
         <h2 className="text-xl font-bold text-zinc-100">Dashboard</h2>
@@ -80,7 +122,7 @@ export default function Dashboard() {
             <p className="text-xs text-zinc-400 mt-1">Buat media pembelajaran interaktif dengan mudah. Ikuti langkah-langkah berikut:</p>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-2 mt-3">
               {[
-                { num: '1', text: 'Lengkapi Identitas' },
+                { num: '1', text: 'Pilih Preset / Proyek Baru' },
                 { num: '2', text: 'Isi CP / TP / ATP' },
                 { num: '3', text: 'Tambah Konten & Game' },
                 { num: '4', text: 'Preview & Export' },
@@ -98,14 +140,14 @@ export default function Dashboard() {
       </div>
 
       {/* Tips Card */}
-      <div className="bg-zinc-900 border border-amber-500/20 rounded-xl p-5">
-        <h3 className="text-sm font-bold text-amber-400 mb-3">💡 Tips Cepat</h3>
+      <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-5">
+        <h3 className="text-sm font-bold text-zinc-200 mb-3">💡 Tips Penting</h3>
         <div className="space-y-2">
           {[
-            { icon: '⚡', text: '<strong>Live Preview Otomatis</strong> — Panel preview otomatis terbuka saat layar cukup lebar.' },
-            { icon: '🔄', text: '<strong>Auto-Sync Navigasi</strong> — Saat pindah tab, preview otomatis menampilkan slide yang sesuai.' },
-            { icon: '⌨️', text: '<strong>Ctrl+Z</strong> untuk Undo, <strong>Ctrl+Y</strong> untuk Redo.' },
-            { icon: '📐', text: '<strong>Presets</strong> — Gunakan preset cepat di bawah untuk mengisi semua tab sekaligus.' },
+            { icon: '📱', text: '<strong>Preview Aplikasi</strong> — Menampilkan tampilan siswa secara lengkap (cover, materi, kuis, skor). Navigasi bebas tanpa reset.' },
+            { icon: '🎨', text: '<strong>Preview Desain Canva</strong> — Menampilkan desain slide visual saja. Berbeda dari Preview Aplikasi.' },
+            { icon: '⚡', text: '<strong>Preset vs Proyek</strong> — Preset adalah template data contoh. Setelah mengedit, simpan sebagai proyek agar data terpisah.' },
+            { icon: '🔄', text: '<strong>Auto-Save</strong> — Data otomatis tersimpan ke browser setiap 8 detik saat ada perubahan.' },
           ].map((tip, i) => (
             <div key={i} className="flex items-start gap-2 text-xs text-zinc-300">
               <span className="flex-shrink-0">{tip.icon}</span>
@@ -115,23 +157,76 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* Quick Actions */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-        {[
-          { icon: '✨', label: 'Proyek Baru', sub: 'Mulai dari nol', action: () => newProject() },
-          { icon: '📥', label: 'Import JSON', sub: 'Upload data proyek', action: () => setActivePanel('import') },
-          { icon: '⚡', label: 'Auto-Generate', sub: 'Paste teks, auto-fill', action: () => setActivePanel('autogen') },
-        ].map((item) => (
+      {/* Quick Actions — Proyek */}
+      <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-5">
+        <h3 className="text-sm font-bold text-zinc-200 mb-1">📁 Aksi Proyek</h3>
+        <p className="text-xs text-zinc-500 mb-3">Buat proyek baru atau kelola proyek yang sudah ada.</p>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           <button
-            key={item.label}
-            onClick={item.action}
-            className="bg-zinc-900 border border-zinc-800 rounded-xl p-4 text-center hover:border-zinc-700 hover:bg-zinc-900/80 transition-colors cursor-pointer"
+            onClick={() => newProject()}
+            className="bg-zinc-800/50 border border-zinc-700/50 rounded-lg p-4 text-center hover:border-emerald-500/30 transition-colors cursor-pointer group"
           >
-            <div className="text-2xl mb-1">{item.icon}</div>
-            <div className="text-sm font-semibold text-zinc-200">{item.label}</div>
-            <div className="text-xs text-zinc-500">{item.sub}</div>
+            <div className="text-2xl mb-1 group-hover:scale-110 transition-transform">✨</div>
+            <div className="text-sm font-semibold text-zinc-200">Proyek Baru</div>
+            <div className="text-xs text-zinc-500">Mulai dari nol</div>
           </button>
-        ))}
+          <button
+            onClick={() => setActivePanel('projects')}
+            className="bg-zinc-800/50 border border-zinc-700/50 rounded-lg p-4 text-center hover:border-emerald-500/30 transition-colors cursor-pointer group"
+          >
+            <div className="text-2xl mb-1 group-hover:scale-110 transition-transform">📂</div>
+            <div className="text-sm font-semibold text-zinc-200">Buka Proyek</div>
+            <div className="text-xs text-zinc-500">Load dari penyimpanan</div>
+          </button>
+          <button
+            onClick={() => setActivePanel('import')}
+            className="bg-zinc-800/50 border border-zinc-700/50 rounded-lg p-4 text-center hover:border-emerald-500/30 transition-colors cursor-pointer group"
+          >
+            <div className="text-2xl mb-1 group-hover:scale-110 transition-transform">📥</div>
+            <div className="text-sm font-semibold text-zinc-200">Import JSON</div>
+            <div className="text-xs text-zinc-500">Upload data proyek</div>
+          </button>
+        </div>
+      </div>
+
+      {/* Presets — CLEARLY SEPARATED */}
+      <div className="bg-zinc-900 border border-amber-500/20 rounded-xl p-5">
+        <div className="flex items-center gap-2 mb-1">
+          <h3 className="text-sm font-bold text-amber-400">⚡ Preset Template</h3>
+          <span className="text-[0.6rem] bg-amber-500/15 text-amber-500 px-1.5 py-0.5 rounded font-bold">TEMPLATE DATA CONTOH</span>
+        </div>
+        <p className="text-xs text-zinc-400 mb-3">
+          Preset mengisi <strong>semua tab</strong> dengan data contoh PPKn Kelas VII. 
+          Setelah menggunakan preset, Anda bisa mengedit isinya dan menyimpan sebagai proyek mandiri.
+        </p>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          {[
+            { key: 'hakikat-norma', icon: '🧑\u200D🤝\u200D🧑', label: 'Bab 3 – P1: Hakikat Norma', sub: 'PPKn Kelas VII' },
+            { key: 'macam-norma', icon: '📜', label: 'Bab 3 – P2: Macam Norma', sub: 'PPKn Kelas VII' },
+            { key: 'blank', icon: '📋', label: 'Proyek Kosong', sub: 'Isi semua manual' },
+          ].map((p) => (
+            <button
+              key={p.key}
+              onClick={() => {
+                if (isPresetMode && !confirm('Preset akan menimpa data saat ini. Lanjutkan?')) return;
+                if (!isPresetMode && (meta.judulPertemuan || tp.length > 0 || kuis.length > 0) && !confirm('Preset akan menimpa data proyek saat ini. Lanjutkan?')) return;
+                applyFullPreset(p.key);
+              }}
+              className={`rounded-lg p-3 text-center transition-colors cursor-pointer ${
+                isPresetMode && activePreset === p.key
+                  ? 'bg-amber-500/15 border-2 border-amber-500/50 ring-1 ring-amber-500/30'
+                  : 'bg-zinc-800/50 border border-zinc-700/50 hover:border-amber-500/30'
+              }`}
+            >
+              <div className="text-xl mb-1">{p.icon}</div>
+              <div className="text-xs font-semibold text-zinc-200">{p.label}</div>
+              <div className="text-[0.65rem] text-zinc-500">{p.sub}</div>
+              {isPresetMode && activePreset === p.key && (
+                <div className="text-[0.6rem] text-amber-400 font-bold mt-1">● AKTIF</div>
+              )}
+            </button>
+          ))}
+        </div>
       </div>
 
       {/* Progress */}
@@ -174,39 +269,44 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* Presets */}
+      {/* Export — clearly separated */}
       <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-5">
-        <h3 className="text-sm font-bold text-zinc-200 mb-1">⚡ Preset Cepat</h3>
-        <p className="text-xs text-zinc-400 mb-3">Klik preset untuk mengisi <em>semua</em> tab sekaligus dengan data contoh.</p>
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-          {[
-            { key: 'hakikat-norma', icon: '🧑\u200D🤝\u200D🧑', label: 'Bab 3 – P1: Hakikat Norma', sub: 'PPKn Kelas VII' },
-            { key: 'macam-norma', icon: '📜', label: 'Bab 3 – P2: Macam Norma', sub: 'PPKn Kelas VII' },
-            { key: 'blank', icon: '📋', label: 'Proyek Kosong', sub: 'Isi semua manual' },
-          ].map((p) => (
+        <h3 className="text-sm font-bold text-zinc-200 mb-3">📤 Export & Preview</h3>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          {/* Preview section — clearly labeled */}
+          <div className="bg-emerald-500/5 border border-emerald-500/20 rounded-lg p-4">
+            <div className="text-xs font-bold text-emerald-400 mb-2 flex items-center gap-1.5">
+              <span>📱</span> PREVIEW APLIKASI SISWA
+            </div>
+            <p className="text-[0.65rem] text-zinc-400 mb-3">
+              Tampilkan tampilan lengkap siswa: cover, materi, skenario, kuis interaktif, dan skor.
+            </p>
             <button
-              key={p.key}
-              onClick={() => applyFullPreset(p.key)}
-              className="bg-zinc-800/50 border border-zinc-700/50 rounded-lg p-3 text-center hover:border-zinc-600 transition-colors cursor-pointer"
+              onClick={() => setActivePanel('preview')}
+              className="w-full px-4 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-sm rounded-lg transition-colors"
             >
-              <div className="text-xl mb-1">{p.icon}</div>
-              <div className="text-xs font-semibold text-zinc-200">{p.label}</div>
-              <div className="text-[0.65rem] text-zinc-500">{p.sub}</div>
+              Buka Preview Aplikasi
             </button>
-          ))}
-        </div>
-      </div>
+          </div>
 
-      {/* Export */}
-      <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-5">
-        <h3 className="text-sm font-bold text-zinc-200 mb-3">📤 Export</h3>
-        <div className="flex flex-wrap gap-2">
-          <button
-            onClick={() => setActivePanel('canva')}
-            className="px-4 py-2 bg-amber-500 hover:bg-amber-400 text-black font-semibold text-sm rounded-lg transition-colors"
-          >
-            🎨 Buka Canva Editor
-          </button>
+          {/* Canva section — clearly labeled */}
+          <div className="bg-amber-500/5 border border-amber-500/20 rounded-lg p-4">
+            <div className="text-xs font-bold text-amber-400 mb-2 flex items-center gap-1.5">
+              <span>🎨</span> CANVA DESIGN EDITOR
+            </div>
+            <p className="text-[0.65rem] text-zinc-400 mb-3">
+              Desain slide visual dengan drag & drop. Hasilnya terpisah dari preview aplikasi siswa.
+            </p>
+            <button
+              onClick={() => setActivePanel('canva')}
+              className="w-full px-4 py-2.5 bg-amber-500 hover:bg-amber-400 text-black font-semibold text-sm rounded-lg transition-colors"
+            >
+              Buka Canva Editor
+            </button>
+          </div>
+        </div>
+
+        <div className="flex flex-wrap gap-2 mt-3">
           <button
             onClick={exportJSON}
             className="px-4 py-2 bg-zinc-800 hover:bg-zinc-700 text-zinc-200 text-sm rounded-lg transition-colors"
@@ -217,7 +317,13 @@ export default function Dashboard() {
             onClick={saveToStorage}
             className="px-4 py-2 bg-zinc-800 hover:bg-zinc-700 text-zinc-200 text-sm rounded-lg transition-colors"
           >
-            🖨️ Simpan ke Browser
+            💾 Simpan ke Browser
+          </button>
+          <button
+            onClick={() => setActivePanel('autogen')}
+            className="px-4 py-2 bg-zinc-800 hover:bg-zinc-700 text-zinc-200 text-sm rounded-lg transition-colors"
+          >
+            ⚡ Auto-Generate
           </button>
         </div>
       </div>

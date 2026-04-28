@@ -45,7 +45,7 @@ const NAV_ITEMS: NavItem[] = [
 const NAV_ITEMS_2: NavItem[] = [
   { id: 'projects', icon: '📁', label: 'Proyek' },
   { id: 'import', icon: '📥', label: 'Import/Export' },
-  { id: 'preview', icon: '👁️', label: 'Live Preview' },
+  { id: 'preview', icon: '📱', label: 'Preview Aplikasi' },
   { id: 'versions', icon: '🕐', label: 'Riwayat' },
 ];
 
@@ -57,7 +57,7 @@ const PANEL_TITLES: Record<PanelId, string> = {
   autogen: 'Auto-Generate',
   projects: 'Kelola Proyek',
   import: 'Import / Export',
-  preview: 'Live Preview',
+  preview: 'Preview Aplikasi Siswa',
   versions: 'Riwayat Versi',
 };
 
@@ -252,14 +252,20 @@ export default function AuthoringTool() {
 
             <div className="ml-auto flex items-center gap-2">
               <button
-                onClick={() => setActivePanel('canva')}
-                className="px-3 py-1.5 bg-zinc-800 hover:bg-zinc-700 text-zinc-200 text-xs rounded-lg transition-colors flex items-center gap-1.5"
+                onClick={() => setActivePanel('preview')}
+                className="px-3 py-1.5 bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-400 text-xs rounded-lg transition-colors flex items-center gap-1.5 border border-emerald-500/20"
               >
                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                   <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
                   <circle cx="12" cy="12" r="3" />
                 </svg>
-                Live Preview
+                Preview Aplikasi
+              </button>
+              <button
+                onClick={() => setActivePanel('canva')}
+                className="px-3 py-1.5 bg-zinc-800 hover:bg-zinc-700 text-zinc-200 text-xs rounded-lg transition-colors flex items-center gap-1.5"
+              >
+                🎨 Canva
               </button>
               <button
                 onClick={() => setActivePanel('import')}
