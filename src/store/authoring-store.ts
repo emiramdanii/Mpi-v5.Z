@@ -62,8 +62,22 @@ export interface KuisItem {
 }
 
 export interface MateriBlok {
-  type: string;
-  data?: Record<string, unknown>;
+  tipe: string;
+  judul?: string;
+  isi?: string;
+  icon?: string;
+  warna?: string;
+  butir?: string[];
+  baris?: string[][];
+  langkah?: Array<{ icon: string; judul: string; isi: string }>;
+  kiri?: { icon?: string; judul?: string; isi?: string };
+  kanan?: { icon?: string; judul?: string; isi?: string };
+  items?: Array<{ icon?: string; angka?: string; satuan?: string; label?: string; warna?: string; judul?: string; isi?: string }>;
+  style?: string;
+  karakter?: string;
+  situasi?: string;
+  pertanyaan?: string;
+  pesan?: string;
 }
 
 export interface MateriState {
@@ -280,6 +294,7 @@ interface AuthoringState {
   addTp: () => void;
   deleteTp: (index: number) => void;
   updateTp: (index: number, key: keyof TpItem, value: unknown) => void;
+  reorderTp: (fromIndex: number, toIndex: number) => void;
 
   // ATP actions
   updateAtpNamaBab: (value: string) => void;
@@ -291,15 +306,41 @@ interface AuthoringState {
   addAlur: () => void;
   deleteAlur: (index: number) => void;
   updateAlur: (index: number, key: keyof AlurItem, value: string) => void;
+  reorderAlur: (fromIndex: number, toIndex: number) => void;
 
   // Kuis actions
   addKuis: () => void;
   deleteKuis: (index: number) => void;
   updateKuis: (index: number, key: string, value: unknown) => void;
   updateKuisOpt: (index: number, optIndex: number, value: string) => void;
+  reorderKuis: (fromIndex: number, toIndex: number) => void;
+
+  // Materi block actions
+  addMateriBlok: (tipe: string) => void;
+  removeMateriBlok: (index: number) => void;
+  updateMateriBlok: (index: number, key: string, value: unknown) => void;
+  moveMateriBlok: (fromIndex: number, toIndex: number) => void;
+
+  // Module actions
+  addModule: (typeId: string) => void;
+  removeModule: (index: number) => void;
+  updateModuleField: (index: number, key: string, value: unknown) => void;
+  moveModule: (fromIndex: number, toIndex: number) => void;
 
   // Skenario actions
   setSkenario: (data: Array<Record<string, unknown>>) => void;
+  addSkenarioChapter: () => void;
+  removeSkenarioChapter: (index: number) => void;
+  updateSkenarioChapter: (index: number, key: string, value: unknown) => void;
+  addSkenarioSetup: (chapterIndex: number) => void;
+  removeSkenarioSetup: (chapterIndex: number, setupIndex: number) => void;
+  updateSkenarioSetup: (chapterIndex: number, setupIndex: number, key: string, value: unknown) => void;
+  addSkenarioChoice: (chapterIndex: number) => void;
+  removeSkenarioChoice: (chapterIndex: number, choiceIndex: number) => void;
+  updateSkenarioChoice: (chapterIndex: number, choiceIndex: number, key: string, value: unknown) => void;
+  addSkenarioConsequence: (chapterIndex: number, choiceIndex: number) => void;
+  removeSkenarioConsequence: (chapterIndex: number, choiceIndex: number, consIndex: number) => void;
+  updateSkenarioConsequence: (chapterIndex: number, choiceIndex: number, consIndex: number, key: string, value: unknown) => void;
 
   // System actions
   markDirty: () => void;
@@ -387,6 +428,14 @@ export const useAuthoringStore = create<AuthoringState>((set, get) => ({
       return { tp: newTp, dirty: true };
     });
   },
+  reorderTp: (fromIndex, toIndex) => {
+    set((s) => {
+      const tp = [...s.tp];
+      const [moved] = tp.splice(fromIndex, 1);
+      tp.splice(toIndex, 0, moved);
+      return { tp, dirty: true };
+    });
+  },
 
   // ── ATP ────────────────────────────────────────────────────────
   updateAtpNamaBab: (value) => {
@@ -432,6 +481,14 @@ export const useAuthoringStore = create<AuthoringState>((set, get) => ({
       return { alur: newAlur, dirty: true };
     });
   },
+  reorderAlur: (fromIndex, toIndex) => {
+    set((s) => {
+      const alur = [...s.alur];
+      const [moved] = alur.splice(fromIndex, 1);
+      alur.splice(toIndex, 0, moved);
+      return { alur, dirty: true };
+    });
+  },
 
   // ── Kuis ───────────────────────────────────────────────────────
   addKuis: () => {
@@ -459,9 +516,230 @@ export const useAuthoringStore = create<AuthoringState>((set, get) => ({
       return { kuis: newKuis, dirty: true };
     });
   },
+  reorderKuis: (fromIndex, toIndex) => {
+    set((s) => {
+      const kuis = [...s.kuis];
+      const [moved] = kuis.splice(fromIndex, 1);
+      kuis.splice(toIndex, 0, moved);
+      return { kuis, dirty: true };
+    });
+  },
+
+  // ── Materi Block ─────────────────────────────────────────────
+  addMateriBlok: (tipe) => {
+    const base: MateriBlok = { tipe };
+    switch (tipe) {
+      case 'teks':      base.judul = ''; base.isi = ''; break;
+      case 'definisi':  base.judul = ''; base.isi = ''; break;
+      case 'poin':      base.judul = ''; base.butir = ['']; break;
+      case 'tabel':     base.judul = ''; base.baris = [['', ''], ['', '']]; break;
+      case 'kutipan':   base.judul = ''; base.isi = ''; break;
+      case 'gambar':    base.judul = ''; base.isi = ''; break;
+      case 'timeline':  base.judul = ''; base.langkah = [{ icon: '📌', judul: '', isi: '' }]; break;
+      case 'highlight': base.judul = ''; base.icon = '⚡'; base.warna = '#f9c82e'; base.isi = ''; break;
+      case 'compare':   base.judul = ''; base.kiri = { icon: '', judul: '', isi: '' }; base.kanan = { icon: '', judul: '', isi: '' }; break;
+      case 'infobox':   base.judul = ''; base.style = 'info'; base.isi = ''; break;
+      case 'checklist': base.judul = ''; base.butir = ['']; break;
+      case 'statistik': base.judul = ''; base.items = [{ icon: '📊', angka: '', label: '', warna: '#3ecfcf' }]; break;
+      case 'studi':     base.judul = ''; base.karakter = '🧑'; base.situasi = ''; base.pertanyaan = ''; base.pesan = ''; break;
+    }
+    set((s) => ({ materi: { blok: [...s.materi.blok, base] }, dirty: true }));
+  },
+  removeMateriBlok: (index) => {
+    set((s) => ({ materi: { blok: s.materi.blok.filter((_, i) => i !== index) }, dirty: true }));
+  },
+  updateMateriBlok: (index, key, value) => {
+    set((s) => {
+      const blok = [...s.materi.blok];
+      blok[index] = { ...blok[index], [key]: value };
+      return { materi: { blok }, dirty: true };
+    });
+  },
+  moveMateriBlok: (fromIndex, toIndex) => {
+    set((s) => {
+      const blok = [...s.materi.blok];
+      const [moved] = blok.splice(fromIndex, 1);
+      blok.splice(toIndex, 0, moved);
+      return { materi: { blok }, dirty: true };
+    });
+  },
+
+  // ── Modules ──────────────────────────────────────────────────
+  addModule: (typeId) => {
+    const defaults: Record<string, Record<string, unknown>> = {
+      skenario: { type: 'skenario', title: '', chapters: [] },
+      video: { type: 'video', title: '', url: '', platform: 'youtube', durasi: '', instruksi: '', pertanyaan: [] },
+      flashcard: { type: 'flashcard', title: '', instruksi: '', kartu: [] },
+      infografis: { type: 'infografis', title: '', layout: 'grid', intro: '', kartu: [] },
+      'studi-kasus': { type: 'studi-kasus', title: '', teks: '', sumber: '', pertanyaan: [] },
+      debat: { type: 'debat', title: '', pertanyaan: '', konteks: '', pihakA: { label: 'Pro / Setuju' }, pihakB: { label: 'Kontra / Tidak Setuju' } },
+      timeline: { type: 'timeline', title: '', intro: '', events: [] },
+      matching: { type: 'matching', title: '', instruksi: '', pasangan: [] },
+      materi: { type: 'materi', title: '', intro: '', blok: [] },
+      truefalse: { type: 'truefalse', title: '', instruksi: '', soal: [] },
+      memory: { type: 'memory', title: '', pasangan: [] },
+      roda: { type: 'roda', title: '', opsi: [] },
+    };
+    const base = defaults[typeId] || { type: typeId, title: '' };
+    set((s) => ({ modules: [...s.modules, { ...base }], dirty: true }));
+  },
+  removeModule: (index) => {
+    set((s) => ({ modules: s.modules.filter((_, i) => i !== index), dirty: true }));
+  },
+  updateModuleField: (index, key, value) => {
+    set((s) => {
+      const modules = [...s.modules];
+      modules[index] = { ...modules[index], [key]: value };
+      return { modules, dirty: true };
+    });
+  },
+  moveModule: (fromIndex, toIndex) => {
+    set((s) => {
+      const modules = [...s.modules];
+      const [moved] = modules.splice(fromIndex, 1);
+      modules.splice(toIndex, 0, moved);
+      return { modules, dirty: true };
+    });
+  },
 
   // ── Skenario ───────────────────────────────────────────────────
   setSkenario: (data) => set({ skenario: data, dirty: true }),
+  addSkenarioChapter: () => {
+    const newChapter: Record<string, unknown> = {
+      title: '',
+      bg: 'sbg-kampung',
+      charEmoji: '🧑',
+      charColor: '#3ecfcf',
+      charPants: '#2563eb',
+      choicePrompt: 'Apa yang akan kamu lakukan?',
+      setup: [{ speaker: 'NARRATOR', text: '' }],
+      choices: [{
+        icon: '🤝', label: '', detail: '', good: true, pts: 10, level: 'good',
+        norma: '', resultTitle: '', resultBody: '',
+        consequences: [{ icon: '✅', text: '' }],
+      }],
+    };
+    set((s) => ({ skenario: [...s.skenario, newChapter], dirty: true }));
+  },
+  removeSkenarioChapter: (index) => {
+    set((s) => ({ skenario: s.skenario.filter((_, i) => i !== index), dirty: true }));
+  },
+  updateSkenarioChapter: (index, key, value) => {
+    set((s) => {
+      const next = [...s.skenario];
+      next[index] = { ...next[index], [key]: value };
+      return { skenario: next, dirty: true };
+    });
+  },
+  addSkenarioSetup: (chapterIndex) => {
+    set((s) => {
+      const next = [...s.skenario];
+      const chapter = { ...next[chapterIndex] };
+      const setup = [...((chapter.setup as Array<Record<string, unknown>>) || []), { speaker: '', text: '' }];
+      chapter.setup = setup;
+      next[chapterIndex] = chapter;
+      return { skenario: next, dirty: true };
+    });
+  },
+  removeSkenarioSetup: (chapterIndex, setupIndex) => {
+    set((s) => {
+      const next = [...s.skenario];
+      const chapter = { ...next[chapterIndex] };
+      const setup = ((chapter.setup as Array<Record<string, unknown>>) || []).filter((_, i) => i !== setupIndex);
+      chapter.setup = setup.length > 0 ? setup : [{ speaker: '', text: '' }];
+      next[chapterIndex] = chapter;
+      return { skenario: next, dirty: true };
+    });
+  },
+  updateSkenarioSetup: (chapterIndex, setupIndex, key, value) => {
+    set((s) => {
+      const next = [...s.skenario];
+      const chapter = { ...next[chapterIndex] };
+      const setup = [...((chapter.setup as Array<Record<string, unknown>>) || [])];
+      setup[setupIndex] = { ...setup[setupIndex], [key]: value };
+      chapter.setup = setup;
+      next[chapterIndex] = chapter;
+      return { skenario: next, dirty: true };
+    });
+  },
+  addSkenarioChoice: (chapterIndex) => {
+    set((s) => {
+      const next = [...s.skenario];
+      const chapter = { ...next[chapterIndex] };
+      const choices = [...((chapter.choices as Array<Record<string, unknown>>) || []), {
+        icon: '🤝', label: '', detail: '', good: false, pts: 5, level: 'mid',
+        norma: '', resultTitle: '', resultBody: '',
+        consequences: [{ icon: '⚠️', text: '' }],
+      }];
+      chapter.choices = choices;
+      next[chapterIndex] = chapter;
+      return { skenario: next, dirty: true };
+    });
+  },
+  removeSkenarioChoice: (chapterIndex, choiceIndex) => {
+    set((s) => {
+      const next = [...s.skenario];
+      const chapter = { ...next[chapterIndex] };
+      const choices = ((chapter.choices as Array<Record<string, unknown>>) || []).filter((_, i) => i !== choiceIndex);
+      chapter.choices = choices;
+      next[chapterIndex] = chapter;
+      return { skenario: next, dirty: true };
+    });
+  },
+  updateSkenarioChoice: (chapterIndex, choiceIndex, key, value) => {
+    set((s) => {
+      const next = [...s.skenario];
+      const chapter = { ...next[chapterIndex] };
+      const choices = [...((chapter.choices as Array<Record<string, unknown>>) || [])];
+      choices[choiceIndex] = { ...choices[choiceIndex], [key]: value };
+      chapter.choices = choices;
+      next[chapterIndex] = chapter;
+      return { skenario: next, dirty: true };
+    });
+  },
+  addSkenarioConsequence: (chapterIndex, choiceIndex) => {
+    set((s) => {
+      const next = [...s.skenario];
+      const chapter = { ...next[chapterIndex] };
+      const choices = [...((chapter.choices as Array<Record<string, unknown>>) || [])];
+      const choice = { ...choices[choiceIndex] };
+      const consequences = [...((choice.consequences as Array<Record<string, unknown>>) || []), { icon: '📌', text: '' }];
+      choice.consequences = consequences;
+      choices[choiceIndex] = choice;
+      chapter.choices = choices;
+      next[chapterIndex] = chapter;
+      return { skenario: next, dirty: true };
+    });
+  },
+  removeSkenarioConsequence: (chapterIndex, choiceIndex, consIndex) => {
+    set((s) => {
+      const next = [...s.skenario];
+      const chapter = { ...next[chapterIndex] };
+      const choices = [...((chapter.choices as Array<Record<string, unknown>>) || [])];
+      const choice = { ...choices[choiceIndex] };
+      const consequences = ((choice.consequences as Array<Record<string, unknown>>) || []).filter((_, i) => i !== consIndex);
+      choice.consequences = consequences;
+      choices[choiceIndex] = choice;
+      chapter.choices = choices;
+      next[chapterIndex] = chapter;
+      return { skenario: next, dirty: true };
+    });
+  },
+  updateSkenarioConsequence: (chapterIndex, choiceIndex, consIndex, key, value) => {
+    set((s) => {
+      const next = [...s.skenario];
+      const chapter = { ...next[chapterIndex] };
+      const choices = [...((chapter.choices as Array<Record<string, unknown>>) || [])];
+      const choice = { ...choices[choiceIndex] };
+      const consequences = [...((choice.consequences as Array<Record<string, unknown>>) || [])];
+      consequences[consIndex] = { ...consequences[consIndex], [key]: value };
+      choice.consequences = consequences;
+      choices[choiceIndex] = choice;
+      chapter.choices = choices;
+      next[chapterIndex] = chapter;
+      return { skenario: next, dirty: true };
+    });
+  },
 
   // ── System ─────────────────────────────────────────────────────
   markDirty: () => set({ dirty: true }),

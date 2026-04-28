@@ -1,8 +1,9 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useCallback, useRef, useEffect } from 'react';
 import { useAuthoringStore, VERB_OPTIONS, COLOR_OPTIONS } from '@/store/authoring-store';
 import type { PanelId } from '@/store/authoring-store';
+import { useDragSort } from '@/hooks/use-drag-sort';
 
 // ── Accordion Item ───────────────────────────────────────────────
 function AccordionSection({
@@ -166,12 +167,34 @@ function CpSection() {
   );
 }
 
+// ── Drag Handle ──────────────────────────────────────────────
+function DragHandle({ onPointerDown, index }: { onPointerDown: (e: React.PointerEvent, index: number) => void; index: number }) {
+  return (
+    <span
+      onPointerDown={(e) => onPointerDown(e, index)}
+      className="text-zinc-600 hover:text-zinc-400 cursor-grab active:cursor-grabbing select-none text-lg leading-none px-1"
+      aria-label="Drag to reorder"
+    >
+      ⠿
+    </span>
+  );
+}
+
 // ── Tujuan Pembelajaran ─────────────────────────────────────────
 function TpSection() {
   const tp = useAuthoringStore((s) => s.tp);
   const addTp = useAuthoringStore((s) => s.addTp);
   const deleteTp = useAuthoringStore((s) => s.deleteTp);
   const updateTp = useAuthoringStore((s) => s.updateTp);
+  const reorderTp = useAuthoringStore((s) => s.reorderTp);
+
+  const handleReorder = useCallback((newItems: typeof tp) => {
+    const fromIndex = tp.findIndex((item, i) => newItems[i] !== item);
+    const toIndex = newItems.findIndex((item, i) => tp[i] !== item);
+    if (fromIndex >= 0 && toIndex >= 0) reorderTp(fromIndex, toIndex);
+  }, [tp, reorderTp]);
+
+  const { dragHandlers } = useDragSort(tp, handleReorder);
 
   if (!tp.length) {
     return (
@@ -191,9 +214,15 @@ function TpSection() {
   return (
     <div className="space-y-4">
       {tp.map((item, i) => (
-        <div key={i} className="bg-zinc-800/50 border border-zinc-700/50 rounded-lg p-4 space-y-3">
+        <div
+          key={i}
+          className={`bg-zinc-800/50 border border-zinc-700/50 rounded-lg p-4 space-y-3 transition-all duration-200 ${
+            dragHandlers.getIsDragged(i) ? 'opacity-50 scale-[0.98]' : ''
+          } ${dragHandlers.getIsOver(i) ? 'border-t-2 border-t-amber-500' : ''}`}
+        >
           {/* Header */}
           <div className="flex items-center gap-2">
+            <DragHandle onPointerDown={dragHandlers.onPointerDown} index={i} />
             <div
               className="w-7 h-7 rounded-md flex items-center justify-center text-xs font-bold flex-shrink-0"
               style={{ background: `${item.color}22`, color: item.color }}
@@ -388,6 +417,15 @@ function AlurSection() {
   const addAlur = useAuthoringStore((s) => s.addAlur);
   const deleteAlur = useAuthoringStore((s) => s.deleteAlur);
   const updateAlur = useAuthoringStore((s) => s.updateAlur);
+  const reorderAlur = useAuthoringStore((s) => s.reorderAlur);
+
+  const handleReorder = useCallback((newItems: typeof alur) => {
+    const fromIndex = alur.findIndex((item, i) => newItems[i] !== item);
+    const toIndex = newItems.findIndex((item, i) => alur[i] !== item);
+    if (fromIndex >= 0 && toIndex >= 0) reorderAlur(fromIndex, toIndex);
+  }, [alur, reorderAlur]);
+
+  const { dragHandlers } = useDragSort(alur, handleReorder);
 
   const faseColors: Record<string, string> = {
     Pendahuluan: '#f9c82e',
@@ -406,8 +444,14 @@ function AlurSection() {
         alur.map((step, i) => {
           const col = faseColors[step.fase] || '#a78bfa';
           return (
-            <div key={i} className="bg-zinc-800/50 border border-zinc-700/50 rounded-lg p-4 space-y-3">
+            <div
+              key={i}
+              className={`bg-zinc-800/50 border border-zinc-700/50 rounded-lg p-4 space-y-3 transition-all duration-200 ${
+                dragHandlers.getIsDragged(i) ? 'opacity-50 scale-[0.98]' : ''
+              } ${dragHandlers.getIsOver(i) ? 'border-t-2 border-t-amber-500' : ''}`}
+            >
               <div className="flex items-center gap-2">
+                <DragHandle onPointerDown={dragHandlers.onPointerDown} index={i} />
                 <div
                   className="w-7 h-7 rounded-md flex items-center justify-center text-xs font-bold flex-shrink-0"
                   style={{ background: `${col}22`, color: col }}
