@@ -1,11 +1,13 @@
 // ═══════════════════════════════════════════════════════════════
-// LIVEVIEW_ENHANCEMENTS.JS v6.5 — Bidirectional Smart Auto-Sync + Typing Bypass
+// LIVEVIEW_ENHANCEMENTS.JS v6.6 — Bidirectional Smart Auto-Sync + Typing Bypass
 // ═══════════════════════════════════════════════════════════════
 // Berisi:
 //   AT_PAGE_SYNC  — deteksi halaman pintar: editor panel ↔ preview page
 //   AT_LAYOUT     — layout picker dengan injeksi CSS ke student HTML
 //
-// v6.5 Typing Bypass:
+// v6.6 Compatible with liveview.js v5.0:
+//   - State merge (no overwrite) prevents CP/TP/ATP race condition
+//   - Debounced iframe state reports (250ms) prevent premature state loss
 //   - Navigation actions (AT_NAV.go, switchKontenTab) force refresh bypass typing
 //   - syncToEditor() clears typing state before navigating
 //   - accordion sync uses navigateToPage() which auto-forces
@@ -523,5 +525,5 @@ document.addEventListener('DOMContentLoaded', () => {
   // ── Inject Split View tip di Dashboard ──
   _injectSplitViewTip();
 
-  console.log('liveview_enhancements.js v6.5 — typing bypass on navigation, reverse sync, bidirectional sync');
+  console.log('liveview_enhancements.js v6.6 — typing bypass on navigation, reverse sync, bidirectional sync, compatible with liveview v5.0');
 });

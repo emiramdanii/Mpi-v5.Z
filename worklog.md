@@ -276,3 +276,28 @@ Stage Summary:
 - Preview updates ~1.5s after user stops typing (1200ms typing timer + 300ms debounce)
 - Navigation actions (accordion, tab switch, panel switch) always force immediate refresh
 - Doc tab (CP/TP/ATP) is now tracked, saved, and restored across all iframe rebuilds
+---
+Task ID: 1
+Agent: Main Agent
+Task: Fix typing flicker + CP/TP/ATP navigation bug — implement smooth hybrid rebuild
+
+Work Log:
+- Analyzed current liveview.js v4.6 architecture and identified two root causes
+- Found MutationObserver was calling refresh() directly, bypassing scheduleRefresh() and typing skip — THIS was the root cause of typing flicker
+- Found race condition in CP/TP/ATP: iframe's _rs() sent previewState without docTab immediately after goPage, overwriting parent's saved docTab
+- Researched 5 alternative approaches: fix+opacity, double-buffer, event-driven targeted, diff-patch, streaming
+- Implemented v5.0 Smooth Hybrid Rebuild approach with 4 fixes:
+  1. MutationObserver now uses scheduleRefresh() and respects _isTyping flag
+  2. State merge instead of overwrite in parent message handler (preserves docTab)
+  3. Debounced _rs() in iframe navScript (250ms) to prevent premature state reports
+  4. CSS opacity transition (120ms fade) replaces hard visibility:hidden flash
+  5. requestAnimationFrame gating in scheduleRefresh for smooth timing
+- Updated liveview_enhancements.js to v6.6 for compatibility
+- Deployed both files to public/
+
+Stage Summary:
+- liveview.js v5.0 deployed with 4 major stability improvements
+- liveview_enhancements.js v6.6 deployed (compatible with v5.0)
+- Typing flicker: ROOT CAUSE fixed (MutationObserver bypass removed)
+- CP/TP/ATP: Race condition fixed (state merge + debounced iframe reports)
+- Visual: Smooth fade transition replaces hard flash

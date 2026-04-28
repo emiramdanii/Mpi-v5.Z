@@ -1,5 +1,5 @@
 // ═══════════════════════════════════════════════════════════════
-// LIVEVIEW.JS — Split-View Live Preview v4.6 (Tab Persist + Typing Skip)
+// LIVEVIEW.JS — Split-View Live Preview v5.0 (Smooth Hybrid Rebuild)
 // Berisi:
 //   AT_SPLITVIEW  — live preview berdampingan dengan editor
 //   Preview patch, init code, MutationObserver, keyboard shortcuts
@@ -9,7 +9,10 @@
 // Editor modules (AT_UNDO, AT_SK_EDITOR, AT_FUNGSI_EDITOR,
 // AT_JSON_IO, accordion helpers) are in liveview-editors.js
 //
-// v4.6 Tab Persist + Typing Skip:
+// v5.0 Smooth Hybrid Rebuild:
+//   - MutationObserver now uses scheduleRefresh() (respects typing skip!)
+//   - Opacity CSS transition replaces hard visibility:hidden flash
+//   - State merge instead of overwrite (fixes CP/TP/ATP race condition)
 //   - COMPLETE SKIP rebuild during active typing (no iframe srcdoc write)
 //   - Typing indicator shows "Mengetik..." instead of full rebuild
 //   - Final rebuild triggered automatically when typing stops
@@ -18,6 +21,7 @@
 //   - _forceNextRefresh flag for navigation actions to bypass typing skip
 //   - navigateToPage() saves doc tab to _savedPreviewState for persistence
 //   - Batch undo pushes during typing (avoid deep clone per keystroke)
+//   - requestAnimationFrame gating for smooth rebuild timing
 // ═══════════════════════════════════════════════════════════════
 
 /* ══════════════════════════════════════════════════════════════
@@ -42,6 +46,7 @@ window.AT_SPLITVIEW = {
   _buildCount: 0,
   _errorRetries: 0,
   _savedPreviewState: null,
+  _rafPending: false,         // requestAnimationFrame gating flag
 
   // ── Typing Detection ──
   _isTyping: false,
@@ -167,7 +172,15 @@ window.AT_SPLITVIEW = {
     clearTimeout(this._debounceTimer);
     this._hasPendingRefresh = false;
     const delay = this._buildCount < 2 ? 120 : 300;
-    this._debounceTimer = setTimeout(() => this.refresh(), delay);
+    // Use requestAnimationFrame to avoid mid-frame rendering
+    this._debounceTimer = setTimeout(() => {
+      if (this._rafPending) return;
+      this._rafPending = true;
+      requestAnimationFrame(() => {
+        this._rafPending = false;
+        this.refresh();
+      });
+    }, delay);
   },
 
   /* ── Force refresh — always rebuild ── */
@@ -228,7 +241,9 @@ window.AT_SPLITVIEW = {
       this._lastHTML = html;
       if (loading) loading.style.display = "flex";
       this._resetIframeState();
-      frame.style.visibility = 'hidden';
+      // SMOOTH FADE: use opacity transition instead of hard visibility:hidden
+      frame.style.transition = 'opacity 120ms ease';
+      frame.style.opacity = '0';
 
       // ── Aggressive anti-flicker: kill ALL animations + transitions ──
       const antiFlicker = `<style>
@@ -283,15 +298,23 @@ window.AT_SPLITVIEW = {
       setTimeout(function(){window.scrollTo(0,document.body.scrollHeight);},100);
     }
   });
+  var _rsTimer=null;
+  function _rsDebounced(){
+    clearTimeout(_rsTimer);
+    // v5.0: Debounce state reports to prevent race condition
+    // When multiple messages arrive quickly (goPage + switchDocTab),
+    // only report state after the last one settles (250ms)
+    _rsTimer=setTimeout(_rs,250);
+  }
   var _og=window.go;
-  window.go=function(id){if(_og)_og(id);_rs();};
-  var _gm=window.goMatP;if(_gm){window.goMatP=function(i){_gm(i);setTimeout(_rs,80);};}
-  var _mn=window.matNav;if(_mn){window.matNav=function(d){_mn(d);setTimeout(_rs,80);};}
-  var _gmp=window.goModP;if(_gmp){window.goModP=function(i){_gmp(i);setTimeout(_rs,80);};}
-  var _mdn=window.modNav;if(_mdn){window.modNav=function(d){_mdn(d);setTimeout(_rs,80);};}
-  var _sf=window.swFt;if(_sf){window.swFt=function(i){_sf(i);setTimeout(_rs,80);};}
+  window.go=function(id){if(_og)_og(id);_rsDebounced();};
+  var _gm=window.goMatP;if(_gm){window.goMatP=function(i){_gm(i);_rsDebounced();};}
+  var _mn=window.matNav;if(_mn){window.matNav=function(d){_mn(d);_rsDebounced();};}
+  var _gmp=window.goModP;if(_gmp){window.goModP=function(i){_gmp(i);_rsDebounced();};}
+  var _mdn=window.modNav;if(_mdn){window.modNav=function(d){_mdn(d);_rsDebounced();};}
+  var _sf=window.swFt;if(_sf){window.swFt=function(i){_sf(i);_rsDebounced();};}
   var _okT=window.kT;
-  if(_okT){window.kT=function(id,el){_okT(id,el);_curDocTab=id;setTimeout(_rs,80);};}
+  if(_okT){window.kT=function(id,el){_okT(id,el);_curDocTab=id;_rsDebounced();};}
   function _rs(){
     var s={};
     var as=document.querySelector('.screen.active');
@@ -317,7 +340,8 @@ window.AT_SPLITVIEW = {
       // Remove old listeners to prevent stacking
       frame.onload = null;
       frame.addEventListener("load", () => {
-        frame.style.visibility = 'visible';
+        // SMOOTH FADE IN: opacity 0→1 with CSS transition
+        frame.style.opacity = '1';
         setTimeout(() => {
           // 1. Navigate to correct page + restore doc tab
           this._navigateFrame();
@@ -336,7 +360,7 @@ window.AT_SPLITVIEW = {
 
       // Safety timeout
       setTimeout(() => {
-        frame.style.visibility = 'visible';
+        frame.style.opacity = '1';
         if (loading) loading.style.display = "none";
         if (!this._iframeReady) this._flushPendingMessages();
       }, 4000);
@@ -581,7 +605,9 @@ function _initModalClose() {
 
 /* ══════════════════════════════════════════════════════════════
    HELPER: MutationObserver fallback for form changes
-   Throttled 800ms, only acts if markDirty didn't fire
+   v5.0: Now uses scheduleRefresh() to RESPECT typing skip!
+   Previously called refresh() directly — this was the ROOT CAUSE
+   of typing flicker even when _isTyping was true.
    ══════════════════════════════════════════════════════════════ */
 let _mutationObserver = null;
 function _initMutationObserver() {
@@ -593,13 +619,18 @@ function _initMutationObserver() {
   let _lastMutCheck = 0;
   _mutationObserver = new MutationObserver((mutations) => {
     if (!AT_SPLITVIEW.active) return;
+    // Respect typing state — don't trigger rebuild during typing
+    if (AT_SPLITVIEW._isTyping) {
+      AT_SPLITVIEW._hasPendingRefresh = true;
+      AT_SPLITVIEW._showTypingIndicator();
+      return;
+    }
     const now = Date.now();
     if (now - _lastMutCheck < 800) return;
     _lastMutCheck = now;
     if (!AT_STATE.dirty) return;
-    if (AT_SPLITVIEW._debounceTimer) return;
-    clearTimeout(AT_SPLITVIEW._debounceTimer);
-    AT_SPLITVIEW._debounceTimer = setTimeout(() => AT_SPLITVIEW.refresh(), 800);
+    // Use scheduleRefresh instead of direct refresh() — respects all guards
+    AT_SPLITVIEW.scheduleRefresh();
   });
 
   _mutationObserver.observe(contentEl, {
@@ -713,9 +744,21 @@ document.addEventListener("DOMContentLoaded", () => {
     if (e.data && e.data.action === "retry") {
       AT_SPLITVIEW.forceRefresh();
     }
-    // Track preview internal state (page, sub-page, scroll, docTab)
+    // v5.0: MERGE preview state instead of OVERWRITE
+    // Fixes CP/TP/ATP race condition where iframe sends state without docTab
+    // during goPage, overwriting the docTab saved by navigateToPage()
     if (e.data && e.data.previewState) {
-      AT_SPLITVIEW._savedPreviewState = e.data.previewState;
+      const incoming = e.data.previewState;
+      const existing = AT_SPLITVIEW._savedPreviewState || {};
+      // Merge: incoming takes priority, but preserve docTab if iframe didn't report it
+      if (incoming.docTab === undefined && existing.docTab) {
+        incoming.docTab = existing.docTab;
+      }
+      // Preserve scrollTop if incoming doesn't have it
+      if (incoming.scrollTop === undefined && existing.scrollTop) {
+        incoming.scrollTop = existing.scrollTop;
+      }
+      AT_SPLITVIEW._savedPreviewState = incoming;
     }
     if (e.data && e.data.previewScroll) {
       AT_SPLITVIEW._savedPreviewState = AT_SPLITVIEW._savedPreviewState || {};
@@ -728,5 +771,5 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   });
 
-  console.log("liveview.js v4.6 — typing skip (no rebuild while typing), doc tab persist (CP/TP/ATP), auto-restore on rebuild");
+  console.log("liveview.js v5.0 — smooth hybrid rebuild (opacity transition, MutationObserver respects typing, state merge for CP/TP/ATP)");
 });
