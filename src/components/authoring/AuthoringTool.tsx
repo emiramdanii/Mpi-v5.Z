@@ -12,6 +12,7 @@ import AutoGenerate from './AutoGenerate';
 import Projects from './Projects';
 import ImportExport from './ImportExport';
 import Riwayat from './Riwayat';
+import LivePreview from './LivePreview';
 
 // Lazy-load CanvaBuilder (heavy component, SSR disabled)
 const CanvaBuilder = dynamic(() => import('@/components/canva/CanvaBuilder'), {
@@ -44,6 +45,7 @@ const NAV_ITEMS: NavItem[] = [
 const NAV_ITEMS_2: NavItem[] = [
   { id: 'projects', icon: '📁', label: 'Proyek' },
   { id: 'import', icon: '📥', label: 'Import/Export' },
+  { id: 'preview', icon: '👁️', label: 'Live Preview' },
   { id: 'versions', icon: '🕐', label: 'Riwayat' },
 ];
 
@@ -55,6 +57,7 @@ const PANEL_TITLES: Record<PanelId, string> = {
   autogen: 'Auto-Generate',
   projects: 'Kelola Proyek',
   import: 'Import / Export',
+  preview: 'Live Preview',
   versions: 'Riwayat Versi',
 };
 
@@ -130,6 +133,7 @@ export default function AuthoringTool() {
       case 'autogen': return <AutoGenerate />;
       case 'projects': return <Projects />;
       case 'import': return <ImportExport />;
+      case 'preview': return <LivePreview />;
       case 'versions': return <Riwayat />;
       default: return <Dashboard />;
     }
@@ -137,6 +141,8 @@ export default function AuthoringTool() {
 
   // For Canva panel, render full-bleed (no padding)
   const isCanva = activePanel === 'canva';
+  // For Preview panel, render full-bleed (no header)
+  const isPreview = activePanel === 'preview';
 
   return (
     <div className="h-screen w-screen flex bg-zinc-950 text-zinc-200 overflow-hidden">
@@ -222,7 +228,7 @@ export default function AuthoringTool() {
       {/* ── Main Area ───────────────────────────────────────── */}
       <div className="flex-1 flex flex-col min-w-0">
         {/* ── Header ───────────────────────────────────────── */}
-        {!isCanva && (
+        {!isCanva && !isPreview && (
           <header className="h-12 flex-shrink-0 bg-zinc-900 border-b border-zinc-800 flex items-center gap-3 px-4">
             <button
               onClick={() => setSidebarOpen(!sidebarOpen)}
@@ -274,7 +280,7 @@ export default function AuthoringTool() {
         {/* ── Content ──────────────────────────────────────── */}
         <main
           className={`flex-1 overflow-y-auto ${
-            isCanva ? '' : 'bg-zinc-950'
+            isCanva || isPreview ? '' : 'bg-zinc-950'
           }`}
         >
           {renderPanel()}

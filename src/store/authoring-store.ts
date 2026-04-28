@@ -4,7 +4,7 @@ import { create } from 'zustand';
 import { toast } from 'sonner';
 
 // ── Types ────────────────────────────────────────────────────────
-export type PanelId = 'dashboard' | 'dokumen' | 'konten' | 'canva' | 'autogen' | 'projects' | 'import' | 'versions';
+export type PanelId = 'dashboard' | 'dokumen' | 'konten' | 'canva' | 'autogen' | 'projects' | 'import' | 'preview' | 'versions';
 
 export interface MetaState {
   judulPertemuan: string;

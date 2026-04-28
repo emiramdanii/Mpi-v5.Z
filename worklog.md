@@ -115,3 +115,52 @@ Stage Summary:
 - Dark theme throughout: zinc-950/900/800 color scheme with amber accent
 - Files created: src/store/authoring-store.ts, src/components/authoring/ (8 files)
 - Files modified: src/app/page.tsx
+
+---
+Task ID: 4
+Agent: Main Agent
+Task: Build Export HTML generator + Live Preview panel for Authoring Tool v3
+
+Work Log:
+- Created `src/lib/export-html.ts` — HTML generator utility
+  - `generateExportHtml()`: generates complete standalone HTML file from Zustand store state
+  - `generatePrintAdminHtml()`: generates print-friendly admin document with CP, TP, ATP, Alur tables
+  - Hardcoded FUNGSI_NORMA preset data (5 functions with icons, colors, descriptions, examples, discussion prompts)
+  - Full HTML entity escaping (`esc()`) to prevent XSS in all user content
+  - All 6 screen sections: Cover, CP/TP/ATP, Skenario, Materi/Fungsi, Kuis, Hasil
+  - Complete inline CSS + JS, embedded data as JSON
+  - Skenario backgrounds (sbg-kampung, sbg-masjid, sbg-kelas, sbg-pasar, sbg-hutan, sbg-pantai)
+  - Dynamic navigation logic: skips empty sections, builds correct "next screen" paths
+  - Materi blok renderer supporting 9 block types: teks, definisi, poin, highlight, compare, kutipan, tabel, timeline, studi, infobox
+  - Confetti animation, score circle, reflection textarea in Hasil screen
+- Created `src/components/authoring/LivePreview.tsx` — Live Preview panel
+  - iframe-based preview using `srcdoc` attribute
+  - 3 device mode buttons: Mobile (390px), Tablet (768px), Desktop (100%)
+  - Screen navigation dropdown to jump to specific screens (Cover, CP/TP/ATP, Skenario, Materi, Kuis, Hasil)
+  - Auto-refreshes when store state changes (debounced 500ms via useRef)
+  - Bidirectional screen sync: iframe postMessage → parent screen tracking
+  - Dark theme matching the app (zinc-950/900/800)
+  - Full-bleed rendering (no header when preview panel is active)
+- Updated `src/components/authoring/ImportExport.tsx`
+  - Added "Export HTML untuk Siswa" button — downloads standalone student HTML file
+  - Added "Cetak Dokumen Admin" button — opens print-friendly window with CP/TP/ATP/Alur tables
+  - Kept existing Export JSON and Import JSON functionality
+  - Added info tips section explaining each export option
+  - Toast notifications via sonner for success/error feedback
+- Updated `src/store/authoring-store.ts`
+  - Added 'preview' to PanelId type union
+- Updated `src/components/authoring/AuthoringTool.tsx`
+  - Added LivePreview import
+  - Added `{ id: 'preview', icon: '👁️', label: 'Live Preview' }` to NAV_ITEMS_2
+  - Added `preview: 'Live Preview'` to PANEL_TITLES
+  - Added `case 'preview': return <LivePreview />` to renderPanel switch
+  - Added `isPreview` flag for full-bleed rendering (no header/background)
+  - Preview panel renders without header and with transparent background
+
+Stage Summary:
+- Complete HTML export pipeline: store state → standalone HTML file → browser
+- Live Preview panel enables real-time WYSIWYG preview of student experience
+- Admin print document for teacher documentation
+- All files pass TypeScript type check (0 new errors) and ESLint (0 new warnings)
+- Files created: src/lib/export-html.ts, src/components/authoring/LivePreview.tsx
+- Files modified: src/components/authoring/ImportExport.tsx, src/components/authoring/AuthoringTool.tsx, src/store/authoring-store.ts
