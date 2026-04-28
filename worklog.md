@@ -68,3 +68,31 @@ Stage Summary:
 - Dihapus: AT_LIVE_SYNC (objek + event listener + polling), AT_PAGE_SYNC, 2 dari 3 markDirty patch, double debounce
 - Dipertahankan: AT_SPLITVIEW, AT_UNDO, AT_LAYOUT, AT_SK_EDITOR, AT_FUNGSI_EDITOR, AT_JSON_IO
 - File diubah: liveview.js, liveview_enhancements.js
+
+---
+Task ID: 1
+Agent: Main
+Task: Restructure authoring tool from 11 panels to 7 (4 main + 3 secondary)
+
+Work Log:
+- Read and analyzed all source files (index.html, editor.js, extras.js, data.js, liveview.js, style.css)
+- Identified pain points: 11 sidebar panels, preset cards on every panel, excessive save buttons
+- Redesigned sidebar from 11 items (3 collapsible groups) to 7 flat items (4 main + divider + 3 secondary)
+- Created p-dokumen panel with 5 accordion sections (Identitas, CP, TP, ATP, Alur)
+- Created p-konten panel with 3 tabs (Materi, Modul/Game, Evaluasi/Kuis)
+- Removed all preset cards from sub-panels (kept only in Dashboard)
+- Added smart defaults (mapel="PPKn", kelas="VII", kurikulum="Kurikulum Merdeka", durasi="2×40 menit", ikon="📚")
+- Reduced save buttons: kept only header + sidebar
+- Updated editor.js NAV_TITLES for new panel mapping
+- Updated extras.js AT_NAV.go patch for konten panel
+- Added accordion CSS styles and konten tab CSS styles
+- Added toggleAccordion() and switchKontenTab() functions
+- Copied all updated files to /home/z/my-project/public/
+
+Stage Summary:
+- 11 panels → 7 panels (4 main: Dashboard, Dokumen, Konten, Auto-Generate + 3 secondary: Proyek, Import/Export, Riwayat)
+- All form element IDs preserved for JS compatibility
+- All modals, split-pane, scripts preserved
+- Smart defaults auto-fill common PPKn values
+- Preset cards only in Dashboard (removed from individual panels)
+- Auto-save (8s) + header/sidebar save buttons sufficient

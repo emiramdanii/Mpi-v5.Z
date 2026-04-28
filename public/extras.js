@@ -576,20 +576,17 @@ document.addEventListener("DOMContentLoaded", () => {
     };
   }
 
-  // Patch AT_NAV to render materi panel
+  // Patch AT_NAV to render konten panel (materi + modules)
   const _origNav4 = AT_NAV.go.bind(AT_NAV);
   AT_NAV.go = function(id) {
     _origNav4(id);
-    if (id === "materi") { AT_MATERI_EDITOR.ensureState(); AT_MATERI_EDITOR.render(); }
+    if (id === "konten") {
+      AT_MATERI_EDITOR?.ensureState(); AT_MATERI_EDITOR?.render();
+      AT_MODULES?.render(); 
+      if (typeof checkMigrateBanner === "function") checkMigrateBanner();
+    }
     if (id === "versions") { AT_VERSIONS.render(); }
   };
-
-  // Patch header title
-  const _origTitles = {};
-  ["materi","versions"].forEach(id => {
-    const map = {materi:"Editor Materi", versions:"Riwayat Versi"};
-    _origTitles[id] = map[id];
-  });
 
   // Close excel preview modal on overlay click
   const epModal = document.getElementById("excelPreviewModal");

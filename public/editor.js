@@ -15,12 +15,10 @@ window.AT_NAV = {
     if (nav) nav.classList.add("active");
     this.current = id;
     const titles = {
-      dashboard: "Dashboard", meta: "Identitas Media",
-      cp: "Capaian Pembelajaran", tp: "Tujuan Pembelajaran",
-      atp: "Alur Tujuan Pembelajaran", alur: "Alur Pembelajaran",
-      skenario: "Skenario Interaktif", modules: "Modul Pembelajaran", kuis: "Editor Kuis", games: "Editor Game", autogen: "Auto-Generate",
-      import: "Import Template", generate: "Generate AI",
-      preview: "Live Preview", projects: "Kelola Proyek",
+      dashboard: "Dashboard", dokumen: "Dokumen",
+      konten: "Konten Pembelajaran", autogen: "Auto-Generate",
+      import: "Import / Export", projects: "Kelola Proyek",
+      versions: "Riwayat Versi", preview: "Live Preview",
     };
     document.getElementById("headerTitle").innerHTML =
       (titles[id] || id) + `<span>/ ${AT_STATE.meta.judulPertemuan || "Proyek Baru"}</span>`;

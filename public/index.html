@@ -6,17 +6,7 @@
 <title>Authoring Tool — Media Pembelajaran PPKn</title>
 <link rel="stylesheet" href="style.css">
 <style>
-/* ── Sidebar collapsible ── */
-.sidebar-section-label {
-  display:flex;align-items:center;justify-content:space-between;cursor:pointer;user-select:none;
-}
-.sidebar-section-label .toggle-icon { font-size:.65rem;transition:transform .2s;color:var(--muted); }
-.sidebar-section-label.collapsed .toggle-icon { transform:rotate(-90deg); }
-.sidebar-section-items { overflow:hidden;transition:max-height .25s ease; }
-.sidebar-section-items.collapsed { max-height:0 !important; }
-.nav-sub { padding-left:28px !important; }
-
-/* ── CP/TP/ATP tabs ── */
+/* ── CP/TP/ATP tabs (kept for compatibility) ── */
 .cpatp-tab {
   padding:8px 16px;border:none;background:none;cursor:pointer;
   font-size:.8rem;font-weight:700;color:var(--muted);
@@ -26,6 +16,29 @@
 .cpatp-tab.active { color:var(--y);border-bottom-color:var(--y); }
 .cpatp-panel { display:none; }
 .cpatp-panel.active { display:block; }
+
+/* ── Accordion ── */
+.acc-section { margin-bottom:12px; border:1px solid var(--border); border-radius:var(--rad); overflow:hidden; background:var(--card); }
+.acc-header { display:flex; align-items:center; justify-content:space-between; padding:14px 18px; cursor:pointer; user-select:none; transition:background .15s; }
+.acc-header:hover { background:rgba(255,255,255,.03); }
+.acc-header-left { display:flex; align-items:center; gap:10px; }
+.acc-icon { font-size:1.1rem; }
+.acc-title { font-size:.9rem; font-weight:700; color:var(--text); }
+.acc-arrow { font-size:.65rem; color:var(--muted); transition:transform .25s; transform:rotate(-90deg); }
+.acc-section.open .acc-arrow { transform:rotate(0deg); }
+.acc-section.open .acc-header { border-bottom:1px solid var(--border); background:rgba(245,200,66,.04); }
+.acc-body { max-height:0; overflow:hidden; transition:max-height .3s ease; }
+.acc-body-inner { padding:18px; }
+
+/* ── Konten Tabs ── */
+.konten-tabs { display:flex; gap:4px; margin-bottom:16px; border-bottom:2px solid var(--border); }
+.konten-tab { padding:9px 18px; border:none; background:none; cursor:pointer; font-size:.82rem; font-weight:700; color:var(--muted); border-bottom:2px solid transparent; margin-bottom:-2px; transition:color .15s,border-color .15s; }
+.konten-tab.active { color:var(--y); border-bottom-color:var(--y); }
+.konten-tab-panel { display:none; }
+.konten-tab-panel.active { display:block; }
+
+/* ── Sidebar divider ── */
+.sidebar-divider { height:1px; background:var(--border); margin:8px 16px; }
 
 /* ── AutoGen Wizard ── */
 .ag-stepper {
@@ -83,35 +96,15 @@
   <div id="sidebar-nav">
 
     <div class="nav-item" data-panel="dashboard"><span class="nav-icon">🏠</span> Dashboard</div>
+    <div class="nav-item" data-panel="dokumen"><span class="nav-icon">📐</span> Dokumen</div>
+    <div class="nav-item" data-panel="konten"><span class="nav-icon">📚</span> Konten</div>
+    <div class="nav-item" data-panel="autogen"><span class="nav-icon">⚡</span> Auto-Generate</div>
+
+    <div class="sidebar-divider"></div>
+
     <div class="nav-item" data-panel="projects"><span class="nav-icon">📁</span> Proyek</div>
-
-    <div class="sidebar-section-label" onclick="toggleSection('dokumen')">
-      <span>📐 Dokumen</span><span class="toggle-icon">▾</span>
-    </div>
-    <div class="sidebar-section-items" id="sec-dokumen">
-      <div class="nav-item nav-sub" data-panel="meta"><span class="nav-icon">🏷️</span> Identitas</div>
-      <div class="nav-item nav-sub" data-panel="cp"><span class="nav-icon">📋</span> CP / TP / ATP</div>
-      <div class="nav-item nav-sub" data-panel="alur"><span class="nav-icon">🗺️</span> Alur Pembelajaran</div>
-    </div>
-
-    <div class="sidebar-section-label" onclick="toggleSection('konten')">
-      <span>📚 Konten</span><span class="toggle-icon">▾</span>
-    </div>
-    <div class="sidebar-section-items" id="sec-konten">
-      <div class="nav-item nav-sub" data-panel="materi"><span class="nav-icon">📝</span> Materi Teks</div>
-      <div class="nav-item nav-sub" data-panel="modules"><span class="nav-icon">🧩</span> Modul Halaman</div>
-      <div class="nav-item nav-sub" data-panel="kuis"><span class="nav-icon">❓</span> Kuis</div>
-    </div>
-
-    <div class="sidebar-section-label" onclick="toggleSection('tools')">
-      <span>⚡ Tools</span><span class="toggle-icon">▾</span>
-    </div>
-    <div class="sidebar-section-items" id="sec-tools">
-      <div class="nav-item nav-sub" data-panel="autogen"><span class="nav-icon">⚡</span> Auto-Generate</div>
-      <div class="nav-item nav-sub" data-panel="import"><span class="nav-icon">📥</span> Import / Export</div>
-      <!-- Preview dihapus — gunakan Live Preview di header (Ctrl+Shift+L) -->
-      <div class="nav-item nav-sub" data-panel="versions"><span class="nav-icon">🕐</span> Riwayat</div>
-    </div>
+    <div class="nav-item" data-panel="import"><span class="nav-icon">📥</span> Import/Export</div>
+    <div class="nav-item" data-panel="versions"><span class="nav-icon">🕐</span> Riwayat</div>
 
   </div>
   <div class="sidebar-bottom">
@@ -141,7 +134,7 @@
 
   <div id="content">
 
-    <!-- DASHBOARD -->
+    <!-- ═══ DASHBOARD (kept as-is) ═══ -->
     <div class="panel" id="p-dashboard">
       <div class="panel-header">
         <div class="panel-title">Dashboard</div>
@@ -198,7 +191,7 @@
       </div>
     </div>
 
-    <!-- PROJECTS -->
+    <!-- ═══ PROJECTS (kept as-is) ═══ -->
     <div class="panel" id="p-projects">
       <div class="panel-header"><div class="panel-title">Kelola Proyek</div><div class="panel-desc">Simpan dan muat kembali proyek yang tersimpan di browser ini.</div></div>
       <div class="btn-row" style="margin-bottom:16px">
@@ -208,202 +201,196 @@
       <div id="projects_list"></div>
     </div>
 
-    <!-- META -->
-    <div class="panel" id="p-meta">
-      <div class="panel-header"><div class="panel-title">🏷️ Identitas Media</div><div class="panel-desc">Informasi yang tampil di halaman cover dan navbar media pembelajaran.</div></div>
-      <div class="at-card">
-        <div class="at-card-title">⚡ Preset Identitas</div>
-        <div class="preset-grid">
-          <div class="preset-card" onclick="AT_META.applyPreset('hakikat-norma')"><div class="preset-card-icon">🧑‍🤝‍🧑</div><div class="preset-card-label">Hakikat Norma</div><div class="preset-card-sub">PPKn VII – P1</div></div>
-          <div class="preset-card" onclick="AT_META.applyPreset('macam-norma')"><div class="preset-card-icon">📜</div><div class="preset-card-label">Macam-Macam Norma</div><div class="preset-card-sub">PPKn VII – P2</div></div>
-          <div class="preset-card" onclick="AT_META.applyPreset('blank')"><div class="preset-card-icon">📋</div><div class="preset-card-label">Kosong</div><div class="preset-card-sub">Isi manual</div></div>
-        </div>
-      </div>
-      <div class="at-card">
-        <div class="at-card-title">📝 Form Identitas</div>
-        <div class="field-group"><label class="field-label">Judul Pertemuan</label><input id="m_judulPertemuan" class="field-input" placeholder="Pertemuan 1 – Hakikat Norma"></div>
-        <div class="field-group"><label class="field-label">Subjudul / Pertanyaan Pemantik</label><input id="m_subjudul" class="field-input" placeholder="Mengapa manusia membutuhkan norma?"></div>
-        <div class="field-row">
-          <div class="field-group"><label class="field-label">Ikon Cover (emoji)</label><input id="m_ikon" class="field-input" placeholder="🧑‍🤝‍🧑" maxlength="8"></div>
-          <div class="field-group"><label class="field-label">Durasi</label><input id="m_durasi" class="field-input" placeholder="2 × 40 menit"></div>
-        </div>
-        <div class="field-row">
-          <div class="field-group"><label class="field-label">Mata Pelajaran</label><input id="m_mapel" class="field-input" placeholder="PPKn"></div>
-          <div class="field-group"><label class="field-label">Kelas</label><input id="m_kelas" class="field-input" placeholder="VII"></div>
-        </div>
-        <div class="field-row">
-          <div class="field-group"><label class="field-label">Kurikulum</label><input id="m_kurikulum" class="field-input" placeholder="Kurikulum Merdeka"></div>
-          <div class="field-group"><label class="field-label">Nama Bab (navbar)</label><input id="m_namaBab" class="field-input" placeholder="Hakikat Norma"></div>
-        </div>
-        <div class="btn-row">
-          <button class="btn btn-y" onclick="saveAll()">💾 Simpan</button>
-          <button class="btn btn-ghost" onclick="AT_NAV.go('cp')">Lanjut ke CP →</button>
-        </div>
-      </div>
-    </div>
-
-    <!-- CP / TP / ATP — 3 tab dalam 1 panel -->
-    <div class="panel" id="p-cp">
-      <div class="panel-header"><div class="panel-title">📋 CP / TP / ATP</div><div class="panel-desc">Capaian, Tujuan, dan Alur Tujuan Pembelajaran dalam satu panel.</div></div>
-      <div style="display:flex;gap:4px;margin-bottom:16px;border-bottom:2px solid var(--border)">
-        <button class="cpatp-tab active" data-tab="tab-cp" onclick="switchCPATPTab('tab-cp',this)">📋 CP</button>
-        <button class="cpatp-tab" data-tab="tab-tp" onclick="switchCPATPTab('tab-tp',this)">🎯 TP</button>
-        <button class="cpatp-tab" data-tab="tab-atp" onclick="switchCPATPTab('tab-atp',this)">📅 ATP</button>
+    <!-- ═══ DOKUMEN — Accordion Panel ═══ -->
+    <div class="panel" id="p-dokumen">
+      <div class="panel-header">
+        <div class="panel-title">📐 Dokumen Pembelajaran</div>
+        <div class="panel-desc">Lengkapi semua dokumen perencanaan pembelajaran dalam satu halaman.</div>
       </div>
 
-      <!-- TAB CP -->
-      <div class="cpatp-panel active" id="tab-cp">
+      <!-- Accordion 1: Identitas Media -->
+      <div class="acc-section">
+        <div class="acc-header" onclick="toggleAccordion(this)">
+          <div class="acc-header-left">
+            <span class="acc-icon">🏷️</span>
+            <span class="acc-title">Identitas Media</span>
+          </div>
+          <span class="acc-arrow">▾</span>
+        </div>
+        <div class="acc-body">
+          <div class="acc-body-inner">
+            <div class="field-group"><label class="field-label">Judul Pertemuan</label><input id="m_judulPertemuan" class="field-input" placeholder="Pertemuan 1 – Hakikat Norma"></div>
+            <div class="field-group"><label class="field-label">Subjudul / Pertanyaan Pemantik</label><input id="m_subjudul" class="field-input" placeholder="Mengapa manusia membutuhkan norma?"></div>
+            <div class="field-row">
+              <div class="field-group"><label class="field-label">Ikon Cover (emoji)</label><input id="m_ikon" class="field-input" placeholder="🧑‍🤝‍🧑" maxlength="8"></div>
+              <div class="field-group"><label class="field-label">Durasi</label><input id="m_durasi" class="field-input" placeholder="2 × 40 menit"></div>
+            </div>
+            <div class="field-row">
+              <div class="field-group"><label class="field-label">Mata Pelajaran</label><input id="m_mapel" class="field-input" placeholder="PPKn"></div>
+              <div class="field-group"><label class="field-label">Kelas</label><input id="m_kelas" class="field-input" placeholder="VII"></div>
+            </div>
+            <div class="field-row">
+              <div class="field-group"><label class="field-label">Kurikulum</label><input id="m_kurikulum" class="field-input" placeholder="Kurikulum Merdeka"></div>
+              <div class="field-group"><label class="field-label">Nama Bab (navbar)</label><input id="m_namaBab" class="field-input" placeholder="Hakikat Norma"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Accordion 2: Capaian Pembelajaran -->
+      <div class="acc-section">
+        <div class="acc-header" onclick="toggleAccordion(this)">
+          <div class="acc-header-left">
+            <span class="acc-icon">📋</span>
+            <span class="acc-title">Capaian Pembelajaran</span>
+          </div>
+          <span class="acc-arrow">▾</span>
+        </div>
+        <div class="acc-body">
+          <div class="acc-body-inner">
+            <div class="field-row">
+              <div class="field-group"><label class="field-label">Elemen</label><input id="cp_elemen" class="field-input" placeholder="Pancasila"></div>
+              <div class="field-group"><label class="field-label">Sub-Elemen</label><input id="cp_subElemen" class="field-input" placeholder="Pemahaman norma dan nilai"></div>
+            </div>
+            <div class="field-group"><label class="field-label">Capaian Fase (narasi lengkap)</label><textarea id="cp_capaianFase" class="field-textarea" rows="4" placeholder="Peserta didik mampu…"></textarea></div>
+            <div class="field-group">
+              <label class="field-label">Profil Pelajar Pancasila <span style="color:var(--muted);font-weight:400">(ketik + Enter)</span></label>
+              <div class="tag-input-wrap" id="cp_profilWrap"><input class="tag-input" id="cp_profilInput" placeholder="Tambah profil…" onkeydown="AT_CP.addProfilKey(event)"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Accordion 3: Tujuan Pembelajaran -->
+      <div class="acc-section">
+        <div class="acc-header" onclick="toggleAccordion(this)">
+          <div class="acc-header-left">
+            <span class="acc-icon">🎯</span>
+            <span class="acc-title">Tujuan Pembelajaran</span>
+          </div>
+          <span class="acc-arrow">▾</span>
+        </div>
+        <div class="acc-body">
+          <div class="acc-body-inner">
+            <div id="tp_list"></div>
+            <div class="btn-row" style="margin-top:12px">
+              <button class="btn btn-y" onclick="AT_TP.add()">＋ Tambah TP</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Accordion 4: Alur Tujuan Pembelajaran -->
+      <div class="acc-section">
+        <div class="acc-header" onclick="toggleAccordion(this)">
+          <div class="acc-header-left">
+            <span class="acc-icon">📅</span>
+            <span class="acc-title">Alur Tujuan Pembelajaran</span>
+          </div>
+          <span class="acc-arrow">▾</span>
+        </div>
+        <div class="acc-body">
+          <div class="acc-body-inner">
+            <div class="field-group"><label class="field-label">Nama Bab / Unit</label><input id="atp_namaBab" class="field-input" placeholder="Bab 3 — Patuh terhadap Norma"></div>
+            <div id="atp_rows" style="margin-top:12px"></div>
+            <div class="btn-row" style="margin-top:12px">
+              <button class="btn btn-y" onclick="AT_ATP.add()">＋ Tambah Pertemuan</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Accordion 5: Alur Kegiatan -->
+      <div class="acc-section">
+        <div class="acc-header" onclick="toggleAccordion(this)">
+          <div class="acc-header-left">
+            <span class="acc-icon">🗺️</span>
+            <span class="acc-title">Alur Kegiatan</span>
+          </div>
+          <span class="acc-arrow">▾</span>
+        </div>
+        <div class="acc-body">
+          <div class="acc-body-inner">
+            <div id="alur_list"></div>
+            <div class="btn-row" style="margin-top:12px">
+              <button class="btn btn-y" onclick="AT_ALUR.add()">＋ Tambah Langkah</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div><!-- /p-dokumen -->
+
+    <!-- ═══ KONTEN — Tab Panel ═══ -->
+    <div class="panel" id="p-konten">
+      <div class="panel-header">
+        <div class="panel-title">📚 Konten Pembelajaran</div>
+        <div class="panel-desc">Materi, aktivitas/modul, dan evaluasi siswa dalam satu panel.</div>
+      </div>
+
+      <div class="konten-tabs">
+        <button class="konten-tab active" data-ktab="konten-tab-materi" onclick="switchKontenTab('konten-tab-materi',this)">📝 Materi</button>
+        <button class="konten-tab" data-ktab="konten-tab-modules" onclick="switchKontenTab('konten-tab-modules',this)">🧩 Modul & Game</button>
+        <button class="konten-tab" data-ktab="konten-tab-kuis" onclick="switchKontenTab('konten-tab-kuis',this)">❓ Evaluasi</button>
+      </div>
+
+      <!-- Tab 1: Materi -->
+      <div class="konten-tab-panel active" id="konten-tab-materi">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+          <span style="font-size:.78rem;color:var(--muted)" id="materiCount">0 blok</span>
+        </div>
+        <div id="materi_list"></div>
+        <div class="at-card" style="margin-top:14px">
+          <div class="at-card-title">➕ Tambah Blok</div>
+          <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:8px;margin-top:8px">
+            <div class="preset-card" onclick="AT_MATERI_EDITOR.add('teks')"><div class="preset-card-icon">📝</div><div class="preset-card-label">Paragraf</div></div>
+            <div class="preset-card" onclick="AT_MATERI_EDITOR.add('definisi')"><div class="preset-card-icon">📌</div><div class="preset-card-label">Definisi</div></div>
+            <div class="preset-card" onclick="AT_MATERI_EDITOR.add('poin')"><div class="preset-card-icon">•</div><div class="preset-card-label">Poin-Poin</div></div>
+            <div class="preset-card" onclick="AT_MATERI_EDITOR.add('tabel')"><div class="preset-card-icon">📊</div><div class="preset-card-label">Tabel</div></div>
+            <div class="preset-card" onclick="AT_MATERI_EDITOR.add('kutipan')"><div class="preset-card-icon">💬</div><div class="preset-card-label">Kutipan</div></div>
+            <div class="preset-card" onclick="AT_MATERI_EDITOR.add('gambar')"><div class="preset-card-icon">🖼️</div><div class="preset-card-label">Gambar URL</div></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Tab 2: Modul & Game -->
+      <div class="konten-tab-panel" id="konten-tab-modules">
+        <div id="migrateBanner" style="display:none" class="migrate-banner">
+          <div class="migrate-banner-icon">🔄</div>
+          <div class="migrate-banner-text"><strong style="color:var(--y)">Skenario Lama Terdeteksi</strong> — Pindah ke sistem Modul agar bisa dikombinasikan dengan tipe lain.</div>
+          <button class="btn btn-y btn-sm" onclick="AT_MODULES.migrateFromSkenario();checkMigrateBanner()">Pindahkan →</button>
+        </div>
+        <div class="mod-section-header">
+          <div style="font-size:.78rem;color:var(--muted)" id="modCount">0 modul</div>
+          <div class="mod-section-header-actions">
+            <button class="btn btn-ghost btn-sm" onclick="AT_MODULES.showPicker()">＋ Tambah Modul / Game</button>
+          </div>
+        </div>
+        <div id="mod_list"></div>
+        <div class="at-card" style="margin-top:16px">
+          <div class="at-card-title">📚 Tipe Modul & Game Tersedia</div>
+          <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:8px;margin-top:8px" id="modTypeRef"></div>
+        </div>
+      </div>
+
+      <!-- Tab 3: Evaluasi (Kuis) -->
+      <div class="konten-tab-panel" id="konten-tab-kuis">
         <div class="at-card">
-          <div class="at-card-title">⚡ Preset CP</div>
+          <div class="at-card-title">⚡ Preset Kuis</div>
           <div class="preset-grid">
-            <div class="preset-card" onclick="AT_CP.applyPreset('ppkn-smp-bab3')"><div class="preset-card-icon">📋</div><div class="preset-card-label">PPKn SMP – Bab 3</div><div class="preset-card-sub">Patuh terhadap Norma</div></div>
-            <div class="preset-card" onclick="AT_CP.applyPreset('ppkn-smp-bab1')"><div class="preset-card-icon">🇮🇩</div><div class="preset-card-label">PPKn SMP – Bab 1</div><div class="preset-card-sub">Pancasila Dasar Negara</div></div>
-            <div class="preset-card" onclick="AT_CP.applyPreset('blank')"><div class="preset-card-icon">📋</div><div class="preset-card-label">Kosong</div><div class="preset-card-sub">Isi manual</div></div>
+            <div class="preset-card" onclick="AT_KUIS.applyPreset('norma-10-soal')"><div class="preset-card-icon">❓</div><div class="preset-card-label">Norma – 10 Soal</div><div class="preset-card-sub">Siap pakai, bisa diedit</div></div>
+            <div class="preset-card" onclick="AT_KUIS.applyPreset('blank')"><div class="preset-card-icon">📋</div><div class="preset-card-label">Kosong</div><div class="preset-card-sub">Buat dari nol</div></div>
           </div>
         </div>
-        <div class="at-card">
-          <div class="at-card-title">📝 Isi CP</div>
-          <div class="field-row">
-            <div class="field-group"><label class="field-label">Elemen</label><input id="cp_elemen" class="field-input" placeholder="Pancasila"></div>
-            <div class="field-group"><label class="field-label">Sub-Elemen</label><input id="cp_subElemen" class="field-input" placeholder="Pemahaman norma dan nilai"></div>
-          </div>
-          <div class="field-group"><label class="field-label">Capaian Fase (narasi lengkap)</label><textarea id="cp_capaianFase" class="field-textarea" rows="4" placeholder="Peserta didik mampu…"></textarea></div>
-          <div class="field-group">
-            <label class="field-label">Profil Pelajar Pancasila <span style="color:var(--muted);font-weight:400">(ketik + Enter)</span></label>
-            <div class="tag-input-wrap" id="cp_profilWrap"><input class="tag-input" id="cp_profilInput" placeholder="Tambah profil…" onkeydown="AT_CP.addProfilKey(event)"></div>
-          </div>
-          <div class="btn-row">
-            <button class="btn btn-y" onclick="saveAll()">💾 Simpan</button>
-            <button class="btn btn-ghost" onclick="switchCPATPTab('tab-tp',document.querySelector('[data-tab=tab-tp]'))">Lanjut ke TP →</button>
-          </div>
+        <div id="kuis_list"></div>
+        <div class="btn-row" style="margin-top:12px">
+          <button class="btn btn-y" onclick="AT_KUIS.add()">＋ Tambah Soal</button>
         </div>
       </div>
 
-      <!-- TAB TP -->
-      <div class="cpatp-panel" id="tab-tp">
-        <div class="at-card">
-          <div class="at-card-title">⚡ Preset TP</div>
-          <div class="preset-grid">
-            <div class="preset-card" onclick="AT_TP.applyPreset('bab3-full')"><div class="preset-card-icon">🎯</div><div class="preset-card-label">Bab 3 – 5 TP Lengkap</div><div class="preset-card-sub">3 pertemuan</div></div>
-            <div class="preset-card" onclick="AT_TP.applyPreset('blank')"><div class="preset-card-icon">📋</div><div class="preset-card-label">Kosong</div><div class="preset-card-sub">Tambah manual</div></div>
-          </div>
-        </div>
-        <div id="tp_list"></div>
-        <div class="btn-row">
-          <button class="btn btn-y" onclick="AT_TP.add()">＋ Tambah TP</button>
-          <button class="btn btn-ghost" onclick="saveAll()">💾 Simpan</button>
-          <button class="btn btn-ghost" onclick="switchCPATPTab('tab-atp',document.querySelector('[data-tab=tab-atp]'))">Lanjut ke ATP →</button>
-        </div>
-      </div>
+    </div><!-- /p-konten -->
 
-      <!-- TAB ATP -->
-      <div class="cpatp-panel" id="tab-atp">
-        <div class="at-card">
-          <div class="at-card-title">⚡ Preset ATP</div>
-          <div class="preset-grid">
-            <div class="preset-card" onclick="AT_ATP.applyPreset('bab3-3pertemuan')"><div class="preset-card-icon">📅</div><div class="preset-card-label">Bab 3 – 3 Pertemuan</div><div class="preset-card-sub">Lengkap dengan kegiatan</div></div>
-            <div class="preset-card" onclick="AT_ATP.applyPreset('blank')"><div class="preset-card-icon">📋</div><div class="preset-card-label">Kosong</div><div class="preset-card-sub">Tambah manual</div></div>
-          </div>
-        </div>
-        <div class="at-card"><div class="at-card-title">📝 Nama Bab / Unit</div><input id="atp_namaBab" class="field-input" placeholder="Bab 3 — Patuh terhadap Norma"></div>
-        <div id="atp_rows" style="margin-top:12px"></div>
-        <div class="btn-row">
-          <button class="btn btn-y" onclick="AT_ATP.add()">＋ Tambah Pertemuan</button>
-          <button class="btn btn-ghost" onclick="saveAll()">💾 Simpan</button>
-          <button class="btn btn-ghost" onclick="AT_NAV.go('alur')">Lanjut ke Alur →</button>
-        </div>
-      </div>
-    </div>
-
-    <!-- ALUR -->
-    <div class="panel" id="p-alur">
-      <div class="panel-header"><div class="panel-title">🗺️ Alur Pembelajaran</div><div class="panel-desc">Langkah-langkah kegiatan dalam satu pertemuan (Pendahuluan → Inti → Penutup).</div></div>
-      <div class="at-card">
-        <div class="at-card-title">⚡ Preset Alur</div>
-        <div class="preset-grid">
-          <div class="preset-card" onclick="AT_ALUR.applyPreset('hakikat-norma-80menit')"><div class="preset-card-icon">🗺️</div><div class="preset-card-label">Hakikat Norma 80 menit</div><div class="preset-card-sub">5 langkah lengkap</div></div>
-          <div class="preset-card" onclick="AT_ALUR.applyPreset('blank')"><div class="preset-card-icon">📋</div><div class="preset-card-label">Kosong</div><div class="preset-card-sub">Tambah manual</div></div>
-        </div>
-      </div>
-      <div id="alur_list"></div>
-      <div class="btn-row">
-        <button class="btn btn-y" onclick="AT_ALUR.add()">＋ Tambah Langkah</button>
-        <button class="btn btn-ghost" onclick="saveAll()">💾 Simpan</button>
-        <button class="btn btn-ghost" onclick="AT_NAV.go('materi')">Lanjut ke Materi →</button>
-      </div>
-    </div>
-
-    <!-- MATERI TEKS -->
-    <div class="panel" id="p-materi">
-      <div class="panel-header"><div class="panel-title">📝 Materi Teks</div><div class="panel-desc">Susun konten materi: teks, definisi, poin-poin, tabel, kutipan, gambar. Tampil di halaman Materi siswa.</div></div>
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
-        <span style="font-size:.78rem;color:var(--muted)" id="materiCount">0 blok</span>
-        <button class="btn btn-ghost btn-sm" onclick="saveAll()">💾 Simpan</button>
-      </div>
-      <div id="materi_list"></div>
-      <div class="at-card" style="margin-top:14px">
-        <div class="at-card-title">➕ Tambah Blok</div>
-        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:8px;margin-top:8px">
-          <div class="preset-card" onclick="AT_MATERI_EDITOR.add('teks')"><div class="preset-card-icon">📝</div><div class="preset-card-label">Paragraf</div></div>
-          <div class="preset-card" onclick="AT_MATERI_EDITOR.add('definisi')"><div class="preset-card-icon">📌</div><div class="preset-card-label">Definisi</div></div>
-          <div class="preset-card" onclick="AT_MATERI_EDITOR.add('poin')"><div class="preset-card-icon">•</div><div class="preset-card-label">Poin-Poin</div></div>
-          <div class="preset-card" onclick="AT_MATERI_EDITOR.add('tabel')"><div class="preset-card-icon">📊</div><div class="preset-card-label">Tabel</div></div>
-          <div class="preset-card" onclick="AT_MATERI_EDITOR.add('kutipan')"><div class="preset-card-icon">💬</div><div class="preset-card-label">Kutipan</div></div>
-          <div class="preset-card" onclick="AT_MATERI_EDITOR.add('gambar')"><div class="preset-card-icon">🖼️</div><div class="preset-card-label">Gambar URL</div></div>
-        </div>
-      </div>
-      <div class="btn-row" style="margin-top:12px">
-        <button class="btn btn-ghost" onclick="saveAll()">💾 Simpan</button>
-        <button class="btn btn-ghost" onclick="AT_NAV.go('modules')">Lanjut ke Modul →</button>
-      </div>
-    </div>
-
-    <!-- MODUL HALAMAN -->
-    <div class="panel" id="p-modules">
-      <div class="panel-header"><div class="panel-title">🧩 Modul Halaman</div><div class="panel-desc">Susun urutan konten — skenario, video, flashcard, game, studi kasus. Semua game dikelola di sini.</div></div>
-      <div id="migrateBanner" style="display:none" class="migrate-banner">
-        <div class="migrate-banner-icon">🔄</div>
-        <div class="migrate-banner-text"><strong style="color:var(--y)">Skenario Lama Terdeteksi</strong> — Pindah ke sistem Modul agar bisa dikombinasikan dengan tipe lain.</div>
-        <button class="btn btn-y btn-sm" onclick="AT_MODULES.migrateFromSkenario();checkMigrateBanner()">Pindahkan →</button>
-      </div>
-      <div class="mod-section-header">
-        <div style="font-size:.78rem;color:var(--muted)" id="modCount">0 modul</div>
-        <div class="mod-section-header-actions">
-          <button class="btn btn-ghost btn-sm" onclick="AT_MODULES.showPicker()">＋ Tambah Modul / Game</button>
-          <button class="btn btn-ghost btn-sm" onclick="saveAll()">💾 Simpan</button>
-        </div>
-      </div>
-      <div id="mod_list"></div>
-      <div class="at-card" style="margin-top:16px">
-        <div class="at-card-title">📚 Tipe Modul & Game Tersedia</div>
-        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:8px;margin-top:8px" id="modTypeRef"></div>
-      </div>
-      <div class="btn-row">
-        <button class="btn btn-y" onclick="AT_MODULES.showPicker()">＋ Tambah Modul / Game</button>
-        <button class="btn btn-ghost" onclick="saveAll()">💾 Simpan</button>
-        <button class="btn btn-ghost" onclick="AT_NAV.go('kuis')">Lanjut ke Kuis →</button>
-      </div>
-    </div>
-
-    <!-- KUIS -->
-    <div class="panel" id="p-kuis">
-      <div class="panel-header"><div class="panel-title">❓ Editor Kuis</div><div class="panel-desc">Soal pilihan ganda yang dikerjakan siswa di akhir pembelajaran.</div></div>
-      <div class="at-card">
-        <div class="at-card-title">⚡ Preset Kuis</div>
-        <div class="preset-grid">
-          <div class="preset-card" onclick="AT_KUIS.applyPreset('norma-10-soal')"><div class="preset-card-icon">❓</div><div class="preset-card-label">Norma – 10 Soal</div><div class="preset-card-sub">Siap pakai, bisa diedit</div></div>
-          <div class="preset-card" onclick="AT_KUIS.applyPreset('blank')"><div class="preset-card-icon">📋</div><div class="preset-card-label">Kosong</div><div class="preset-card-sub">Buat dari nol</div></div>
-        </div>
-      </div>
-      <div id="kuis_list"></div>
-      <div class="btn-row">
-        <button class="btn btn-y" onclick="AT_KUIS.add()">＋ Tambah Soal</button>
-        <button class="btn btn-ghost" onclick="saveAll()">💾 Simpan</button>
-        <button class="btn btn-ghost" onclick="AT_NAV.go('preview')">👁️ Preview →</button>
-      </div>
-    </div>
-
-    <!-- AUTO-GENERATE WIZARD -->
+    <!-- ═══ AUTO-GENERATE WIZARD (kept as-is) ═══ -->
     <div class="panel" id="p-autogen">
       <div class="panel-header"><div class="panel-title">⚡ Auto-Generate</div><div class="panel-desc">Paste teks materi sekali → generate bertahap per section. Cek setiap hasil sebelum lanjut.</div></div>
 
@@ -568,7 +555,7 @@
       </div>
     </div><!-- /p-autogen -->
 
-    <!-- IMPORT / EXPORT -->
+    <!-- ═══ IMPORT / EXPORT (kept as-is) ═══ -->
     <div class="panel" id="p-import">
       <div class="panel-header"><div class="panel-title">📥 Import / Export</div><div class="panel-desc">Upload Excel (.xlsx) untuk mengisi semua tab sekaligus — META, CP, TP, ATP, Alur, dan Kuis.</div></div>
       <div class="at-card">
@@ -600,9 +587,7 @@
       </div>
     </div>
 
-    <!-- PREVIEW dihapus — gunakan Live Preview split pane di header -->
-
-    <!-- RIWAYAT -->
+    <!-- ═══ RIWAYAT (kept as-is) ═══ -->
     <div class="panel" id="p-versions">
       <div class="panel-header"><div class="panel-title">🕐 Riwayat Versi</div><div class="panel-desc">Simpan snapshot proyek dan pulihkan ke versi sebelumnya. Max 20 versi.</div></div>
       <div class="btn-row" style="margin-bottom:16px">
@@ -804,6 +789,13 @@ document.addEventListener("DOMContentLoaded", function() {
   if (!AT_STATE.materi)  AT_STATE.materi  = { blok: [] };
   if (!AT_STATE.fungsi)  AT_STATE.fungsi  = null;
 
+  // Smart defaults
+  if (!AT_STATE.meta.mapel) AT_STATE.meta.mapel = "PPKn";
+  if (!AT_STATE.meta.kelas) AT_STATE.meta.kelas = "VII";
+  if (!AT_STATE.meta.kurikulum) AT_STATE.meta.kurikulum = "Kurikulum Merdeka";
+  if (!AT_STATE.meta.durasi) AT_STATE.meta.durasi = "2 × 40 menit";
+  if (!AT_STATE.meta.ikon) AT_STATE.meta.ikon = "📚";
+
   // 2. Drop zone + schema
   AT_DROPZONE.init("importDropZone", "importFileInput");
   const schemaEl = document.getElementById("schemaRef");
@@ -820,10 +812,9 @@ document.addEventListener("DOMContentLoaded", function() {
 
   // 4. Nav title map
   const NAV_TITLES = {
-    dashboard:"Dashboard", projects:"Proyek", meta:"Identitas",
-    cp:"CP / TP / ATP", alur:"Alur Pembelajaran", materi:"Materi Teks",
-    modules:"Modul Halaman", kuis:"Kuis", autogen:"Auto-Generate",
-    import:"Import / Export", preview:"Preview", versions:"Riwayat Versi"
+    dashboard:"Dashboard", dokumen:"Dokumen", konten:"Konten Pembelajaran",
+    autogen:"Auto-Generate", projects:"Kelola Proyek",
+    import:"Import / Export", versions:"Riwayat Versi"
   };
 
   // 5. Patch AT_NAV.go — sekali saja
@@ -833,8 +824,12 @@ document.addEventListener("DOMContentLoaded", function() {
     const titleEl = document.getElementById("headerTitle");
     if (titleEl) titleEl.innerHTML = (NAV_TITLES[id]||id) + ' <span>/ ' + (AT_STATE.meta?.judulPertemuan||"Proyek Baru") + '</span>';
     if (id === "dashboard") AT_DASH.render();
-    if (id === "materi")  { AT_MATERI_EDITOR?.ensureState(); AT_MATERI_EDITOR?.render(); const el=document.getElementById("materiCount"); if(el) el.textContent=(AT_STATE.materi?.blok?.length||0)+" blok"; }
-    if (id === "modules") { AT_MODULES?.render(); checkMigrateBanner(); const el=document.getElementById("modCount"); if(el) el.textContent=(AT_STATE.modules?.length||0)+" modul"; }
+    if (id === "konten") {
+      AT_MATERI_EDITOR?.ensureState(); AT_MATERI_EDITOR?.render();
+      const el=document.getElementById("materiCount"); if(el) el.textContent=(AT_STATE.materi?.blok?.length||0)+" blok";
+      AT_MODULES?.render(); checkMigrateBanner();
+      const el2=document.getElementById("modCount"); if(el2) el2.textContent=(AT_STATE.modules?.length||0)+" modul";
+    }
     if (id === "versions") AT_VERSIONS?.render();
     if (id === "preview")  AT_PREVIEW?.render();
     if (id === "autogen")  AG.onEnter();
@@ -871,25 +866,20 @@ document.addEventListener("DOMContentLoaded", function() {
     });
   });
 
-  // 10. Sidebar collapsible — init heights
-  document.querySelectorAll(".sidebar-section-items").forEach(el => {
-    el.style.maxHeight = el.scrollHeight + "px";
-  });
-
-  // 11. Helpers
+  // 10. Helpers
   window.checkMigrateBanner = function() {
     const b = document.getElementById("migrateBanner");
     if (b) b.style.display = (AT_STATE.skenario?.length ? "flex" : "none");
   };
 
-  // 12. Keyboard shortcuts
+  // 11. Keyboard shortcuts
   document.addEventListener("keydown", e => {
     const mod = e.ctrlKey || e.metaKey;
     if (mod && e.key === "s") { e.preventDefault(); saveAll(); }
     if (mod && e.key === "p") { e.preventDefault(); AT_NAV.go("preview"); }
   });
 
-  // 13. Start
+  // 12. Start
   AT_NAV.go("dashboard");
   if (saved) AT_UTIL.toast("📂 Proyek tersimpan dimuat");
 });
@@ -938,7 +928,7 @@ window.switchCPATPTab = function(tabId, btn) {
   if (tabId === "tab-atp") AT_ATP.bind();
 };
 
-/* ── SIDEBAR TOGGLE SECTION ── */
+/* ── SIDEBAR TOGGLE SECTION (kept for compat) ── */
 window.toggleSection = function(name) {
   const items = document.getElementById("sec-" + name);
   const label = items?.previousElementSibling;
@@ -954,6 +944,43 @@ window.toggleSection = function(name) {
       items.classList.add("collapsed");
       label?.classList.add("collapsed");
     });
+  }
+};
+
+/* ── ACCORDION TOGGLE ── */
+window.toggleAccordion = function(header) {
+  const section = header.parentElement;
+  const body = section.querySelector('.acc-body');
+  const arrow = header.querySelector('.acc-arrow');
+  const isOpen = section.classList.contains('open');
+  // Close all siblings
+  section.parentElement.querySelectorAll('.acc-section').forEach(s => {
+    s.classList.remove('open');
+    const b = s.querySelector('.acc-body');
+    if(b) b.style.maxHeight = '0';
+    const a = s.querySelector('.acc-arrow');
+    if(a) a.style.transform = 'rotate(-90deg)';
+  });
+  if (!isOpen) {
+    section.classList.add('open');
+    body.style.maxHeight = body.scrollHeight + 'px';
+    arrow.style.transform = 'rotate(0deg)';
+  }
+};
+
+/* ── KONTEN TAB SWITCH ── */
+window.switchKontenTab = function(tabId, btn) {
+  document.querySelectorAll('.konten-tab').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('.konten-tab-panel').forEach(p => p.classList.remove('active'));
+  if(btn) btn.classList.add('active');
+  const panel = document.getElementById(tabId);
+  if(panel) panel.classList.add('active');
+  // Trigger renders
+  if(tabId === 'konten-tab-materi') {
+    AT_MATERI_EDITOR?.ensureState(); AT_MATERI_EDITOR?.render();
+  }
+  if(tabId === 'konten-tab-modules') {
+    AT_MODULES?.render(); checkMigrateBanner();
   }
 };
 
