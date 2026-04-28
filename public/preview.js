@@ -186,32 +186,32 @@ body{font-family:'Nunito',sans-serif;background:var(--bg);color:var(--text);over
       + "<span class='chip' style='background:rgba(62,207,207,.15);color:var(--c)'>" + e(M.durasi||"2×40 menit") + "</span>"
       + "<span class='chip' style='background:rgba(52,211,153,.15);color:var(--g)'>" + e(M.kurikulum||"Kurikulum Merdeka") + "</span>"
       + "</div>"
-      + "<div style='font-family:Fredoka One,cursive;font-size:clamp(1.4rem,5vw,2.3rem);line-height:1.15;margin-bottom:8px'>" + e(M.judulPertemuan||"Media Pembelajaran") + "</div>"
-      + "<p class='sub' style='max-width:420px;margin:0 auto 20px'>" + e(M.subjudul||"") + "</p>"
+      + "<div style='font-family:Fredoka One,cursive;font-size:clamp(1.4rem,5vw,2.3rem);line-height:1.15;margin-bottom:8px'><span id='pf-cover-title'>" + e(M.judulPertemuan||"Media Pembelajaran") + "</span></div>"
+      + "<p class='sub' style='max-width:420px;margin:0 auto 20px'><span id='pf-cover-sub'>" + e(M.subjudul||"") + "</span></p>"
       + "<button class='btn btn-y' onclick=\"go('scp')\">Mulai Belajar →</button>"
       + "</div></div>";
 
     // ── CP SCREEN ─────────────────────────────────────────────
     const tpHtml = tp.map((t,i) =>
       "<div class='tp-item'><div style='width:24px;height:24px;border-radius:50%;background:" + col(t.color) + "22;color:" + col(t.color) + ";display:flex;align-items:center;justify-content:center;font-size:.7rem;font-weight:900;flex-shrink:0'>" + (i+1) + "</div>"
-      + "<div><div style='font-weight:900;font-size:.83rem;color:" + col(t.color) + "'>" + e(t.verb) + "</div>"
-      + "<div style='color:var(--muted);font-size:.77rem;line-height:1.5'>" + e(t.desc) + "</div></div></div>"
+      + "<div><div style='font-weight:900;font-size:.83rem;color:" + col(t.color) + "'><span id='pf-tp-v-"+i+"'>" + e(t.verb) + "</span></div>"
+      + "<div style='color:var(--muted);font-size:.77rem;line-height:1.5'><span id='pf-tp-d-"+i+"'>" + e(t.desc) + "</span></div></div></div>"
     ).join("") || "<p style='color:var(--muted);font-size:.81rem'>TP belum diisi.</p>";
 
     const atpHtml = (atp.pertemuan||[]).map((p,i) =>
       "<div class='atp-c" + (i===0?" cur":"") + "'>"
       + "<div style='font-size:.68rem;font-weight:900;color:var(--y);margin-bottom:5px'>" + (i===0?"📍 ":"→ ") + "Pertemuan " + (i+1) + " · " + e(p.durasi||"") + "</div>"
-      + "<div style='font-weight:800;font-size:.87rem;margin-bottom:3px'>" + e(p.judul||"") + "</div>"
-      + "<div style='font-size:.75rem;color:var(--c);margin-bottom:3px'>" + e(p.tp||"") + "</div>"
-      + "<div style='font-size:.73rem;color:var(--muted)'>" + e(p.kegiatan||"") + "</div></div>"
+      + "<div style='font-weight:800;font-size:.87rem;margin-bottom:3px'><span id='pf-atp-j-"+i+"'>" + e(p.judul||"") + "</span></div>"
+      + "<div style='font-size:.75rem;color:var(--c);margin-bottom:3px'><span id='pf-atp-t-"+i+"'>" + e(p.tp||"") + "</span></div>"
+      + "<div style='font-size:.73rem;color:var(--muted)'><span id='pf-atp-k-"+i+"'>" + e(p.kegiatan||"") + "</span></div></div>"
     ).join("") || "<p style='color:var(--muted);font-size:.81rem'>ATP belum diisi.</p>";
 
-    const alurHtml = alur.map(s => {
+    const alurHtml = alur.map((s,i) => {
       const fc = {Pendahuluan:"#f5c842",Inti:"#38d9d9",Penutup:"#34d399"};
       const c = fc[s.fase]||"#a78bfa";
       return "<div class='alur-step'><span style='font-size:.65rem;font-weight:900;padding:2px 8px;border-radius:99px;background:" + c + "22;color:" + c + ";white-space:nowrap;flex-shrink:0;margin-top:2px'>" + e(s.fase) + "</span>"
-        + "<span style='font-size:.72rem;font-weight:900;color:var(--y);min-width:48px;flex-shrink:0;margin-top:2px'>" + e(s.durasi||"") + "</span>"
-        + "<div style='font-size:.8rem;line-height:1.5'><strong>" + e(s.judul||"") + "</strong>" + (s.deskripsi?" — "+e(s.deskripsi):"") + "</div></div>";
+        + "<span style='font-size:.72rem;font-weight:900;color:var(--y);min-width:48px;flex-shrink:0;margin-top:2px'><span id='pf-alur-d-"+i+"'>" + e(s.durasi||"") + "</span></span>"
+        + "<div style='font-size:.8rem;line-height:1.5'><strong><span id='pf-alur-j-"+i+"'>" + e(s.judul||"") + "</span></strong>" + (s.deskripsi?" — "+e(s.deskripsi):"") + "</div></div>";
     }).join("") || "<p style='color:var(--muted);font-size:.81rem'>Alur belum diisi.</p>";
 
     const cpScreen =
@@ -223,8 +223,8 @@ body{font-family:'Nunito',sans-serif;background:var(--bg);color:var(--text);over
       + "<div class='ktab' onclick='kT(\"katp\",this)'>ATP</div>"
       + "</div>"
       + "<div class='kp on' id='kcp'>"
-      + "<div style='font-size:.78rem;color:var(--muted);margin-bottom:7px'><strong style='color:var(--text)'>" + e(cp.elemen||"-") + "</strong> · " + e(cp.subElemen||"-") + "</div>"
-      + "<div class='def-box'>" + e(cp.capaianFase||"Capaian pembelajaran belum diisi.") + "</div>"
+      + "<div style='font-size:.78rem;color:var(--muted);margin-bottom:7px'><strong style='color:var(--text)'><span id='pf-cp-e'>" + e(cp.elemen||"-") + "</span></strong> · <span id='pf-cp-s'>" + e(cp.subElemen||"-") + "</span></div>"
+      + "<div class='def-box'><span id='pf-cp-f'>" + e(cp.capaianFase||"Capaian pembelajaran belum diisi.") + "</span></div>"
       + "<div style='background:rgba(52,211,153,.07);border:1px solid rgba(52,211,153,.2);border-radius:11px;padding:11px;font-size:.8rem;line-height:1.6'>"
       + "<strong style='color:var(--g)'>🔗 Profil Pelajar Pancasila:</strong><br>"
       + "<span style='color:var(--muted)'>" + e((cp.profil||["Beriman & Bertakwa","Bernalar Kritis","Bergotong Royong"]).join(" · ")) + "</span>"

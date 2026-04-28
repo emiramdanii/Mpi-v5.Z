@@ -43,6 +43,8 @@ window.AT_SPLITVIEW = {
   _errorRetries: 0,
   _savedPreviewState: null,
   _rafPending: false,         // requestAnimationFrame gating flag
+  _prePatchState: null,       // state snapshot before typing started
+  _lastPatchedHTML: '',       // last known HTML (to detect structure changes)
 
   // ── Typing Detection ──
   _isTyping: false,
@@ -87,6 +89,73 @@ window.AT_SPLITVIEW = {
     this._iframeReady = false;
   },
 
+  /* ── Send targeted DOM patches instead of full rebuild during typing ── */
+  _sendPatch() {
+    if (!this._iframeReady) return;
+    try {
+      const html = AT_PREVIEW.buildStudentHTML(AT_STATE);
+      if (!this._lastPatchedHTML || html.length < 100) {
+        this._lastPatchedHTML = html;
+        return;
+      }
+      if (html === this._lastPatchedHTML) return;
+
+      const patches = {};
+
+      // CP fields
+      const oldCp = this._prePatchState?.cp || {};
+      const newCp = AT_STATE.cp || {};
+      if (oldCp.capaianFase !== newCp.capaianFase) patches['cp-f'] = newCp.capaianFase || '';
+      if (oldCp.elemen !== newCp.elemen) patches['cp-e'] = newCp.elemen || '-';
+      if (oldCp.subElemen !== newCp.subElemen) patches['cp-s'] = newCp.subElemen || '-';
+
+      // Meta fields
+      const oldM = this._prePatchState?.meta || {};
+      const newM = AT_STATE.meta || {};
+      if (oldM.judulPertemuan !== newM.judulPertemuan) patches['cover-title'] = newM.judulPertemuan || 'Media Pembelajaran';
+      if (oldM.subjudul !== newM.subjudul) patches['cover-sub'] = newM.subjudul || '';
+
+      // TP fields (only patch if array length unchanged)
+      const oldTp = this._prePatchState?.tp || [];
+      const newTp = AT_STATE.tp || [];
+      if (oldTp.length === newTp.length) {
+        newTp.forEach((t,i) => {
+          const ot = oldTp[i] || {};
+          if (ot.verb !== t.verb) patches['tp-v-'+i] = t.verb || '';
+          if (ot.desc !== t.desc) patches['tp-d-'+i] = t.desc || '';
+        });
+      }
+
+      // ATP fields
+      const oldAtp = this._prePatchState?.atp?.pertemuan || [];
+      const newAtp = AT_STATE.atp?.pertemuan || [];
+      if (oldAtp.length === newAtp.length) {
+        newAtp.forEach((p,i) => {
+          const op = oldAtp[i] || {};
+          if (op.judul !== p.judul) patches['atp-j-'+i] = p.judul || '';
+          if (op.tp !== p.tp) patches['atp-t-'+i] = p.tp || '';
+          if (op.kegiatan !== p.kegiatan) patches['atp-k-'+i] = p.kegiatan || '';
+        });
+      }
+
+      // Alur fields
+      const oldAlur = this._prePatchState?.alur || [];
+      const newAlur = AT_STATE.alur || [];
+      if (oldAlur.length === newAlur.length) {
+        newAlur.forEach((s,i) => {
+          const os = oldAlur[i] || {};
+          if (os.durasi !== s.durasi) patches['alur-d-'+i] = s.durasi || '';
+          if (os.judul !== s.judul) patches['alur-j-'+i] = s.judul || '';
+        });
+      }
+
+      if (Object.keys(patches).length > 0) {
+        this._sendToFrame({ patchContent: patches });
+      }
+      this._lastPatchedHTML = html;
+    } catch(e) {}
+  },
+
   /* ── Toggle split view ─────────────────────────────────── */
   toggle() {
     this.active = !this.active;
@@ -124,17 +193,23 @@ window.AT_SPLITVIEW = {
 
   /* ── Detect active typing — defer ALL rebuilds until typing stops ── */
   _startTyping() {
+    if (!this._isTyping) {
+      // Save state snapshot for diffing (shallow clone is enough)
+      this._prePatchState = JSON.parse(JSON.stringify(AT_STATE));
+    }
     this._isTyping = true;
     this._forceNextRefresh = false;
     clearTimeout(this._typingTimer);
     this._typingTimer = setTimeout(() => {
       this._isTyping = false;
-      // Typing ended — trigger final refresh if there were changes
+      // Typing ended — one full rebuild for consistency, then patch from here
       if (this._hasPendingRefresh && this.active) {
         this._hasPendingRefresh = false;
+        this._prePatchState = null;
+        this._lastPatchedHTML = '';
         this.scheduleRefresh();
       }
-    }, 400);  // 400ms — cukup cepat tapi tetap mencegah flicker
+    }, 400);
   },
 
   /* ── Show typing indicator in sync area ── */
@@ -160,6 +235,8 @@ window.AT_SPLITVIEW = {
 
     // During active typing, DON'T schedule rebuild — just flag pending
     if (this._isTyping && !this._forceNextRefresh) {
+      // PATCH MODE: send targeted DOM updates instead of rebuilding
+      this._sendPatch();
       this._hasPendingRefresh = true;
       this._showTypingIndicator();
       return;
@@ -246,6 +323,8 @@ window.AT_SPLITVIEW = {
       this._showSyncPulse();
 
       this._lastHTML = html;
+      this._lastPatchedHTML = html;
+      this._prePatchState = null;
       // ╔═══════════════════════════════════════════════════════╗
       // ║  ANTI-FLICKER v5.2: TIDAK ADA loading overlay,      ║
       // ║  TIDAK ADA opacity fade, TIDAK ADA visibility toggle ║
@@ -310,6 +389,13 @@ window.AT_SPLITVIEW = {
     }
     if(e.data&&e.data.scrollToEnd){
       setTimeout(function(){window.scrollTo(0,document.body.scrollHeight);},100);
+    }
+    if(e.data&&e.data.patchContent){
+      var pc=e.data.patchContent;
+      for(var f in pc){
+        var el=document.getElementById('pf-'+f);
+        if(el)el.textContent=pc[f];
+      }
     }
   });
   var _rsTimer=null;
