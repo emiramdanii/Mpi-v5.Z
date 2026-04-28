@@ -52,7 +52,8 @@ body{
 ::-webkit-scrollbar-thumb:hover{ background:rgba(255,255,255,.2); }
 
 /* ── LAYOUT ─────────────────────────────────────────────────── */
-#app{ display:flex; min-height:100vh; }
+#app{ display:flex; min-height:100vh; gap:0; }
+#app > *{ min-width:0; }
 
 /* ── SIDEBAR ─────────────────────────────────────────────────── */
 #sidebar{
@@ -1108,7 +1109,10 @@ option{ background:#111827; }
   display: grid;
   grid-template-columns: 1fr var(--split-width, 440px);
   grid-template-rows: var(--header-h) 1fr;
+  grid-gap: 0;
   transition: grid-template-columns .25s cubic-bezier(.4,0,.2,1);
+  flex: 1;
+  min-width: 0;
 }
 #app.split-active #header { grid-column: 1 / -1; }
 #app.split-active #content { overflow-y: auto; height: calc(100vh - var(--header-h)); }
@@ -1116,10 +1120,11 @@ option{ background:#111827; }
   display: flex;
   flex-direction: column;
   height: calc(100vh - var(--header-h));
-  border-left: none;
+  border-left: 1px solid var(--border);
   background: var(--bg2);
   position: relative;
   animation: splitSlideIn .3s cubic-bezier(.4,0,.2,1);
+  overflow: hidden;
 }
 @keyframes splitSlideIn {
   from { opacity: 0; transform: translateX(20px); }
