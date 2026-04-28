@@ -345,7 +345,12 @@
   background: #0e1c2f;
   width: 100%;
   min-height: 0;
-  /* No opacity transition — prevents flicker on srcdoc refresh */
+  /* Anti-flicker v5.2: GPU compositing hints */
+  will-change: contents;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+  transform: translateZ(0);
+  contain: layout style;
 }
 
 /* ── LIVE PREVIEW TOGGLE BUTTON (Enhanced) ── */

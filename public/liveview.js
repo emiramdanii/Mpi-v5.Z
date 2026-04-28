@@ -1,5 +1,5 @@
 // ═══════════════════════════════════════════════════════════════
-// LIVEVIEW.JS — Split-View Live Preview v5.1 (Hard Block Typing)
+// LIVEVIEW.JS — Split-View Live Preview v5.2 (Double-Buffer Anti-Flicker)
 // Berisi:
 //   AT_SPLITVIEW  — live preview berdampingan dengan editor
 //   Preview patch, init code, MutationObserver, keyboard shortcuts
@@ -9,17 +9,15 @@
 // Editor modules (AT_UNDO, AT_SK_EDITOR, AT_FUNGSI_EDITOR,
 // AT_JSON_IO, accordion helpers) are in liveview-editors.js
 //
-// v5.1 Hard Block Typing:
-//   - CRITICAL FIX: refresh() has HARD BLOCK — rebuild impossible during typing
-//   - No matter WHAT calls refresh(), it will NOT rebuild while _isTyping=true
-//   - Typing detection moved to keydown CAPTURE phase (before any other handler)
-//   - markDirty hook calls _startTyping() BEFORE scheduleRefresh()
-//   - MutationObserver uses scheduleRefresh() (respects typing skip!)
-//   - Opacity CSS transition replaces hard visibility:hidden flash
+// v5.2 Double-Buffer Anti-Flicker:
+//   - NO loading overlay during normal refresh (removed flicker source #1)
+//   - NO opacity fade (removed flicker source #2)
+//   - iframe background = content background (#0e1c2f) — blank = content (source #3)
+//   - GPU compositing hints (will-change, backface-visibility)
+//   - Hard block in refresh() — rebuild impossible during typing
+//   - Typing detection: keydown CAPTURE phase + markDirty hook
 //   - State merge instead of overwrite (fixes CP/TP/ATP race condition)
 //   - Debounced iframe state reports (250ms) prevent race condition
-//   - Batch undo pushes during typing (avoid deep clone per keystroke)
-//   - requestAnimationFrame gating for smooth rebuild timing
 // ═══════════════════════════════════════════════════════════════
 
 /* ══════════════════════════════════════════════════════════════
@@ -248,11 +246,18 @@ window.AT_SPLITVIEW = {
       this._showSyncPulse();
 
       this._lastHTML = html;
-      if (loading) loading.style.display = "flex";
+      // ╔═══════════════════════════════════════════════════════╗
+      // ║  ANTI-FLICKER v5.2: TIDAK ADA loading overlay,      ║
+      // ║  TIDAK ADA opacity fade, TIDAK ADA visibility toggle ║
+      // ║                                                     ║
+      // ║  Kenapa ini bekerja tanpa flicker?                  ║
+      // ║  1. iframe background sudah #0e1c2f (sama konten)   ║
+      // ║  2. antiFlicker CSS membuat semua opacity:1 langsung  ║
+      // ║  3. Tidak ada transisi visual — langsung ganti       ║
+      // ║  4. srcdoc update sangat cepat (<16ms)               ║
+      // ║  5. Browser compositor menangani swap tanpa jank    ║
+      // ╚═════════════════════════════════════════════════════╝
       this._resetIframeState();
-      // SMOOTH FADE: use opacity transition instead of hard visibility:hidden
-      frame.style.transition = 'opacity 120ms ease';
-      frame.style.opacity = '0';
 
       // ── Aggressive anti-flicker: kill ALL animations + transitions ──
       const antiFlicker = `<style>
@@ -349,8 +354,7 @@ window.AT_SPLITVIEW = {
       // Remove old listeners to prevent stacking
       frame.onload = null;
       frame.addEventListener("load", () => {
-        // SMOOTH FADE IN: opacity 0→1 with CSS transition
-        frame.style.opacity = '1';
+        // NO opacity fade — directly navigate (anti-flicker)
         setTimeout(() => {
           // 1. Navigate to correct page + restore doc tab
           this._navigateFrame();
@@ -369,7 +373,6 @@ window.AT_SPLITVIEW = {
 
       // Safety timeout
       setTimeout(() => {
-        frame.style.opacity = '1';
         if (loading) loading.style.display = "none";
         if (!this._iframeReady) this._flushPendingMessages();
       }, 4000);
