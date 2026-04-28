@@ -71,3 +71,38 @@ All files copied to `/home/z/my-project/public/` via:
 ```bash
 cp /home/z/my-project/authoring-tool-v3/*.html /home/z/my-project/authoring-tool-v3/*.css /home/z/my-project/authoring-tool-v3/*.js /home/z/my-project/public/
 ```
+---
+Task ID: 1
+Agent: Main Agent
+Task: Perbaiki Flickering, Auto-Sync, dan bug lainnya di Authoring Tool v3
+
+Work Log:
+- Membaca semua file sumber: index.html, style.css, editor.js, liveview.js, liveview_enhancements.js
+- Mengidentifikasi 3 akar masalah utama:
+  1. FLICKERING: srcdoc iframe di-replace setiap refresh tanpa cek perubahan HTML
+  2. SYNC GANDA: liveview.js DAN liveview_enhancements.js keduanya patch AT_NAV.go dan switchKontenTab → konflik
+  3. CSS ISSUE: #split-frame punya `transition: opacity .2s` menyebabkan flash
+
+- Fix Flickering (liveview.js):
+  - Tambah HTML comparison: skip refresh jika html === _lastHTML
+  - Anti-flicker CSS agresif: *{animation:none!important;transition:none!important}
+  - visibility:hidden saat srcdoc write, visible setelah iframe load
+  - frame.onload = null sebelum addEventListener baru (prevent stacking)
+  - Debounce dinaikkan: 250ms (dari 200ms) untuk kurangi frekuensi refresh
+  - Auto-open split hanya pada layar >900px
+
+- Fix Auto-Sync (liveview.js + liveview_enhancements.js):
+  - Hapus semua sync logic dari liveview.js (_patchSwitchKontenTab + nav patch)
+  - Sync eksklusif via AT_PAGE_SYNC di liveview_enhancements.js
+  - Tambah delay 100ms pada sync untuk memastikan iframe siap
+  - Perbaiki auto-open split: single flag _autoOpenDone mencegah double-toggle
+
+- Fix CSS (style.css):
+  - Hapus `transition: opacity .2s` dari #split-frame
+
+Stage Summary:
+- 3 file diubah: liveview.js, liveview_enhancements.js, style.css
+- Semua file sudah di-sync ke /home/z/my-project/public/
+- Flickering: diperbaiki via HTML skip + anti-flicker CSS + visibility hidden
+- Auto-Sync: diperbaiki via single sync path (AT_PAGE_SYNC only)
+- Auto-Open: diperbaiki via deduplication flag

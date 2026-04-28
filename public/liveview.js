@@ -77,16 +77,16 @@ window.AT_SPLITVIEW = {
   /* ── Single entry point: dipanggil dari unified markDirty ── */
   scheduleRefresh() {
     if (!this.active) {
-      // Auto-open on first meaningful edit
-      if (!this._autoOpened && this._hasEnoughContent()) {
+      // Auto-open on first meaningful edit (screen > 900px)
+      if (!this._autoOpened && this._hasEnoughContent() && window.innerWidth > 900) {
         this._autoOpened = true;
         this.toggle();
       }
       return;
     }
     clearTimeout(this._debounceTimer);
-    // Fast first render (60ms), then normal debounce (200ms)
-    const delay = this._buildCount < 5 ? 60 : 200;
+    // Fast first render (80ms), then normal debounce (250ms) — reduced flicker
+    const delay = this._buildCount < 3 ? 80 : 250;
     this._debounceTimer = setTimeout(() => this.refresh(), delay);
   },
 
@@ -111,7 +111,6 @@ window.AT_SPLITVIEW = {
     if (!frame) return;
 
     this._showSyncPulse();
-    if (loading) loading.style.display = "flex";
 
     try {
       if (!window.AT_PREVIEW || !window.AT_PREVIEW.buildStudentHTML) {
@@ -123,16 +122,29 @@ window.AT_SPLITVIEW = {
 
       const html = AT_PREVIEW.buildStudentHTML(AT_STATE);
       this._buildCount++;
-      this._lastHTML = html;
       this._hasContent = true;
       this._errorRetries = 0;
       this._updateCharCount(html);
 
-      const pageId = document.getElementById("splitPageSelect")?.value || "sc";
-      const isRefresh = this._buildCount > 0;
-      const antiFlicker = isRefresh
-        ? '<style>.screen.active,.mat-page,.kp.on{animation:none!important;transition:none!important;}@keyframes fi{from{opacity:1;transform:none}to{opacity:1;transform:none}}</style>'
-        : '';
+      // ── ANTI-FLICKER: skip refresh if HTML hasn't changed ──
+      if (html === this._lastHTML) {
+        // Content unchanged — just navigate if needed, don't rewrite srcdoc
+        this._hideSyncPulse();
+        return;
+      }
+
+      this._lastHTML = html;
+      if (loading) loading.style.display = "flex";
+
+      // ── Hide iframe during srcdoc write to prevent white flash ──
+      frame.style.visibility = 'hidden';
+
+      // ── Aggressive anti-flicker: kill ALL animations + transitions ──
+      const antiFlicker = `<style>
+*{animation:none!important;transition:none!important;}
+.screen,.mat-page,.kp,.card,.btn-y,.h2{opacity:1!important;}
+@keyframes fi{from{opacity:1;transform:none}to{opacity:1;transform:none}}
+</style>`;
       const navScript = `<script>(function(){
   window.addEventListener('message',function(e){
     if(e.data&&e.data.goPage){var fn=window.go;if(fn)fn(e.data.goPage);}
@@ -174,7 +186,11 @@ window.AT_SPLITVIEW = {
       frame.style.display = "block";
       if (emptyState) emptyState.style.display = "none";
 
+      // Remove old listeners to prevent stacking
+      frame.onload = null;
       frame.addEventListener("load", () => {
+        // Make iframe visible again after content loads
+        frame.style.visibility = 'visible';
         setTimeout(() => {
           this._navigateFrame();
           // Restore preview state (materi page, module page, fungsi tab, scroll)
@@ -188,8 +204,11 @@ window.AT_SPLITVIEW = {
         }, 80);
       }, { once: true });
 
-      // Safety timeout — hide loading after 4s max
-      setTimeout(() => { if (loading) loading.style.display = "none"; }, 4000);
+      // Safety timeout — make visible after 4s max even if load event missed
+      setTimeout(() => {
+        frame.style.visibility = 'visible';
+        if (loading) loading.style.display = "none";
+      }, 4000);
 
     } catch(e) {
       this._errorRetries++;
@@ -197,19 +216,7 @@ window.AT_SPLITVIEW = {
       console.error("Live preview error:", e);
 
       // Show error in iframe
-      frame.srcdoc = `
-        <body style="padding:24px;color:#f87171;font-family:'Plus Jakarta Sans',sans-serif;background:#0e1c2f;margin:0">
-          <div style="max-width:300px">
-            <div style="font-size:1.4rem;margin-bottom:8px">&#9888;&#65039;</div>
-            <div style="font-size:.85rem;font-weight:700;margin-bottom:6px">Preview Error</div>
-            <pre style="font-size:.72rem;white-space:pre-wrap;color:rgba(248,113,113,.7);line-height:1.5;margin:0">${e.message}</pre>
-            <button onclick="window.parent.postMessage({action:'retry'},'*')"
-              style="margin-top:12px;padding:6px 14px;border-radius:6px;border:1px solid rgba(248,113,113,.3);
-              background:rgba(248,113,113,.1);color:#f87171;font-size:.72rem;font-weight:700;cursor:pointer">
-              Coba Lagi
-            </button>
-          </div>
-        </body>`;
+      frame.srcdoc = `<body style="padding:24px;color:#f87171;font-family:'Plus Jakarta Sans',sans-serif;background:#0e1c2f;margin:0"><div style="max-width:300px"><div style="font-size:1.4rem;margin-bottom:8px">&#9888;&#65039;</div><div style="font-size:.85rem;font-weight:700;margin-bottom:6px">Preview Error</div><pre style="font-size:.72rem;white-space:pre-wrap;color:rgba(248,113,113,.7);line-height:1.5;margin:0">${e.message}</pre><button onclick="window.parent.postMessage({action:'retry'},'*')" style="margin-top:12px;padding:6px 14px;border-radius:6px;border:1px solid rgba(248,113,113,.3);background:rgba(248,113,113,.1);color:#f87171;font-size:.72rem;font-weight:700;cursor:pointer">Coba Lagi</button></div></body>`;
       if (loading) loading.style.display = "none";
       frame.style.display = "block";
       if (emptyState) emptyState.style.display = "none";
@@ -801,33 +808,10 @@ function _patchSwitchKontenTab() {
   window.switchKontenTab = function(tabId, btnEl) {
     origSwitch(tabId, btnEl);
     _recalcAfterRender();
-    // Auto-sync preview to matching screen
-    if (AT_SPLITVIEW.active) {
-      const tabToPage = {
-        'konten-tab-materi': 'smat',
-        'konten-tab-modules': 'smods',
-        'konten-tab-kuis': 'skuis',
-      };
-      const targetPage = tabToPage[tabId];
-      if (targetPage) {
-        const sel = document.getElementById('splitPageSelect');
-        if (sel) sel.value = targetPage;
-        AT_SPLITVIEW._navigateFrame();
-      }
-    }
-    // If split is not active, auto-open it on konten tab switch
+    // NOTE: Sync handled by liveview_enhancements.js AT_PAGE_SYNC.syncFromTab()
+    // Only auto-open split view here if not yet active
     if (!AT_SPLITVIEW.active && AT_SPLITVIEW._hasEnoughContent()) {
- AT_SPLITVIEW.toggle();
-      const tabToPage = {
-        'konten-tab-materi': 'smat',
-        'konten-tab-modules': 'smods',
-        'konten-tab-kuis': 'skuis',
-      };
-      const targetPage = tabToPage[tabId];
-      if (targetPage) {
-        const sel = document.getElementById('splitPageSelect');
-        if (sel) sel.value = targetPage;
-      }
+      AT_SPLITVIEW.toggle();
     }
   };
 }
@@ -843,7 +827,8 @@ document.addEventListener("DOMContentLoaded", () => {
   AT_UNDO.init();
   _initMutationObserver();
 
-  // Add split-view refresh + auto-sync on panel change
+  // Patch nav: scheduleRefresh + close split for non-content panels
+  // NOTE: Auto-sync handled by liveview_enhancements.js AT_PAGE_SYNC.syncFromPanel()
   const _origNav = AT_NAV.go.bind(AT_NAV);
   AT_NAV.go = function(id) {
     _origNav(id);
@@ -852,32 +837,6 @@ document.addEventListener("DOMContentLoaded", () => {
     if (closePanels.includes(id) && AT_SPLITVIEW.active) {
       AT_SPLITVIEW.toggle();
       return;
-    }
-    // Auto-sync: switch preview to relevant screen
-    if (AT_SPLITVIEW.active) {
-      const panelToPreview = {
-        'dashboard': 'sc',
-        'dokumen': 'scp',
-        'autogen': 'sc',
-      };
-      let targetPage = panelToPreview[id];
-      // For konten panel, read the currently active konten tab
-      if (id === 'konten') {
-        const activeTab = document.querySelector('.konten-tab.active');
-        if (activeTab) {
-          const tabToPage = {
-            'konten-tab-materi': 'smat',
-            'konten-tab-modules': 'smods',
-            'konten-tab-kuis': 'skuis',
-          };
-          targetPage = tabToPage[activeTab.dataset.ktab] || 'smat';
-        }
-      }
-      if (targetPage) {
-        const sel = document.getElementById('splitPageSelect');
-        if (sel) sel.value = targetPage;
-        AT_SPLITVIEW._navigateFrame();
-      }
     }
     AT_SPLITVIEW.scheduleRefresh();
   };

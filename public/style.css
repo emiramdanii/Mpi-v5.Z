@@ -1446,7 +1446,7 @@ option{ background:#111827; }
   background: #0e1c2f;
   width: 100%;
   min-height: 0;
-  transition: opacity .2s;
+  /* No opacity transition — prevents flicker on srcdoc refresh */
 }
 
 /* ── LIVE PREVIEW TOGGLE BUTTON (Enhanced) ── */

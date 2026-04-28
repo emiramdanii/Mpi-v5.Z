@@ -333,28 +333,24 @@ document.addEventListener('DOMContentLoaded', () => {
   AT_LAYOUT._getState();
 
   // ── Auto-open split view pada layar lebar (>900px) ──
-  if (window.innerWidth > 900 && !sessionStorage.getItem('splitViewOpened')) {
-    setTimeout(() => {
-      if (!AT_SPLITVIEW.active) {
-        AT_SPLITVIEW.toggle();
-      }
-      sessionStorage.setItem('splitViewOpened', '1');
-    }, 800);
+  // Single deduplicated auto-open: use a flag to prevent double-toggle
+  let _autoOpenDone = false;
+  function _autoOpenSplit() {
+    if (_autoOpenDone || AT_SPLITVIEW.active) return;
+    _autoOpenDone = true;
+    AT_SPLITVIEW.toggle();
   }
-  // Jika sudah pernah buka tapi split belum active & layar lebar, buka kembali
-  else if (window.innerWidth > 900 && sessionStorage.getItem('splitViewOpened') && !AT_SPLITVIEW.active) {
-    setTimeout(() => {
-      AT_SPLITVIEW.toggle();
-    }, 400);
+  if (window.innerWidth > 900) {
+    setTimeout(_autoOpenSplit, 600);
   }
 
   // ── Patch AT_NAV.go untuk auto-sync preview page ──
   const _origNavGo = AT_NAV.go.bind(AT_NAV);
   AT_NAV.go = function(id) {
     _origNavGo(id);
-    // Auto-sync preview page ke editor panel
+    // Auto-sync preview page ke editor panel (delay 100ms if split just opened)
     if (AT_SPLITVIEW.active) {
-      AT_PAGE_SYNC.syncFromPanel(id);
+      setTimeout(() => AT_PAGE_SYNC.syncFromPanel(id), 100);
     }
   };
 
@@ -362,9 +358,9 @@ document.addEventListener('DOMContentLoaded', () => {
   const _origSwitchTab = window.switchKontenTab;
   window.switchKontenTab = function(tabId, btnEl) {
     _origSwitchTab(tabId, btnEl);
-    // Auto-sync preview page ke konten tab
+    // Auto-sync preview page ke konten tab (delay 100ms if split just opened)
     if (AT_SPLITVIEW.active) {
-      AT_PAGE_SYNC.syncFromTab(tabId);
+      setTimeout(() => AT_PAGE_SYNC.syncFromTab(tabId), 100);
     }
   };
 
