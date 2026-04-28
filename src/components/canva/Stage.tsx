@@ -1,0 +1,383 @@
+'use client';
+
+import { useRef, useState, useCallback, useEffect } from 'react';
+import { useCanvaStore } from '@/store/canva-store';
+import type { CanvaElement, ResizeDir } from './types';
+
+export default function Stage({ onMouseMove }: { onMouseMove: (x: number, y: number) => void }) {
+  const {
+    pages,
+    currentPageIndex,
+    ratioId,
+    zoom,
+    tool,
+    selectedElId,
+    selectElement,
+    addElement,
+    updateElement,
+  } = useCanvaStore();
+
+  const page = pages[currentPageIndex];
+  const ratio = useCanvaStore(s => s.currentRatio());
+
+  const canvasAreaRef = useRef<HTMLDivElement>(null);
+  const stageWrapRef = useRef<HTMLDivElement>(null);
+  const [baseScale, setBaseScale] = useState(0.5);
+  const [stageW, setStageW] = useState(ratio.w);
+  const [stageH, setStageH] = useState(ratio.h);
+
+  // Drag & resize state
+  const dragState = useRef<{
+    type: 'move' | 'resize';
+    elId: string;
+    startX: number;
+    startY: number;
+    origX: number;
+    origY: number;
+    origW?: number;
+    origH?: number;
+    dir?: ResizeDir;
+  } | null>(null);
+
+  // Track mouse position
+  const handleAreaMouseMove = useCallback((e: React.MouseEvent) => {
+    if (!stageWrapRef.current) return;
+    const rect = stageWrapRef.current.getBoundingClientRect();
+    const scale = baseScale * zoom;
+    const x = Math.round((e.clientX - rect.left) / scale);
+    const y = Math.round((e.clientY - rect.top) / scale);
+    if (x >= 0 && y >= 0 && x <= stageW && y <= stageH) {
+      onMouseMove(x, y);
+    }
+
+    if (!dragState.current || !canvasAreaRef.current) return;
+
+    const dx = e.clientX - dragState.current.startX;
+    const dy = e.clientY - dragState.current.startY;
+    const dxPct = dx / scale / stageW * 100;
+    const dyPct = dy / scale / stageH * 100;
+
+    if (dragState.current.type === 'move') {
+      const newX = Math.max(0, Math.min(90, dragState.current.origX + dxPct));
+      const newY = Math.max(0, Math.min(90, dragState.current.origY + dyPct));
+      updateElement(dragState.current.elId, { x: newX, y: newY });
+    } else if (dragState.current.type === 'resize') {
+      const dir = dragState.current.dir!;
+      const orig = {
+        x: dragState.current.origX,
+        y: dragState.current.origY,
+        w: dragState.current.origW!,
+        h: dragState.current.origH!,
+      };
+
+      let newX = orig.x, newY = orig.y, newW = orig.w, newH = orig.h;
+
+      if (dir.includes('r')) newW = Math.max(10, orig.w + dxPct);
+      if (dir.includes('b')) newH = Math.max(8, orig.h + dyPct);
+      if (dir.includes('l')) {
+        newX = Math.min(orig.x + orig.w - 10, orig.x + dxPct);
+        newW = Math.max(10, orig.w - dxPct);
+      }
+      if (dir.includes('t')) {
+        newY = Math.min(orig.y + orig.h - 8, orig.y + dyPct);
+        newH = Math.max(8, orig.h - dyPct);
+      }
+
+      updateElement(dragState.current.elId, { x: newX, y: newY, w: newW, h: newH });
+    }
+  }, [baseScale, zoom, stageW, stageH, updateElement, onMouseMove]);
+
+  const handleMouseUp = useCallback(() => {
+    dragState.current = null;
+  }, []);
+
+  useEffect(() => {
+    window.addEventListener('mouseup', handleMouseUp);
+    return () => window.removeEventListener('mouseup', handleMouseUp);
+  }, [handleMouseUp]);
+
+  // ResizeObserver for responsive scaling
+  useEffect(() => {
+    const area = canvasAreaRef.current;
+    if (!area) return;
+    const observer = new ResizeObserver(() => {
+      const aW = (area.clientWidth || 800) - 60;
+      const aH = (area.clientHeight || 500) - 60;
+      const scaleW = aW / ratio.w;
+      const scaleH = aH / ratio.h;
+      setBaseScale(Math.min(scaleW, scaleH, 1));
+      setStageW(ratio.w);
+      setStageH(ratio.h);
+    });
+    observer.observe(area);
+    return () => observer.disconnect();
+  }, [ratio]);
+
+  // Handle drop from element panel
+  const handleDrop = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    const elType = e.dataTransfer.getData('elemType');
+    if (!elType) return;
+    const rect = stageWrapRef.current?.getBoundingClientRect();
+    if (!rect) return;
+    const scale = baseScale * zoom;
+    const x = Math.max(2, Math.min(80, (e.clientX - rect.left) / scale / stageW * 100));
+    const y = Math.max(2, Math.min(85, (e.clientY - rect.top) / scale / stageH * 100));
+    addElement(elType, parseFloat(x.toFixed(1)), parseFloat(y.toFixed(1)));
+  }, [baseScale, zoom, stageW, stageH, addElement]);
+
+  // Handle click on stage background
+  const handleStageBgClick = (e: React.MouseEvent) => {
+    const target = e.target as HTMLElement;
+    if (target.id !== 'cm-stage-wrap' && target.id !== 'cm-stage-bg' && target.id !== 'cm-canvas-area' && target.id !== 'cm-stage-bg-overlay') return;
+
+    if (tool === 'text') {
+      const rect = stageWrapRef.current?.getBoundingClientRect();
+      if (!rect) return;
+      const scale = baseScale * zoom;
+      const x = Math.max(2, Math.min(80, (e.clientX - rect.left) / scale / stageW * 100));
+      const y = Math.max(2, Math.min(85, (e.clientY - rect.top) / scale / stageH * 100));
+      addElement('teks', parseFloat(x.toFixed(1)), parseFloat(y.toFixed(1)));
+      useCanvaStore.getState().setTool('select');
+      return;
+    }
+
+    selectElement(null);
+  };
+
+  const scale = baseScale * zoom;
+
+  if (!page) return null;
+
+  return (
+    <div
+      ref={canvasAreaRef}
+      className="flex-1 bg-zinc-950 overflow-auto flex items-center justify-center"
+      style={{ cursor: tool === 'text' ? 'text' : 'default' }}
+      onMouseMove={handleAreaMouseMove}
+      onDragOver={e => { e.preventDefault(); e.dataTransfer.dropEffect = 'copy'; }}
+      onDrop={handleDrop}
+    >
+      {/* Checkerboard pattern behind stage */}
+      <div className="relative">
+        <div
+          ref={stageWrapRef}
+          id="cm-stage-wrap"
+          className="relative overflow-hidden shadow-2xl shadow-black/50"
+          style={{
+            width: stageW,
+            height: stageH,
+            transform: `scale(${scale})`,
+            transformOrigin: 'center center',
+          }}
+          onMouseDown={handleStageBgClick}
+        >
+          {/* Background color */}
+          <div
+            id="cm-stage-bg"
+            className="absolute inset-0"
+            style={{ background: page.bgColor || '#1a1a2e' }}
+          />
+
+          {/* Background image */}
+          {page.bgDataUrl && (
+            <img
+              src={page.bgDataUrl}
+              alt=""
+              className="absolute inset-0 w-full h-full object-cover"
+            />
+          )}
+
+          {/* Overlay */}
+          <div
+            id="cm-stage-bg-overlay"
+            className="absolute inset-0 pointer-events-none"
+            style={{ background: `rgba(14,28,47,${(page.overlay || 20) / 100})` }}
+          />
+
+          {/* Elements container */}
+          <div className="absolute inset-0">
+            {page.elements.map(el => (
+              <StageElement
+                key={el.id}
+                element={el}
+                isSelected={el.id === selectedElId}
+                onSelect={() => selectElement(el.id)}
+                onStartDrag={(startX, startY) => {
+                  dragState.current = {
+                    type: 'move',
+                    elId: el.id,
+                    startX,
+                    startY,
+                    origX: el.x,
+                    origY: el.y,
+                  };
+                }}
+                onStartResize={(dir, startX, startY) => {
+                  dragState.current = {
+                    type: 'resize',
+                    elId: el.id,
+                    startX,
+                    startY,
+                    origX: el.x,
+                    origY: el.y,
+                    origW: el.w,
+                    origH: el.h,
+                    dir,
+                  };
+                }}
+              />
+            ))}
+          </div>
+
+          {/* Drop hint (visible when no elements) */}
+          {page.elements.length === 0 && (
+            <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+              <div className="text-zinc-600 text-sm">⬇ Seret elemen ke sini</div>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ── Stage Element ──────────────────────────────────────────── */
+
+function StageElement({
+  element,
+  isSelected,
+  onSelect,
+  onStartDrag,
+  onStartResize,
+}: {
+  element: CanvaElement;
+  isSelected: boolean;
+  onSelect: () => void;
+  onStartDrag: (startX: number, startY: number) => void;
+  onStartResize: (dir: ResizeDir, startX: number, startY: number) => void;
+}) {
+  const { updateElement, deleteElement, saveTextContent } = useCanvaStore();
+  const textRef = useRef<HTMLDivElement>(null);
+
+  const handleMouseDown = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    onSelect();
+    onStartDrag(e.clientX, e.clientY);
+  };
+
+  const handleResizeMouseDown = (e: React.MouseEvent, dir: ResizeDir) => {
+    e.stopPropagation();
+    e.preventDefault();
+    onStartResize(dir, e.clientX, e.clientY);
+  };
+
+  const handleTextBlur = () => {
+    if (textRef.current) {
+      saveTextContent(element.id, textRef.current.textContent || '');
+    }
+  };
+
+  return (
+    <div
+      className={`absolute group ${isSelected ? 'ring-2 ring-amber-400 ring-offset-0 z-10' : 'z-0'} ${element.hidden ? 'hidden' : ''}`}
+      style={{
+        left: `${element.x}%`,
+        top: `${element.y}%`,
+        width: `${element.w}%`,
+        height: `${element.h}%`,
+        opacity: (element.opacity ?? 100) / 100,
+      }}
+      onMouseDown={handleMouseDown}
+    >
+      {/* Handle bar */}
+      {isSelected && (
+        <div className="absolute -top-5 left-0 right-0 flex items-center justify-between px-1 bg-amber-500/90 rounded-t text-[9px] font-bold text-amber-950 z-20">
+          <span className="truncate">{element.icon} {element.label || element.type}</span>
+          <button
+            onClick={e => { e.stopPropagation(); deleteElement(element.id); }}
+            className="ml-1 hover:text-red-700 transition-colors"
+          >
+            ✕
+          </button>
+        </div>
+      )}
+
+      {/* Body */}
+      <div className="w-full h-full overflow-hidden rounded-sm">
+        {element.type === 'kuis' && (
+          <div className="p-2 h-full bg-amber-500/10 rounded border border-amber-500/20">
+            <div className="text-[10px] font-bold text-amber-300">❓ Kuis</div>
+            <div className="text-[9px] text-amber-200/60 mt-1">Soal pilihan ganda</div>
+          </div>
+        )}
+        {element.type === 'game' && (
+          <div className="flex flex-col items-center justify-center h-full bg-cyan-500/10 rounded border border-cyan-500/20 p-2">
+            <span className="text-2xl">🎮</span>
+            <span className="text-[10px] font-bold text-cyan-300 mt-1">Game Interaktif</span>
+          </div>
+        )}
+        {element.type === 'materi' && (
+          <div className="p-2 h-full bg-purple-500/10 rounded border border-purple-500/20">
+            <span className="text-2xl">📝</span>
+            <div className="text-[9px] text-purple-300/60 mt-1">Materi Pembelajaran</div>
+          </div>
+        )}
+        {element.type === 'modul' && (
+          <div className="flex flex-col items-center justify-center h-full bg-emerald-500/10 rounded border border-emerald-500/20 p-2">
+            <span className="text-2xl">🧩</span>
+            <span className="text-[10px] font-bold text-emerald-300 mt-1">Modul</span>
+          </div>
+        )}
+        {element.type === 'teks' && (
+          <div
+            ref={textRef}
+            contentEditable
+            suppressContentEditableWarning
+            onBlur={handleTextBlur}
+            className="w-full h-full outline-none text-white text-shadow-lg"
+            style={{
+              fontSize: `${element.fontSize || 20}px`,
+              fontWeight: 700,
+              textShadow: '0 2px 8px rgba(0,0,0,.5)',
+              lineHeight: 1.4,
+              padding: 8,
+            }}
+          >
+            {element.text || 'Ketik teks…'}
+          </div>
+        )}
+        {element.type === 'shape' && (
+          <div
+            className="w-full h-full rounded-lg"
+            style={{
+              background: element.color || 'rgba(255,255,255,.15)',
+              borderRadius: element.radius || 8,
+            }}
+          />
+        )}
+      </div>
+
+      {/* Resize handles */}
+      {isSelected && (
+        <>
+          {(['tl', 'tr', 'bl', 'br'] as ResizeDir[]).map(dir => (
+            <div
+              key={dir}
+              onMouseDown={e => handleResizeMouseDown(e, dir)}
+              className={`absolute w-3 h-3 bg-amber-400 border border-amber-600 rounded-sm z-30 cursor-${
+                dir === 'tl' || dir === 'br' ? 'nwse-resize' : 'nesw-resize'
+              }`}
+              style={{
+                top: dir.includes('t') ? -5 : 'auto',
+                bottom: dir.includes('b') ? -5 : 'auto',
+                left: dir.includes('l') ? -5 : 'auto',
+                right: dir.includes('r') ? -5 : 'auto',
+              }}
+            />
+          ))}
+        </>
+      )}
+    </div>
+  );
+}

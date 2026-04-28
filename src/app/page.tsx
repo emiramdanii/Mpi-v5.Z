@@ -1,18 +1,19 @@
-'use client'
+'use client';
+
+import dynamic from 'next/dynamic';
+
+const CanvaBuilder = dynamic(() => import('@/components/canva/CanvaBuilder'), {
+  ssr: false,
+  loading: () => (
+    <div className="h-screen w-screen flex items-center justify-center bg-zinc-950">
+      <div className="text-center">
+        <div className="text-4xl mb-4 animate-pulse">🎨</div>
+        <div className="text-zinc-400 text-sm">Memuat Canva Editor...</div>
+      </div>
+    </div>
+  ),
+});
 
 export default function Home() {
-  return (
-    <iframe
-      src="/index.html"
-      style={{
-        width: '100%',
-        height: '100vh',
-        border: 'none',
-        margin: 0,
-        padding: 0,
-        overflow: 'hidden',
-      }}
-      title="Authoring Tool v3"
-    />
-  )
+  return <CanvaBuilder />;
 }
