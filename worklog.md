@@ -127,3 +127,20 @@ Stage Summary:
 - style.css berubah dari 1898 baris menjadi 36 baris (aggregator)
 - public/ sudah disync dengan perubahan terbaru
 - Semua perubahan backward-compatible (style.css aggregator tersedia)
+
+---
+Task ID: 1
+Agent: main
+Task: Perbaiki flickering dan auto sync pada live preview authoring tool
+
+Work Log:
+- Membaca semua file sumber: liveview.js, liveview_enhancements.js, liveview-editors.js, preview.js, editor.js, index.html
+- Identifikasi root cause: DOUBLE PATCHING pada AT_NAV.go dan switchKontenTab (di-patch di liveview.js DAN liveview_enhancements.js)
+- Identifikasi redundant periodic integrity check (setInterval 2 detik) yang memicu refresh berulang
+- Identifikasi duplicate auto-open split view logic di 2 file
+- Identifikasi MutationObserver terlalu agresif (300ms tanpa throttle)
+
+Stage Summary:
+- Perbaikan di liveview.js v4.2: Hapus _patchSwitchKontenTab, hapus AT_NAV.go patch, hapus setInterval periodic check, hapus auto-open logic, throttle MutationObserver (500ms + skip jika debounce timer aktif), tingkatkan debounce dari 80ms/250ms ke 120ms/350ms
+- Perbaikan di liveview_enhancements.js v6.1: Konsolidasi SEMUA patch (AT_NAV.go, switchKontenTab, auto-open) sebagai SINGLE SOURCE, hapus duplikasi
+- Sync ke /home/z/my-project/public/

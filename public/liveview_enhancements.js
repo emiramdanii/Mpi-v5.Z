@@ -326,7 +326,16 @@ function _injectSplitViewTip() {
 }
 
 /* ══════════════════════════════════════════════════════════════
-   INIT — Auto-open, Page Sync, Dashboard Tip
+   INIT — Single source of truth for:
+     - Auto-open split view on wide screens
+     - AT_NAV.go patch (close split for non-content, scheduleRefresh, sync)
+     - switchKontenTab patch (recalc accordion, sync preview page)
+     - Page select manual override
+     - goPage sync indicator
+     - Dashboard tip
+
+   NOTE: All nav/tab patches consolidated HERE to prevent double-patching.
+   liveview.js handles: markDirty hook, undo, MutationObserver, shortcuts.
    ══════════════════════════════════════════════════════════════ */
 document.addEventListener('DOMContentLoaded', () => {
   // Init layout state dari saved data
@@ -338,29 +347,59 @@ document.addEventListener('DOMContentLoaded', () => {
   function _autoOpenSplit() {
     if (_autoOpenDone || AT_SPLITVIEW.active) return;
     _autoOpenDone = true;
-    AT_SPLITVIEW.toggle();
+    // Check if there's enough content to preview
+    const hasStateContent = AT_SPLITVIEW._hasEnoughContent();
+    const hasSavedContent = !!(AT_STORAGE && AT_STORAGE.load());
+    if (hasStateContent || hasSavedContent) {
+      AT_SPLITVIEW.toggle();
+    }
   }
   if (window.innerWidth > 900) {
-    setTimeout(_autoOpenSplit, 600);
+    setTimeout(_autoOpenSplit, 800);
   }
 
-  // ── Patch AT_NAV.go untuk auto-sync preview page ──
+  // ── Patch AT_NAV.go — SINGLE SOURCE ──
+  // Handles: close split for non-content panels, scheduleRefresh, auto-sync
   const _origNavGo = AT_NAV.go.bind(AT_NAV);
   AT_NAV.go = function(id) {
     _origNavGo(id);
-    // Auto-sync preview page ke editor panel (delay 100ms if split just opened)
+    // Close split view for non-content panels
+    const closePanels = ['projects', 'import', 'versions'];
+    if (closePanels.includes(id) && AT_SPLITVIEW.active) {
+      AT_SPLITVIEW.toggle();
+      return;
+    }
+    // Auto-open split view if not yet active and switching to content panel
+    if (!AT_SPLITVIEW.active && !AT_SPLITVIEW._autoOpened) {
+      if (AT_SPLITVIEW._hasEnoughContent() && window.innerWidth > 900) {
+        AT_SPLITVIEW._autoOpened = true;
+        AT_SPLITVIEW.toggle();
+      }
+    }
+    // Schedule refresh for content panels
     if (AT_SPLITVIEW.active) {
-      setTimeout(() => AT_PAGE_SYNC.syncFromPanel(id), 100);
+      AT_SPLITVIEW.scheduleRefresh();
+      // Auto-sync preview page ke editor panel
+      setTimeout(() => AT_PAGE_SYNC.syncFromPanel(id), 150);
     }
   };
 
-  // ── Patch switchKontenTab untuk auto-sync preview page ──
+  // ── Patch switchKontenTab — SINGLE SOURCE ──
+  // Handles: recalc accordion, auto-sync preview page
   const _origSwitchTab = window.switchKontenTab;
   window.switchKontenTab = function(tabId, btnEl) {
     _origSwitchTab(tabId, btnEl);
-    // Auto-sync preview page ke konten tab (delay 100ms if split just opened)
+    _recalcAfterRender();
+    // Auto-open split if not yet active
+    if (!AT_SPLITVIEW.active && !AT_SPLITVIEW._autoOpened) {
+      if (AT_SPLITVIEW._hasEnoughContent() && window.innerWidth > 900) {
+        AT_SPLITVIEW._autoOpened = true;
+        AT_SPLITVIEW.toggle();
+      }
+    }
+    // Auto-sync preview page ke konten tab
     if (AT_SPLITVIEW.active) {
-      setTimeout(() => AT_PAGE_SYNC.syncFromTab(tabId), 100);
+      setTimeout(() => AT_PAGE_SYNC.syncFromTab(tabId), 150);
     }
   };
 
@@ -382,5 +421,5 @@ document.addEventListener('DOMContentLoaded', () => {
   // ── Inject Split View tip di Dashboard ──
   _injectSplitViewTip();
 
-  console.log('liveview_enhancements.js v6.0 — smart auto-sync, layout, dashboard tips');
+  console.log('liveview_enhancements.js v6.1 — consolidated nav/tab patches, smart auto-sync, no double-patching');
 });

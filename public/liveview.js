@@ -78,6 +78,7 @@ window.AT_SPLITVIEW = {
   scheduleRefresh() {
     if (!this.active) {
       // Auto-open on first meaningful edit (screen > 900px)
+      // NOTE: Also handled in liveview_enhancements.js AT_NAV.go patch
       if (!this._autoOpened && this._hasEnoughContent() && window.innerWidth > 900) {
         this._autoOpened = true;
         this.toggle();
@@ -85,8 +86,8 @@ window.AT_SPLITVIEW = {
       return;
     }
     clearTimeout(this._debounceTimer);
-    // Fast first render (80ms), then normal debounce (250ms) — reduced flicker
-    const delay = this._buildCount < 3 ? 80 : 250;
+    // First render fast (120ms), then steady debounce (350ms) — reduced flicker
+    const delay = this._buildCount < 2 ? 120 : 350;
     this._debounceTimer = setTimeout(() => this.refresh(), delay);
   },
 
@@ -376,14 +377,21 @@ function _initMutationObserver() {
   const contentEl = document.getElementById("content");
   if (!contentEl) return;
 
+  // Lightweight fallback: only catches DOM mutations NOT triggered by markDirty.
+  // This is a safety net for edge cases; markDirty → scheduleRefresh handles normal flow.
+  let _lastMutCheck = 0;
   _mutationObserver = new MutationObserver((mutations) => {
-    // Only trigger refresh if AT_SPLITVIEW is active and there are meaningful changes
     if (!AT_SPLITVIEW.active) return;
-    if (!AT_STATE.dirty) return; // Only if there are actually pending changes
-
-    // Reset debounce to ensure refresh happens
+    // Throttle: max once per 500ms to avoid duplicate refreshes
+    const now = Date.now();
+    if (now - _lastMutCheck < 500) return;
+    _lastMutCheck = now;
+    // Only act if dirty but no pending debounce timer (means markDirty didn't fire)
+    if (!AT_STATE.dirty) return;
+    if (AT_SPLITVIEW._debounceTimer) return; // Already scheduled by markDirty
+    // Fallback: schedule refresh for changes that bypass markDirty
     clearTimeout(AT_SPLITVIEW._debounceTimer);
-    AT_SPLITVIEW._debounceTimer = setTimeout(() => AT_SPLITVIEW.refresh(), 300);
+    AT_SPLITVIEW._debounceTimer = setTimeout(() => AT_SPLITVIEW.refresh(), 500);
   });
 
   _mutationObserver.observe(contentEl, {
@@ -397,6 +405,8 @@ function _initMutationObserver() {
 
 /* ══════════════════════════════════════════════════════════════
    HELPER: Recalc accordion when tab/panel changes
+   NOTE: switchKontenTab patch moved to liveview_enhancements.js
+   to prevent double-patching.
    ══════════════════════════════════════════════════════════════ */
 function _patchAccordionToggle() {
   const origToggle = window.toggleAccordion;
@@ -407,44 +417,20 @@ function _patchAccordionToggle() {
   };
 }
 
-function _patchSwitchKontenTab() {
-  const origSwitch = window.switchKontenTab;
-  if (!origSwitch) return;
-  window.switchKontenTab = function(tabId, btnEl) {
-    origSwitch(tabId, btnEl);
-    _recalcAfterRender();
-    // NOTE: Sync handled by liveview_enhancements.js AT_PAGE_SYNC.syncFromTab()
-    // Only auto-open split view here if not yet active
-    if (!AT_SPLITVIEW.active && AT_SPLITVIEW._hasEnoughContent()) {
-      AT_SPLITVIEW.toggle();
-    }
-  };
-}
-
 /* ══════════════════════════════════════════════════════════════
    INIT — Semua inisialisasi di satu tempat
+   NOTE: AT_NAV.go, switchKontenTab, auto-open logic
+   are ALL handled in liveview_enhancements.js to prevent double-patching.
+   This file only handles: markDirty hook, undo, MutationObserver,
+   keyboard shortcuts, and iframe message listener.
    ══════════════════════════════════════════════════════════════ */
 document.addEventListener("DOMContentLoaded", () => {
   _injectUndoButtons();
   _initModalClose();
   _patchAccordionToggle();
-  _patchSwitchKontenTab();
+  // NOTE: _patchSwitchKontenTab() moved to liveview_enhancements.js
   AT_UNDO.init();
   _initMutationObserver();
-
-  // Patch nav: scheduleRefresh + close split for non-content panels
-  // NOTE: Auto-sync handled by liveview_enhancements.js AT_PAGE_SYNC.syncFromPanel()
-  const _origNav = AT_NAV.go.bind(AT_NAV);
-  AT_NAV.go = function(id) {
-    _origNav(id);
-    // Close split view for non-content panels
-    const closePanels = ['projects', 'import', 'versions'];
-    if (closePanels.includes(id) && AT_SPLITVIEW.active) {
-      AT_SPLITVIEW.toggle();
-      return;
-    }
-    AT_SPLITVIEW.scheduleRefresh();
-  };
 
   // Add fungsi to AT_STATE if missing
   if (!AT_STATE.fungsi) AT_STATE.fungsi = null;
@@ -496,28 +482,8 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   });
 
-  // ── Periodic integrity check ─────────────────────────────
-  // Every 2 seconds, if dirty and split active, ensure refresh is scheduled
-  setInterval(() => {
-    if (AT_SPLITVIEW.active && AT_STATE.dirty) {
-      AT_SPLITVIEW.scheduleRefresh();
-    }
-  }, 2000);
+  // NOTE: Auto-open, AT_NAV.go patch, switchKontenTab patch
+  // ALL handled in liveview_enhancements.js (loaded after this file)
 
-  // ── FEATURE 1: Auto-open split view on wide screens (first visit only) ──
-  if (window.innerWidth > 900 && !AT_SPLITVIEW._autoOpened) {
-    setTimeout(() => {
-      if (!AT_SPLITVIEW.active) {
-        // Check if there's enough content (current state or saved data)
-        const hasStateContent = AT_SPLITVIEW._hasEnoughContent();
-        const hasSavedContent = !!(AT_STORAGE && AT_STORAGE.load());
-        if (hasStateContent || hasSavedContent) {
-          AT_SPLITVIEW.toggle();
-          AT_SPLITVIEW._autoOpened = true;
-        }
-      }
-    }, 800);
-  }
-
-  console.log("liveview.js v4.1 loaded — robust split-view, MutationObserver, accordion recalc, auto-open wide");
+  console.log("liveview.js v4.2 loaded — markDirty hook, undo, MutationObserver, keyboard shortcuts");
 });
