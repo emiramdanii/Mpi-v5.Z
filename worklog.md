@@ -350,3 +350,29 @@ Stage Summary:
 - Hotspot Image module also complete (type + editor + renderer)
 - All committed and pushed to GitHub
 
+---
+Task ID: 1
+Agent: main
+Task: Canva Editor v3.0 — Simplified plug-and-play UX overhaul
+
+Work Log:
+- Audited current canva-hybrid.js (2200+ lines) and identified broken drag handlers
+- Added FULL_PRESETS constant (18 combined gradient+layout one-click presets)
+- Added CSS for simplified panel: .canva-top-bar, .canva-full-preset-grid, .canva-full-preset-card, etc.
+- Completely rewrote _renderCanvaPanel() with simplified UX:
+  - Top bar: page select + mode toggle (one compact line)
+  - Preset Siap Pakai section: 18 one-click presets (background + tombol)
+  - Quick color themes: inline pill buttons for fast theme switching
+  - Canvas section: drag-and-drop overlay editor with live position feedback
+  - Simplified element editor: label, icon, color, shape, size (no custom W/H)
+- Added _applyFullPresetUI() method for one-click preset application
+- Added _quickUpdateProp() method for lightweight property updates
+- Fixed _initOverlayDrag(): eliminated renderEditor() calls during drag (was causing broken re-renders)
+- Fixed applyLayout() and applyColorTheme() to update correct panel context
+- Synced all changes to public/
+
+Stage Summary:
+- Canva Editor is now plug-and-play: select preset → done, drag to adjust
+- Drag system is smooth: no re-render during pointer move, only on pointer up
+- UI is much simpler: no step guide, no separate gradient/layout/theme sections
+- 18 full presets covering Cover, Materi, Kuis, Game, and Navigation use cases

@@ -136,6 +136,28 @@
       ]},
   ];
 
+  // ── FULL PRESETS (one-click = gradient + layout) ──
+  const FULL_PRESETS = [
+    { id: "cover-edu",     name: "Cover Pendidikan",   gradient: "edu-navy",    layout: "hero-cover" },
+    { id: "cover-warm",    name: "Cover Hangat",        gradient: "warm-sunset",  layout: "hero-cover" },
+    { id: "cover-dark",    name: "Cover Elegan",        gradient: "cool-dark",    layout: "hero-cover" },
+    { id: "cover-pastel",  name: "Cover Pastel",        gradient: "fun-candy",    layout: "hero-cover" },
+    { id: "cover-aurora",  name: "Cover Aurora",        gradient: "cool-aurora",  layout: "hero-cover" },
+    { id: "materi-nav",    name: "Materi + Nav",        gradient: "edu-blue",     layout: "nav-basic" },
+    { id: "materi-teal",   name: "Materi Teal",         gradient: "edu-teal",     layout: "nav-centered" },
+    { id: "materi-green",  name: "Materi Hijau",        gradient: "min-green",    layout: "nav-basic" },
+    { id: "kuis-navy",     name: "Kuis Navy",           gradient: "edu-navy",     layout: "quiz-layout" },
+    { id: "kuis-purple",   name: "Kuis Ungu",           gradient: "cool-purple",  layout: "quiz-layout" },
+    { id: "kuis-mint",     name: "Kuis Mint",           gradient: "edu-mint",     layout: "quiz-layout" },
+    { id: "kuis-coral",    name: "Kuis Koral",          gradient: "warm-coral",   layout: "quiz-layout" },
+    { id: "game-sunset",   name: "Game Senja",          gradient: "warm-gold",    layout: "game-play" },
+    { id: "game-ocean",    name: "Game Lautan",         gradient: "fun-ocean",    layout: "game-play" },
+    { id: "game-neon",     name: "Game Neon",           gradient: "fun-rainbow",  layout: "game-play" },
+    { id: "all-nav",       name: "Semua Tombol",        gradient: "cool-slate",   layout: "full-nav" },
+    { id: "menu-corner",   name: "Menu Pojok",          gradient: "warm-coral",   layout: "menu-corner" },
+    { id: "blank-canvas",  name: "Kosong (Manual)",     gradient: null,          layout: "empty-canvas" },
+  ];
+
   const COLOR_THEME_PRESETS = [
     { id: "tema-pkn",      name: "PPKn Klasik",   icon: "\u{1F3DB}", colors: ["#F5C842","#38D9D9","#A78BFA","#34D399","#FF5F6D"] },
     { id: "tema-warm",     name: "Hangat Cerah",   icon: "\u{1F31E}", colors: ["#FF6B6B","#FFA07A","#FFD93D","#6BCB77","#4D96FF"] },
@@ -400,7 +422,12 @@
 
       AT_EDITOR.markDirty();
       AT_SPLITVIEW && AT_SPLITVIEW.scheduleRefresh && AT_SPLITVIEW.scheduleRefresh();
-      AT_CANVA.renderEditor(pageId);
+      // Update whichever panel is active
+      if (document.getElementById('canvaPanelContent') && AT_NAV.current === 'canva') {
+        AT_CANVA._renderCanvaPanel();
+      } else {
+        AT_CANVA.renderEditor(pageId);
+      }
       AT_UTIL.toast("\u2705 Layout \"" + layout.name + "\" diterapkan (" + overlays.length + " elemen)");
     },
 
@@ -422,7 +449,12 @@
 
       AT_EDITOR.markDirty();
       AT_SPLITVIEW && AT_SPLITVIEW.scheduleRefresh && AT_SPLITVIEW.scheduleRefresh();
-      AT_CANVA.renderEditor(pageId);
+      // Update whichever panel is active
+      if (document.getElementById('canvaPanelContent') && AT_NAV.current === 'canva') {
+        AT_CANVA._renderCanvaPanel();
+      } else {
+        AT_CANVA.renderEditor(pageId);
+      }
       AT_UTIL.toast("\u{1F3A8} Tema \"" + theme.name + "\" diterapkan");
     },
 
@@ -1013,6 +1045,49 @@ body.has-atp-dock #split-pane { padding-bottom: 72px; }
   padding: 0 8px 6px; font-size: .58rem; color: var(--muted);
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
+
+/* ── Simplified Canva Panel ── */
+.canva-top-bar {
+  display: flex; align-items: center; gap: 8px;
+  padding: 10px 14px; margin-bottom: 12px;
+  background: var(--card2, #1a2338); border: 1px solid var(--border);
+  border-radius: var(--rad-sm, 9px); flex-wrap: wrap;
+}
+.canva-top-bar .field-select {
+  flex: 1; min-width: 120px;
+}
+.canva-full-preset-grid {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
+  gap: 8px; margin-top: 10px;
+}
+.canva-full-preset-card {
+  background: var(--card); border: 1px solid var(--border);
+  border-radius: var(--rad-sm); overflow: hidden; cursor: pointer;
+  transition: all .2s;
+}
+.canva-full-preset-card:hover {
+  border-color: var(--y); transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0,0,0,.3);
+}
+.canva-full-preset-card.active {
+  border-color: var(--y); box-shadow: 0 0 0 2px rgba(249,200,66,.4);
+}
+.canva-full-preset-thumb {
+  width: 100%; aspect-ratio: 9/10; display: block;
+  background: var(--bg2);
+}
+.canva-full-preset-thumb img {
+  width: 100%; height: 100%; object-fit: cover; display: block;
+}
+.canva-full-preset-name {
+  padding: 4px 6px; font-size: .6rem; font-weight: 700; color: var(--text);
+  text-align: center; white-space: nowrap; overflow: hidden;
+  text-overflow: ellipsis; line-height: 1.3;
+}
+.canva-canvas-header {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 10px;
+}
 `;
       document.head.appendChild(style);
     },
@@ -1162,6 +1237,36 @@ body.has-atp-dock #split-pane { padding-bottom: 72px; }
     // ───────────────────────────────────────────────────────────
 
     _currentPageId: "smat",
+    _lastAppliedPreset: null,
+
+    _applyFullPresetUI(pageId, presetId) {
+      const preset = FULL_PRESETS.find(p => p.id === presetId);
+      if (!preset) return;
+
+      this._lastAppliedPreset = presetId;
+
+      // Apply gradient if preset has one
+      if (preset.gradient) {
+        AT_CANVA_PRESETS.applyGradient(pageId, preset.gradient);
+      }
+
+      // Apply layout after a short delay (let gradient apply first)
+      setTimeout(() => {
+        AT_CANVA_PRESETS.applyLayout(pageId, preset.layout);
+        // Re-render panel
+        setTimeout(() => {
+          this._renderCanvaPanel();
+          const presetName = preset.name;
+          AT_UTIL.toast("\u2705 Preset \"" + presetName + "\" diterapkan!");
+        }, 80);
+      }, 60);
+    },
+
+    _quickUpdateProp(pageId, idx, prop, value) {
+      this.updateOverlay(pageId, idx, { [prop]: value });
+      // Lightweight refresh - just re-render panel
+      setTimeout(() => this._renderCanvaPanel(), 30);
+    },
 
     _renderCanvaPanel() {
       const container = document.getElementById("canvaPanelContent");
@@ -1172,136 +1277,95 @@ body.has-atp-dock #split-pane { padding-bottom: 72px; }
       const isCanva = mode === "canva";
       const overlays = this.getOverlays(pageId);
       const asset = this.getAsset(pageId);
-
       let html = "";
 
-      // ── STEP GUIDE BANNER ──
-      html += "<div class=\"canva-guide-banner\">";
-      html += "<div class=\"canva-guide-title\">\u{1F680} Cara Pakai Canva Editor</div>";
-      html += "<div class=\"canva-guide-steps\">";
-      html += "<div class=\"canva-guide-step" + (isCanva ? " done" : " active") + "\"><span class=\"canva-guide-num\">1</span> Pilih Halaman & Aktifkan Mode</div>";
-      html += "<div class=\"canva-guide-step" + (asset ? " done" : "") + "\"><span class=\"canva-guide-num\">2</span> Pilih Background</div>";
-      html += "<div class=\"canva-guide-step" + (overlays.length > 0 ? " done" : "") + "\"><span class=\"canva-guide-num\">3</span> Atur Tombol & Preset</div>";
-      html += "</div></div>";
-
-      // ── STEP 1: PAGE SELECTOR + MODE TOGGLE ──
-      html += "<div class=\"at-card\">";
-      html += "<div class=\"canva-step-header\"><span class=\"canva-step-badge\">1</span> Pilih Halaman</div>";
-      html += "<div class=\"field-row\" style=\"margin-top:10px\">";
-      html += "<div class=\"field-group\" style=\"flex:1\">";
-      html += "<label class=\"field-label\">Halaman</label>";
-      html += "<select class=\"field-select\" id=\"canvaPanelPageSelect\" onchange=\"AT_CANVA._currentPageId=this.value;AT_CANVA._renderCanvaPanel()\">";
+      // ── TOP BAR: Page select + mode toggle ──
+      html += "<div class=\"canva-top-bar\">";
+      html += "<select class=\"field-select\" onchange=\"AT_CANVA._currentPageId=this.value;AT_CANVA._renderCanvaPanel()\">";
       const pageLabels = { smat: "Materi", scp: "Dokumen", ssk: "Skenario", skuis: "Kuis" };
       Object.keys(pageLabels).forEach(pid => {
         html += "<option value=\"" + pid + "\"" + (pageId === pid ? " selected" : "") + ">" + pageLabels[pid] + "</option>";
       });
-      html += "</select></div>";
-      html += "<div class=\"field-group\">";
-      html += "<label class=\"field-label\">Mode</label>";
-      html += "<div class=\"canva-panel-toggle-wrap\">";
-      html += "<span style=\"font-size:.72rem;font-weight:700;color:var(--muted)\">Generic</span>";
+      html += "</select>";
+      html += "<div style=\"display:flex;align-items:center;gap:6px\">";
+      html += "<span style=\"font-size:.68rem;font-weight:700;color:var(--c)\">Generic</span>";
       html += "<div class=\"canva-mode-toggle-switch" + (isCanva ? " active" : "") + "\" onclick=\"AT_CANVA.toggleMode('" + pageId + "');AT_CANVA._renderCanvaPanel()\"></div>";
-      html += "<span style=\"font-size:.72rem;font-weight:700;color:var(--p)\">Canva</span>";
-      html += "</div></div></div>";
-
+      html += "<span style=\"font-size:.68rem;font-weight:700;color:var(--p)\">Canva</span>";
+      html += "</div>";
       if (isCanva) {
-        html += "<div style=\"margin-top:10px;padding:8px 12px;background:rgba(167,139,250,.08);border:1px solid rgba(167,139,250,.2);border-radius:8px;font-size:.72rem;color:var(--p)\">\u{2705} Canva mode aktif untuk halaman <strong>" + pageLabels[pageId] + "</strong>. Lanjut ke langkah berikutnya.</div>";
-      } else {
-        html += "<div style=\"margin-top:10px;padding:8px 12px;background:rgba(255,255,255,.03);border:1px solid var(--border);border-radius:8px;font-size:.72rem;color:var(--muted)\">\u{1F4A1} Klik toggle di atas untuk mengaktifkan Canva mode. Halaman akan ditampilkan sebagai gambar background dengan tombol overlay.</div>";
+        html += "<button class=\"btn btn-ghost btn-sm\" style=\"margin-left:auto;font-size:.68rem\" onclick=\"AT_CANVA._openGallery()\">\u{1F5BC} Upload</button>";
       }
       html += "</div>";
 
-      // ── If not canva mode, show helpful message and stop ──
+      // ── If not canva, show activate message ──
       if (!isCanva) {
-        html += "<div class=\"at-card\" style=\"text-align:center;padding:32px 20px\">";
-        html += "<div style=\"font-size:2.4rem;margin-bottom:10px\">\u{1F3A8}</div>";
-        html += "<div style=\"font-size:.88rem;font-weight:700;color:var(--text);margin-bottom:6px\">Aktifkan Canva Mode di atas</div>";
-        html += "<div style=\"font-size:.76rem;color:var(--muted);line-height:1.6\">Setelah Canva mode aktif, kamu bisa memilih background gradient, upload gambar, menambah tombol interaktif, dan menerapkan preset layout.</div>";
+        html += "<div class=\"at-card\" style=\"text-align:center;padding:40px 20px\">";
+        html += "<div style=\"font-size:3rem;margin-bottom:12px\">\u{1F3A8}</div>";
+        html += "<div style=\"font-size:.92rem;font-weight:700;color:var(--text);margin-bottom:6px\">Aktifkan Mode Canva</div>";
+        html += "<div style=\"font-size:.78rem;color:var(--muted);line-height:1.6\">Nyalakan toggle di atas untuk mulai desain halaman dengan<br>background gambar dan tombol interaktif.</div>";
         html += "</div>";
         container.innerHTML = html;
         return;
       }
 
-      // ── STEP 2: BACKGROUND ──
+      // ── PRESET SIAP PAKAI (one-click = background + tombol) ──
       html += "<div class=\"at-card\">";
-      html += "<div class=\"canva-step-header\"><span class=\"canva-step-badge\">2</span> Background</div>";
-
-      // Inline upload + gallery
-      html += "<div class=\"canva-bg-actions\">";
-      html += "<button class=\"btn btn-ghost btn-sm\" onclick=\"AT_CANVA._openGallery()\">\u{1F5BC}\uFE0F Galeri Asset</button>";
-      html += "<span style=\"font-size:.7rem;color:var(--muted)\">atau pilih gradient preset di bawah</span>";
-      html += "</div>";
-
-      // Current asset display
-      if (asset) {
-        html += "<div class=\"canva-current-asset\">";
-        html += "<img src=\"" + asset.thumbUrl + "\" alt=\"" + this._esc(asset.name) + "\" style=\"width:80px;height:50px;object-fit:cover;border-radius:6px;border:1px solid var(--border)\">";
-        html += "<div><div style=\"font-size:.76rem;font-weight:700;color:var(--text)\">" + this._esc(asset.name) + "</div>";
-        html += "<div style=\"font-size:.68rem;color:var(--muted)\">" + asset.width + " \u00D7 " + asset.height + " px</div></div>";
-        html += "<button class=\"btn btn-ghost btn-sm\" style=\"margin-left:auto;color:var(--r)\" onclick=\"AT_CANVA._changePageAsset('" + pageId + "','');AT_CANVA._renderCanvaPanel()\">\u{1F5D1}\uFE0F</button>";
-        html += "</div>";
-
-        // Display mode
-        const config = this.getPageConfig(pageId);
-        const displayMode = (config && config.display) || "contain";
-        html += "<div class=\"field-row\" style=\"margin-top:8px\">";
-        html += "<div class=\"field-group\">";
-        html += "<label class=\"field-label\">Tampilan</label>";
-        html += "<select class=\"field-select\" onchange=\"AT_CANVA._changePageDisplay('" + pageId + "',this.value)\" style=\"width:auto\">";
-        ["contain", "cover", "manual"].forEach(d => {
-          html += "<option value=\"" + d + "\"" + (displayMode === d ? " selected" : "") + ">" + d + "</option>";
-        });
-        html += "</select></div>";
-        if (displayMode === "manual") {
-          const mh = (config && config.manualHeight) || 600;
-          html += "<div class=\"field-group\" style=\"flex:0 0 100px\">";
-          html += "<label class=\"field-label\">Tinggi (px)</label>";
-          html += "<input class=\"field-input\" type=\"number\" value=\"" + mh + "\" min=\"200\" max=\"2000\" onchange=\"AT_CANVA._changeManualHeight('" + pageId + "',+this.value);AT_CANVA._renderCanvaPanel()\" style=\"width:80px\">";
-          html += "</div>";
+      html += "<div class=\"canva-canvas-header\"><div class=\"at-card-title\">\u{26A1} Preset Siap Pakai</div>";
+      html += "<div style=\"font-size:.66rem;color:var(--muted)\">Klik = background + tombol jadi</div></div>";
+      html += "<div class=\"canva-full-preset-grid\">";
+      FULL_PRESETS.forEach(p => {
+        const thumb = p.gradient ? AT_CANVA_PRESETS._gradientThumb(p.gradient) : "";
+        const isActive = this._lastAppliedPreset === p.id;
+        html += "<div class=\"canva-full-preset-card" + (isActive ? " active" : "") + "\" onclick=\"AT_CANVA._applyFullPresetUI('" + pageId + "','" + p.id + "')\">";
+        if (thumb) {
+          html += "<div class=\"canva-full-preset-thumb\"><img src=\"" + thumb + "\" alt=\"\" loading=\"lazy\"></div>";
+        } else {
+          html += "<div class=\"canva-full-preset-thumb\" style=\"display:flex;align-items:center;justify-content:center;font-size:1.6rem;color:var(--muted)\">\u{1F3A8}</div>";
         }
-        html += "</div>";
-      }
-
-      // Gradient presets (compact)
-      html += "<div style=\"margin-top:12px\">";
-      html += "<div style=\"font-size:.72rem;font-weight:700;color:var(--muted);margin-bottom:8px\">\u{1F3A8} Background Gradient Preset</div>";
-      const cats = AT_CANVA_PRESETS.getGradientsByCategory();
-      const catLabels = { pendidikan: "\u{1F393} Pendidikan", energik: "\u{1F525} Energik", profesional: "\u{1F4BC} Profesional", fun: "\u{1F389} Fun", minimal: "\u2795 Minimal" };
-      Object.keys(cats).forEach(cat => {
-        html += "<div style=\"font-size:.66rem;font-weight:700;color:var(--muted);margin:8px 0 4px;text-transform:uppercase;letter-spacing:.04em\">" + (catLabels[cat] || cat) + "</div>";
-        html += "<div class=\"canva-preset-grid\" style=\"grid-template-columns:repeat(auto-fill,minmax(90px,1fr))\">";
-        cats[cat].forEach(g => {
-          const thumb = AT_CANVA_PRESETS._gradientThumb(g.id);
-          html += "<div class=\"canva-preset-card\" onclick=\"AT_CANVA_PRESETS.applyGradient('" + pageId + "','" + g.id + "');setTimeout(()=>AT_CANVA._renderCanvaPanel(),60)\" title=\"" + this._esc(g.name) + " (" + g.aspect + ")\">"
-            + "<div class=\"canva-preset-thumb\"><img src=\"" + thumb + "\" alt=\"\" loading=\"lazy\"></div>"
-            + "<div class=\"canva-preset-info\">" + g.badge + " " + this._esc(g.name) + "</div>"
-            + "<div class=\"canva-preset-meta\">" + g.aspect + "</div>"
-            + "</div>";
-        });
+        html += "<div class=\"canva-full-preset-name\">" + this._esc(p.name) + "</div>";
         html += "</div>";
       });
       html += "</div>";
 
+      // Quick color themes
+      html += "<div style=\"margin-top:12px\">";
+      html += "<div style=\"font-size:.7rem;font-weight:700;color:var(--muted);margin-bottom:6px\">\u{1F30A} Ganti Warna Semua Tombol:</div>";
+      html += "<div style=\"display:flex;gap:6px;flex-wrap:wrap\">";
+      COLOR_THEME_PRESETS.forEach(t => {
+        const swatches = t.colors.slice(0, 3).map(c => "<div style=\"width:10px;height:10px;border-radius:50%;background:" + c + "\"></div>").join("");
+        html += "<div style=\"display:flex;align-items:center;gap:3px;padding:4px 8px;background:rgba(255,255,255,.04);border:1px solid var(--border);border-radius:99px;cursor:pointer;font-size:.6rem;font-weight:700;color:var(--muted);transition:all .15s\" "
+          + "onclick=\"AT_CANVA_PRESETS.applyColorTheme('" + pageId + "','" + t.id + "');setTimeout(()=>AT_CANVA._renderCanvaPanel(),60)\" "
+          + "onmouseover=\"this.style.borderColor='var(--y)';this.style.color='var(--text)'\" onmouseout=\"this.style.borderColor='var(--border)';this.style.color='var(--muted)'\">"
+          + swatches + " " + this._esc(t.name) + "</div>";
+      });
+      html += "</div></div>";
+
       html += "</div>";
 
-      // ── STEP 3: OVERLAY EDITOR ──
+      // ── CANVAS with drag & drop ──
+      const config = this.getPageConfig(pageId);
+      const displayMode = (config && config.display) || "contain";
+      const manualHeight = (config && config.manualHeight) || 600;
+
       html += "<div class=\"at-card\">";
-      html += "<div class=\"canva-step-header\"><span class=\"canva-step-badge\">3</span> Tombol Overlay</div>";
-      html += "<div style=\"font-size:.72rem;color:var(--muted);margin-bottom:10px\">Klik tombol di canvas untuk pilih & geser. Gunakan preset layout untuk cepat.</div>";
+      html += "<div class=\"canva-canvas-header\">";
+      html += "<div class=\"at-card-title\">\u{1F4CB} Canvas</div>";
+      if (asset) {
+        html += "<div style=\"font-size:.66rem;color:var(--g)\">\u2705 " + overlays.length + " tombol \u2022 geser untuk atur posisi</div>";
+      } else {
+        html += "<div style=\"font-size:.66rem;color:var(--muted)\">Pilih preset di atas</div>";
+      }
+      html += "</div>";
 
-      // Canvas area
-      const config2 = this.getPageConfig(pageId);
-      const displayMode2 = (config2 && config2.display) || "contain";
-      const manualHeight = (config2 && config2.manualHeight) || 600;
-
+      // Canvas wrapper
       html += "<div class=\"canva-canvas-wrap\" id=\"canvaPanelCanvasWrap\" style=\"";
-      if (displayMode2 === "manual") html += "height:" + manualHeight + "px;aspect-ratio:auto;";
+      if (displayMode === "manual") html += "height:" + manualHeight + "px;aspect-ratio:auto;";
       html += "\">";
 
       if (asset) {
-        html += "<img class=\"canva-canvas-bg " + (displayMode2 === "cover" ? "cover" : "") + "\" src=\"" + asset.dataUrl + "\" alt=\"background\">";
+        html += "<img class=\"canva-canvas-bg " + (displayMode === "cover" ? "cover" : "") + "\" src=\"" + asset.dataUrl + "\" alt=\"bg\">";
       } else {
-        html += "<div style=\"position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:var(--muted);font-size:.82rem;text-align:center;padding:20px\">\u{1F4F7}<br>Pilih background di atas</div>";
+        html += "<div style=\"position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:var(--muted);font-size:.82rem;text-align:center;padding:20px\">\u{1F3A8}<br>Pilih preset atau upload background</div>";
       }
 
       overlays.forEach((el, idx) => {
@@ -1309,47 +1373,63 @@ body.has-atp-dock #split-pane { padding-bottom: 72px; }
       });
       html += "</div>";
 
-      // Add element buttons
-      html += "<div style=\"font-size:.72rem;font-weight:700;color:var(--muted);margin-bottom:6px\">+ Tambah Tombol</div>";
-      html += "<div class=\"canva-add-row\">";
+      // Quick action buttons
+      html += "<div style=\"display:flex;gap:6px;flex-wrap:wrap;margin-top:10px\">";
       OVERLAY_ELEMENT_TYPES.forEach(t => {
-        html += "<button class=\"canva-add-btn\" onclick=\"AT_CANVA._addOverlayElement('" + pageId + "','" + t.id + "');setTimeout(()=>AT_CANVA._renderCanvaPanel(),60)\">" + t.icon + " " + t.label + "</button>";
+        html += "<button class=\"canva-add-btn\" onclick=\"AT_CANVA._addOverlayElement('" + pageId + "','" + t.id + "');setTimeout(()=>AT_CANVA._renderCanvaPanel(),80)\">" + t.icon + " " + t.label + "</button>";
       });
+      if (overlays.length > 0) {
+        html += "<button class=\"canva-add-btn\" style=\"margin-left:auto;color:var(--r)\" onclick=\"AT_STATE.canvaOverlays['" + pageId + "']=[];AT_CANVA._selectedOverlay=null;AT_EDITOR.markDirty();AT_CANVA._renderCanvaPanel();AT_UTIL.toast('Semua tombol dihapus')\">\u{1F5D1} Kosongkan</button>";
+      }
       html += "</div>";
 
-      // ── LAYOUT PRESETS ──
-      html += "<div style=\"margin-top:16px\">";
-      html += "<div style=\"font-size:.72rem;font-weight:700;color:var(--muted);margin-bottom:8px\">\u{1F3AF} Preset Layout (klik = terapkan tombol)</div>";
-      html += "<div class=\"canva-preset-grid\" style=\"grid-template-columns:repeat(auto-fill,minmax(120px,1fr))\">";
-      LAYOUT_PRESETS.forEach(l => {
-        const count = l.overlays.length;
-        html += "<div class=\"canva-preset-card canva-preset-layout\" onclick=\"AT_CANVA_PRESETS.applyLayout('" + pageId + "','" + l.id + "');setTimeout(()=>AT_CANVA._renderCanvaPanel(),60)\" title=\"" + this._esc(l.desc) + "\">"
-          + "<div class=\"canva-preset-icon\">" + l.icon + "</div>"
-          + "<div class=\"canva-preset-info\">" + this._esc(l.name) + "</div>"
-          + "<div class=\"canva-preset-meta\">" + this._esc(l.desc) + " (" + count + ")</div>"
-          + "</div>";
-      });
-      html += "</div></div>";
-
-      // ── COLOR THEME PRESETS ──
-      html += "<div style=\"margin-top:16px\">";
-      html += "<div style=\"font-size:.72rem;font-weight:700;color:var(--muted);margin-bottom:8px\">\u{1F30A} Tema Warna (ubah warna semua tombol)</div>";
-      html += "<div class=\"canva-preset-grid\" style=\"grid-template-columns:repeat(auto-fill,minmax(110px,1fr))\">";
-      COLOR_THEME_PRESETS.forEach(t => {
-        const swatches = t.colors.map(c => "<div style=\"width:14px;height:14px;border-radius:50%;background:" + c + ";border:1px solid rgba(255,255,255,.15)\"></div>").join("");
-        html += "<div class=\"canva-preset-card canva-preset-theme\" onclick=\"AT_CANVA_PRESETS.applyColorTheme('" + pageId + "','" + t.id + "');setTimeout(()=>AT_CANVA._renderCanvaPanel(),60)\" title=\"" + this._esc(t.name) + "\">"
-          + "<div class=\"canva-preset-theme-swatches\">" + swatches + "</div>"
-          + "<div class=\"canva-preset-info\">" + t.icon + " " + this._esc(t.name) + "</div>"
-          + "<div class=\"canva-preset-meta\">" + t.colors.length + " warna</div>"
-          + "</div>";
-      });
-      html += "</div></div>";
-
-      // ── CUSTOMIZATION PANEL (if element selected) ──
+      // ── SELECTED ELEMENT QUICK EDIT (simplified) ──
       if (this._selectedOverlay && this._selectedOverlay.pageId === pageId) {
         const selEl = overlays[this._selectedOverlay.idx];
         if (selEl) {
-          html += this._renderCustomizationPanel(selEl, this._selectedOverlay.idx, pageId);
+          const idx = this._selectedOverlay.idx;
+          html += "<div class=\"canva-custom-panel\" style=\"margin-top:12px\">";
+          html += "<div style=\"font-size:.76rem;font-weight:800;color:var(--y);margin-bottom:8px\">\u{1F527} Edit: " + this._esc(selEl.label || selEl.type) + "</div>";
+          // Label + Icon row
+          html += "<div class=\"canva-custom-row\">";
+          html += "<span class=\"canva-custom-label\">Label</span>";
+          html += "<input class=\"field-input\" value=\"" + this._esc(selEl.label || "") + "\" oninput=\"AT_CANVA._quickUpdateProp('" + pageId + "'," + idx + ",'label',this.value)\" style=\"flex:1\">";
+          html += "<span class=\"canva-custom-label\" style=\"min-width:auto\">Icon</span>";
+          html += "<input class=\"field-input\" value=\"" + this._esc(selEl.icon || "") + "\" maxlength=\"4\" oninput=\"AT_CANVA._quickUpdateProp('" + pageId + "'," + idx + ",'icon',this.value)\" style=\"width:50px\">";
+          html += "</div>";
+          // Color row
+          html += "<div class=\"canva-custom-row\">";
+          html += "<span class=\"canva-custom-label\">Warna</span>";
+          html += "<div class=\"canva-custom-colors\">";
+          COLOR_PRESETS.forEach(c => {
+            const active = (selEl.color || "#F5C842").toUpperCase() === c.toUpperCase();
+            html += "<div class=\"canva-color-swatch" + (active ? " active" : "") + "\" style=\"background:" + c + ";border-color:" + (active ? "#fff" : c + "44") + "\" onclick=\"AT_CANVA._quickUpdateProp('" + pageId + "'," + idx + ",'color','" + c + "')\"></div>";
+          });
+          html += "<input class=\"canva-color-input\" type=\"color\" value=\"" + (selEl.color || "#F5C842") + "\" onchange=\"AT_CANVA._quickUpdateProp('" + pageId + "'," + idx + ",'color',this.value)\">";
+          html += "</div></div>";
+          // Shape + Size row
+          html += "<div class=\"canva-custom-row\">";
+          html += "<span class=\"canva-custom-label\">Bentuk</span>";
+          ["pill", "rounded", "rect"].forEach(s => {
+            const active = (selEl.shape || "pill") === s;
+            const label = s === "rect" ? "Kotak" : s === "rounded" ? "Rounded" : "Pill";
+            html += "<button class=\"canva-shape-btn" + (active ? " active" : "") + "\" onclick=\"AT_CANVA._quickUpdateProp('" + pageId + "'," + idx + ",'shape','" + s + "')\">" + label + "</button>";
+          });
+          html += "</div>";
+          html += "<div class=\"canva-custom-row\">";
+          html += "<span class=\"canva-custom-label\">Ukuran</span>";
+          ["small", "medium", "large"].forEach(s => {
+            const active = (selEl.size || "medium") === s;
+            html += "<button class=\"canva-size-btn" + (active ? " active" : "") + "\" onclick=\"AT_CANVA._quickUpdateProp('" + pageId + "'," + idx + ",'size','" + s + "')\">" + s.charAt(0).toUpperCase() + "</button>";
+          });
+          // Position display
+          html += "<span style=\"margin-left:auto;font-size:.66rem;color:var(--muted)\">X:" + (selEl.x||50).toFixed(0) + "% Y:" + (selEl.y||50).toFixed(0) + "%</span>";
+          html += "</div>";
+          // Delete
+          html += "<div style=\"margin-top:8px\">";
+          html += "<button class=\"btn btn-ghost btn-sm\" style=\"color:var(--r)\" onclick=\"AT_CANVA.removeOverlay('" + pageId + "'," + idx + ");AT_UTIL.toast('Tombol dihapus')\">\u{1F5D1} Hapus Tombol</button>";
+          html += "</div>";
+          html += "</div>";
         }
       }
 
@@ -1357,7 +1437,7 @@ body.has-atp-dock #split-pane { padding-bottom: 72px; }
 
       container.innerHTML = html;
 
-      // Init drag for the panel canvas
+      // Init drag for canvas
       this._initOverlayDrag(pageId);
     },
 
@@ -1816,21 +1896,20 @@ body.has-atp-dock #split-pane { padding-bottom: 72px; }
         const el = e.target.closest(".canva-overlay-el");
         if (!el) {
           this._selectedOverlay = null;
-          this.renderEditor(pageId);
+          newCanvas.querySelectorAll(".canva-overlay-el.selected").forEach(s => s.classList.remove("selected"));
           return;
         }
 
         const idx = +el.dataset.idx;
         this._selectedOverlay = { pageId, idx };
-        this.renderEditor(pageId);
 
-        // Re-find element after render
-        const newEl = newCanvas.querySelector("[data-idx=\"" + idx + "\"]");
-        if (!newEl) return;
+        // Visual selection only — no re-render during drag
+        newCanvas.querySelectorAll(".canva-overlay-el.selected").forEach(s => s.classList.remove("selected"));
+        el.classList.add("selected");
 
         e.preventDefault();
-        newEl.classList.add("dragging");
-        newEl.setPointerCapture(e.pointerId);
+        el.setPointerCapture(e.pointerId);
+        el.classList.add("dragging");
 
         const rect = newCanvas.getBoundingClientRect();
         const startX = e.clientX;
@@ -1844,14 +1923,14 @@ body.has-atp-dock #split-pane { padding-bottom: 72px; }
           const dy = ev.clientY - startY;
           const pctX = Math.max(0, Math.min(100, startPctX + (dx / rect.width) * 100));
           const pctY = Math.max(0, Math.min(100, startPctY + (dy / rect.height) * 100));
-          newEl.style.left = pctX + "%";
-          newEl.style.top = pctY + "%";
+          el.style.left = pctX + "%";
+          el.style.top = pctY + "%";
         };
 
         const onUp = (ev) => {
-          newEl.classList.remove("dragging");
-          newEl.removeEventListener("pointermove", onMove);
-          newEl.removeEventListener("pointerup", onUp);
+          el.classList.remove("dragging");
+          newCanvas.removeEventListener("pointermove", onMove);
+          newCanvas.removeEventListener("pointerup", onUp);
 
           const dx = ev.clientX - startX;
           const dy = ev.clientY - startY;
@@ -1859,11 +1938,12 @@ body.has-atp-dock #split-pane { padding-bottom: 72px; }
           const pctY = Math.max(0, Math.min(100, startPctY + (dy / rect.height) * 100));
 
           this.updateOverlay(pageId, idx, { x: Math.round(pctX * 10) / 10, y: Math.round(pctY * 10) / 10 });
-          this.renderEditor(pageId);
+          // Full re-render only after drag ends
+          this._renderCanvaPanel();
         };
 
-        newEl.addEventListener("pointermove", onMove);
-        newEl.addEventListener("pointerup", onUp);
+        newCanvas.addEventListener("pointermove", onMove);
+        newCanvas.addEventListener("pointerup", onUp);
       });
     },
 
