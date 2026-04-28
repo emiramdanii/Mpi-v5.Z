@@ -187,3 +187,41 @@ Stage Summary:
 - liveview_enhancements.js v6.2: pre-set dropdown before refresh, improved timing
 - Files synced to /home/z/my-project/public/
 
+---
+Task ID: 1
+Agent: main
+Task: Fase 1 — Stabilisasi Auto-Sync (Dokumen, Konten, Tools)
+
+Work Log:
+- Analisis mendalam terhadap semua file auto-sync (liveview.js, liveview_enhancements.js, editor.js, preview.js)
+- Identifikasi ROOT CAUSE utama: race condition antara iframe rebuild dan message passing
+  - switchDocTab/scrollToEnd dikirim via setTimeout(200ms) tapi bisa hilang saat iframe sedang rebuild
+  - Jika HTML berubah bersamaan dengan accordion click, iframe di-rebuild dan pesan hilang
+- Identifikasi masalah dedup: syncFromPanel tidak punya dedup, bisa dipanggil berkali-kali
+- Identifikasi masalah konten detection: _getActiveKontenTab() tidak ada, hanya query sederhana
+
+Perbaikan liveview.js v4.4:
+- Tambah message queue system: _pendingMessages[] + _queueMessage() + _flushPendingMessages()
+- Tambah _iframeReady flag: hanya kirim langsung jika iframe sudah siap
+- Tambah _resetIframeState(): reset flag saat mulai rebuild, pending messages dipertahankan
+- Tambah navigateToPage(pageId, options): queue goPage + switchDocTab + scrollToEnd secara atomik
+- Perbaiki refresh(): flush pending messages setelah iframe.onload
+- Perbaiki refresh() saat HTML unchanged: tetap flush pending messages
+- Perbaiki switchDocTab handler di navScript: robust fallback, acknowledgment ke parent
+- Safety timeout: force flush jika onload missed
+
+Perbaikan liveview_enhancements.js v6.3:
+- Dedup syncFromPanel: skip jika panel sama disync dalam 300ms terakhir
+- Dedup syncFromTab: skip jika tab sama disync dalam 300ms terakhir
+- Tambah _getActiveKontenTab(): reliable detection dengan 2 method fallback
+- Tambah _tryAutoOpenSplit(): konsisten digunakan di semua navigation path
+- Konsolidasi auto-open logic ke satu fungsi (sebelumnya ada 3 versi)
+- autogen mapping tetap ke scp (Dokumen page) — konsisten karena autogen isi dokumen
+
+Stage Summary:
+- 2 file diubah: liveview.js v4.4, liveview_enhancements.js v6.3
+- Root cause utama (race condition) diperbaiki via message queue
+- Dedup sync mencegah multiple refresh berlebihan
+- Semua section (Dokumen: 5 accordion, Konten: 3 tab, Tools: auto+import+versions) terverifikasi mapping-nya
+- Files synced to /home/z/my-project/public/
+

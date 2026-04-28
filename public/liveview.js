@@ -1,26 +1,23 @@
 // ═══════════════════════════════════════════════════════════════
-// LIVEVIEW.JS — Split-View Live Preview v4.2 (Robust Rewrite)
+// LIVEVIEW.JS — Split-View Live Preview v4.4 (Stabilization)
 // Berisi:
 //   AT_SPLITVIEW  — live preview berdampingan dengan editor
 //   Preview patch, init code, MutationObserver, keyboard shortcuts
+//   Accordion sync with message queue
+//   _recalcAfterRender helpers
 //
 // Editor modules (AT_UNDO, AT_SK_EDITOR, AT_FUNGSI_EDITOR,
 // AT_JSON_IO, accordion helpers) are in liveview-editors.js
 //
-// v4.0 Improvements:
-//   - FORCE refresh on every scheduleRefresh (no hash skip)
-//   - Faster initial render (60ms), then 200ms debounce
-//   - MutationObserver fallback: catches form changes not via markDirty
-//   - Accordion max-height auto-recalculation after render
-//   - Better error recovery with visible error state
-//   - Sync indicator always visible with status
-//   - Auto-open split view on first meaningful edit
-//   - Smart loading state management
-//   - Character counter in header
+// v4.4 Stabilization:
+//   - Message queue: switchDocTab/scrollToEnd queued until iframe ready
+//   - Accordion sync waits for iframe load before sub-tab switch
+//   - refresh() flushes pending messages after iframe.onload
+//   - Robust switchDocTab handler with fallback
 // ═══════════════════════════════════════════════════════════════
 
 /* ══════════════════════════════════════════════════════════════
-   AT_SPLITVIEW — Live preview di sebelah editor  v4.0
+   AT_SPLITVIEW — Live preview di sebelah editor  v4.4
    Single entry point: scheduleRefresh() → debounced refresh()
    ══════════════════════════════════════════════════════════════ */
 window.AT_SPLITVIEW = {
@@ -41,6 +38,46 @@ window.AT_SPLITVIEW = {
   _buildCount: 0,
   _errorRetries: 0,
   _savedPreviewState: null,
+
+  // ── Message Queue: prevents race condition with iframe rebuild ──
+  _pendingMessages: [],    // queued messages to send after iframe loads
+  _iframeReady: false,     // true after iframe.onload fires
+
+  /* ── Queue a message to iframe (safe even during rebuild) ── */
+  _queueMessage(msg) {
+    if (this._iframeReady) {
+      // Iframe already loaded, send immediately
+      this._sendToFrame(msg);
+    } else {
+      // Queue for after next iframe load
+      this._pendingMessages.push(msg);
+    }
+  },
+
+  /* ── Send message directly to iframe ── */
+  _sendToFrame(msg) {
+    const frame = document.getElementById("split-frame");
+    try {
+      if (frame && frame.contentWindow) {
+        frame.contentWindow.postMessage(msg, "*");
+      }
+    } catch(e) {}
+  },
+
+  /* ── Flush all queued messages after iframe loads ── */
+  _flushPendingMessages() {
+    this._iframeReady = true;
+    const msgs = this._pendingMessages.splice(0);
+    msgs.forEach(msg => {
+      setTimeout(() => this._sendToFrame(msg), 50);
+    });
+  },
+
+  /* ── Reset queue when iframe starts rebuilding ── */
+  _resetIframeState() {
+    this._iframeReady = false;
+    // Keep pending messages — they'll be flushed after new iframe loads
+  },
 
   /* ── Toggle split view ─────────────────────────────────── */
   toggle() {
@@ -65,6 +102,8 @@ window.AT_SPLITVIEW = {
       if (loading) loading.style.display = "none";
       // Reset auto-open flag so split can re-open when returning to content panels
       this._autoOpened = false;
+      this._pendingMessages = [];
+      this._iframeReady = false;
     }
   },
 
@@ -79,8 +118,6 @@ window.AT_SPLITVIEW = {
   /* ── Single entry point: dipanggil dari unified markDirty ── */
   scheduleRefresh() {
     if (!this.active) {
-      // Auto-open on first meaningful edit (screen > 900px)
-      // NOTE: Also handled in liveview_enhancements.js AT_NAV.go patch
       if (!this._autoOpened && this._hasEnoughContent() && window.innerWidth > 900) {
         this._autoOpened = true;
         this.toggle();
@@ -88,12 +125,11 @@ window.AT_SPLITVIEW = {
       return;
     }
     clearTimeout(this._debounceTimer);
-    // First render fast (120ms), then steady debounce (350ms) — reduced flicker
     const delay = this._buildCount < 2 ? 120 : 350;
     this._debounceTimer = setTimeout(() => this.refresh(), delay);
   },
 
-  /* ── Force refresh — always rebuild, used for manual refresh ── */
+  /* ── Force refresh — always rebuild ── */
   forceRefresh() {
     this._lastHTML = "";
     this.refresh();
@@ -131,14 +167,19 @@ window.AT_SPLITVIEW = {
 
       // ── ANTI-FLICKER: skip refresh if HTML hasn't changed ──
       if (html === this._lastHTML) {
-        // Content unchanged — but still navigate iframe to correct page
         this._hideSyncPulse();
-        this._navigateFrame();
+        // Flush any pending messages even when HTML unchanged
+        if (this._pendingMessages.length > 0) {
+          this._flushPendingMessages();
+        } else {
+          this._navigateFrame();
+        }
         return;
       }
 
       this._lastHTML = html;
       if (loading) loading.style.display = "flex";
+      this._resetIframeState();
 
       // ── Hide iframe during srcdoc write to prevent white flash ──
       frame.style.visibility = 'hidden';
@@ -149,6 +190,9 @@ window.AT_SPLITVIEW = {
 .screen,.mat-page,.kp,.card,.btn-y,.h2{opacity:1!important;}
 @keyframes fi{from{opacity:1;transform:none}to{opacity:1;transform:none}}
 </style>`;
+
+      // ── Navigation script injected into student HTML ──
+      // Handles: goPage, restoreState, switchDocTab, scrollToEnd, scroll tracking
       const navScript = `<script>(function(){
   window.addEventListener('message',function(e){
     if(e.data&&e.data.goPage){var fn=window.go;if(fn)fn(e.data.goPage);}
@@ -163,12 +207,24 @@ window.AT_SPLITVIEW = {
     }
     if(e.data&&e.data.switchDocTab){
       var tabId=e.data.switchDocTab;
-      var tabEl=null;
-      document.querySelectorAll('.ktab').forEach(function(t){
-        var oc=t.getAttribute('onclick')||'';
-        if(oc.indexOf('"'+tabId+'"')>=0){tabEl=t;}
-      });
-      if(tabEl&&typeof kT==='function'){kT(tabId,tabEl);}
+      // Robust: try multiple methods to find and click the right tab
+      setTimeout(function(){
+        // Method 1: find .ktab with onclick containing the tabId
+        var tabEl=null;
+        document.querySelectorAll('.ktab').forEach(function(t){
+          var oc=t.getAttribute('onclick')||'';
+          if(oc.indexOf('"'+tabId+'"')>=0||oc.indexOf("'"+tabId+"'")>=0){tabEl=t;}
+        });
+        // Method 2: if not found, try calling kT directly
+        if(tabEl&&typeof kT==='function'){kT(tabId,tabEl);}
+        else if(typeof kT==='function'){
+          // Fallback: kT function might work with just tabId
+          var fakeEl={classList:{add:function(){},remove:function(){}}};
+          try{kT(tabId,fakeEl);}catch(ex){}
+        }
+        // Acknowledge back to parent
+        try{window.parent.postMessage({docTabSwitched:tabId},'*');}catch(ex){}
+      },80);
     }
     if(e.data&&e.data.scrollToEnd){
       setTimeout(function(){window.scrollTo(0,document.body.scrollHeight);},100);
@@ -205,25 +261,29 @@ window.AT_SPLITVIEW = {
       // Remove old listeners to prevent stacking
       frame.onload = null;
       frame.addEventListener("load", () => {
-        // Make iframe visible again after content loads
         frame.style.visibility = 'visible';
         setTimeout(() => {
+          // 1. Navigate to correct page
           this._navigateFrame();
-          // Restore preview state (materi page, module page, fungsi tab, scroll)
+          // 2. Restore saved state
           if (this._savedPreviewState) {
             try {
               frame.contentWindow.postMessage({ restoreState: this._savedPreviewState }, "*");
             } catch(e) {}
           }
+          // 3. Flush ALL queued messages (switchDocTab, scrollToEnd, etc.)
+          this._flushPendingMessages();
           this._hideSyncPulse();
           if (loading) loading.style.display = "none";
         }, 80);
       }, { once: true });
 
-      // Safety timeout — make visible after 4s max even if load event missed
+      // Safety timeout
       setTimeout(() => {
         frame.style.visibility = 'visible';
         if (loading) loading.style.display = "none";
+        // Force flush if onload was missed
+        if (!this._iframeReady) this._flushPendingMessages();
       }, 4000);
 
     } catch(e) {
@@ -231,11 +291,11 @@ window.AT_SPLITVIEW = {
       this._hideSyncPulse();
       console.error("Live preview error:", e);
 
-      // Show error in iframe
       frame.srcdoc = `<body style="padding:24px;color:#f87171;font-family:'Plus Jakarta Sans',sans-serif;background:#0e1c2f;margin:0"><div style="max-width:300px"><div style="font-size:1.4rem;margin-bottom:8px">&#9888;&#65039;</div><div style="font-size:.85rem;font-weight:700;margin-bottom:6px">Preview Error</div><pre style="font-size:.72rem;white-space:pre-wrap;color:rgba(248,113,113,.7);line-height:1.5;margin:0">${e.message}</pre><button onclick="window.parent.postMessage({action:'retry'},'*')" style="margin-top:12px;padding:6px 14px;border-radius:6px;border:1px solid rgba(248,113,113,.3);background:rgba(248,113,113,.1);color:#f87171;font-size:.72rem;font-weight:700;cursor:pointer">Coba Lagi</button></div></body>`;
       if (loading) loading.style.display = "none";
       frame.style.display = "block";
       if (emptyState) emptyState.style.display = "none";
+      this._iframeReady = false;
     }
   },
 
@@ -272,23 +332,42 @@ window.AT_SPLITVIEW = {
   _navigateFrame() {
     const frame = document.getElementById("split-frame");
     const pageId = document.getElementById("splitPageSelect")?.value || "sc";
-    try {
-      frame?.contentWindow?.postMessage({ goPage: pageId }, "*");
-    } catch(e) {}
+    this._sendToFrame({ goPage: pageId });
   },
 
   goPage(pageId) {
     const sel = document.getElementById("splitPageSelect");
     if (sel && pageId) sel.value = pageId;
     this._navigateFrame();
-    // Also directly postMessage with the explicit pageId (not from dropdown)
-    // This ensures navigation works even if dropdown doesn't have the option
-    const frame = document.getElementById("split-frame");
-    try {
-      if (frame && frame.contentWindow && pageId) {
-        frame.contentWindow.postMessage({ goPage: pageId }, "*");
-      }
-    } catch(e) {}
+    // Also directly postMessage with explicit pageId
+    this._sendToFrame({ goPage: pageId });
+  },
+
+  /* ── Navigate to specific page + optional sub-tab (queued) ── */
+  navigateToPage(pageId, options) {
+    // options: { tab: 'kcp', scrollEnd: true, scrollTop: 0 }
+    options = options || {};
+    const sel = document.getElementById("splitPageSelect");
+    if (sel && pageId) sel.value = pageId;
+
+    // Send goPage first
+    this._queueMessage({ goPage: pageId });
+
+    // Then queue sub-tab switch if specified
+    if (options.tab) {
+      this._queueMessage({ switchDocTab: options.tab });
+    }
+    if (options.scrollEnd) {
+      this._queueMessage({ scrollToEnd: true });
+    }
+    if (options.scrollTop > 0) {
+      this._queueMessage({ restoreState: { scrollTop: options.scrollTop } });
+    }
+
+    // If iframe is ready, also do immediate navigate for faster response
+    if (this._iframeReady) {
+      this._sendToFrame({ goPage: pageId });
+    }
   },
 
   /* ── Resizable Split Pane ─────────────────────────────────── */
@@ -391,7 +470,7 @@ function _initModalClose() {
 
 /* ══════════════════════════════════════════════════════════════
    HELPER: MutationObserver fallback for form changes
-   Catches any form input/change not covered by markDirty
+   Throttled 500ms, only acts if markDirty didn't fire
    ══════════════════════════════════════════════════════════════ */
 let _mutationObserver = null;
 function _initMutationObserver() {
@@ -400,19 +479,14 @@ function _initMutationObserver() {
   const contentEl = document.getElementById("content");
   if (!contentEl) return;
 
-  // Lightweight fallback: only catches DOM mutations NOT triggered by markDirty.
-  // This is a safety net for edge cases; markDirty → scheduleRefresh handles normal flow.
   let _lastMutCheck = 0;
   _mutationObserver = new MutationObserver((mutations) => {
     if (!AT_SPLITVIEW.active) return;
-    // Throttle: max once per 500ms to avoid duplicate refreshes
     const now = Date.now();
     if (now - _lastMutCheck < 500) return;
     _lastMutCheck = now;
-    // Only act if dirty but no pending debounce timer (means markDirty didn't fire)
     if (!AT_STATE.dirty) return;
-    if (AT_SPLITVIEW._debounceTimer) return; // Already scheduled by markDirty
-    // Fallback: schedule refresh for changes that bypass markDirty
+    if (AT_SPLITVIEW._debounceTimer) return;
     clearTimeout(AT_SPLITVIEW._debounceTimer);
     AT_SPLITVIEW._debounceTimer = setTimeout(() => AT_SPLITVIEW.refresh(), 500);
   });
@@ -427,12 +501,11 @@ function _initMutationObserver() {
 }
 
 /* ══════════════════════════════════════════════════════════════
-   HELPER: Recalc accordion when tab/panel changes
-   NOTE: switchKontenTab patch moved to liveview_enhancements.js
-   to prevent double-patching.
+   ACCORDION → PREVIEW SYNC (with message queue)
+   Maps accordion titles to preview pages and sub-tabs.
+   Uses navigateToPage() which queues messages safely.
    ══════════════════════════════════════════════════════════════ */
 
-/* ── Accordion → Preview sync mapping ── */
 const _ACCORDION_PREVIEW_MAP = {
   'Identitas Media':           { page: 'sc',   tab: null },
   'Capaian Pembelajaran':      { page: 'scp',  tab: 'kcp'  },
@@ -449,47 +522,32 @@ function _patchAccordionToggle() {
     origToggle(headerEl);
     _recalcAfterRender();
 
-    // Auto-sync preview when accordion opens (not when closing)
+    // Auto-sync preview when accordion OPENS (not when closing)
     if (!wasOpen && AT_SPLITVIEW?.active) {
       const title = headerEl.querySelector('.acc-title')?.textContent?.trim();
       const mapping = title ? _ACCORDION_PREVIEW_MAP[title] : null;
       if (mapping) {
-        AT_SPLITVIEW.goPage(mapping.page);
-        // Also switch sub-tab inside scp page if needed
-        if (mapping.tab) {
-          setTimeout(() => {
-            const frame = document.getElementById('split-frame');
-            try {
-              frame?.contentWindow?.postMessage({ switchDocTab: mapping.tab }, '*');
-            } catch(e) {}
-          }, 200);
-        }
-        // Scroll to end for Alur Kegiatan
-        if (mapping.scrollEnd) {
-          setTimeout(() => {
-            const frame = document.getElementById('split-frame');
-            try {
-              frame?.contentWindow?.postMessage({ scrollToEnd: true }, '*');
-            } catch(e) {}
-          }, 300);
-        }
+        // Use navigateToPage with message queue — safe during iframe rebuild
+        AT_SPLITVIEW.navigateToPage(mapping.page, {
+          tab: mapping.tab || null,
+          scrollEnd: mapping.scrollEnd || false
+        });
       }
     }
   };
 }
 
 /* ══════════════════════════════════════════════════════════════
-   INIT — Semua inisialisasi di satu tempat
+   INIT — Single initialization point
    NOTE: AT_NAV.go, switchKontenTab, auto-open logic
    are ALL handled in liveview_enhancements.js to prevent double-patching.
    This file only handles: markDirty hook, undo, MutationObserver,
-   keyboard shortcuts, and iframe message listener.
+   keyboard shortcuts, accordion sync, iframe message listener.
    ══════════════════════════════════════════════════════════════ */
 document.addEventListener("DOMContentLoaded", () => {
   _injectUndoButtons();
   _initModalClose();
   _patchAccordionToggle();
-  // NOTE: _patchSwitchKontenTab() moved to liveview_enhancements.js
   AT_UNDO.init();
   _initMutationObserver();
 
@@ -497,13 +555,12 @@ document.addEventListener("DOMContentLoaded", () => {
   if (!AT_STATE.fungsi) AT_STATE.fungsi = null;
 
   // ── UNIFIED markDirty hook ──────────────────────────────────
-  // Satu patch saja: dirty state + undo + scheduleRefresh + recalc accordion
   const _baseMarkDirty = AT_EDITOR.markDirty.bind(AT_EDITOR);
   AT_EDITOR.markDirty = function() {
-    _baseMarkDirty();            // Original: sets dirty + dirtyDot
-    AT_UNDO.push();               // Undo snapshot
-    AT_SPLITVIEW.scheduleRefresh(); // Preview refresh (debounced)
-    _recalcAfterRender();          // Fix accordion heights
+    _baseMarkDirty();
+    AT_UNDO.push();
+    AT_SPLITVIEW.scheduleRefresh();
+    _recalcAfterRender();
   };
 
   // Undo buttons hover effect
@@ -528,8 +585,9 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   });
 
-  // Listen for retry messages & preview state from iframe
+  // ── Listen for messages from iframe ──
   window.addEventListener("message", (e) => {
+    // Retry button in error state
     if (e.data && e.data.action === "retry") {
       AT_SPLITVIEW.forceRefresh();
     }
@@ -541,10 +599,11 @@ document.addEventListener("DOMContentLoaded", () => {
       AT_SPLITVIEW._savedPreviewState = AT_SPLITVIEW._savedPreviewState || {};
       AT_SPLITVIEW._savedPreviewState.scrollTop = e.data.previewScroll;
     }
+    // Doc tab switch acknowledgment (for debug)
+    if (e.data && e.data.docTabSwitched) {
+      // Successfully switched to sub-tab in iframe
+    }
   });
 
-  // NOTE: Auto-open, AT_NAV.go patch, switchKontenTab patch
-  // ALL handled in liveview_enhancements.js (loaded after this file)
-
-  console.log("liveview.js v4.3 loaded — markDirty hook, undo, MutationObserver, keyboard shortcuts, accordion sync");
+  console.log("liveview.js v4.4 loaded — markDirty hook, undo, MutationObserver, keyboard shortcuts, accordion sync with message queue");
 });

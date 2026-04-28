@@ -1,18 +1,22 @@
 // ═══════════════════════════════════════════════════════════════
-// LIVEVIEW_ENHANCEMENTS.JS v6.2 — Smart Auto-Sync + UX
+// LIVEVIEW_ENHANCEMENTS.JS v6.3 — Smart Auto-Sync + UX (Stabilized)
 // ═══════════════════════════════════════════════════════════════
 // Berisi:
 //   AT_PAGE_SYNC  — deteksi halaman pintar: editor panel → preview page
 //   AT_LAYOUT     — layout picker dengan injeksi CSS ke student HTML
 //
-// v6.0 Fitur Baru:
-//   - AT_PAGE_SYNC: auto-navigasi preview saat ganti panel/tab editor
-//   - Auto-open split view pada layar lebar (>900px)
-//   - Dashboard tooltip tentang Split View
+// v6.3 Stabilization:
+//   - navigateToPage() for all sync (uses message queue)
+//   - Better konten sub-tab detection
+//   - Auto-open split for ALL content panels consistently
+//   - Deduplication of sync calls
+//   - autogen sync to scp page
 //
 // Arsitektur sinkronisasi:
-//   Form change → markDirty() → scheduleRefresh() → refresh() [200ms]
-//   Panel switch → AT_PAGE_SYNC.sync() → goPage() → refresh()
+//   Form change → markDirty() → scheduleRefresh() → refresh() [350ms]
+//   Panel switch → AT_NAV.go patch → scheduleRefresh + syncFromPanel
+//   Accordion click → toggleAccordion patch → navigateToPage (queued)
+//   Konten tab → switchKontenTab patch → syncFromTab
 // ═══════════════════════════════════════════════════════════════
 
 /* ══════════════════════════════════════════════════════════════
@@ -21,14 +25,15 @@
    halaman preview otomatis ikut berpindah.
    ══════════════════════════════════════════════════════════════ */
 window.AT_PAGE_SYNC = {
-  _userManualOverride: false,  // true jika user manual ganti page select
+  _userManualOverride: false,
   _lastSyncedPanel: null,
+  _lastSyncTime: 0,
 
   // Mapping: editor panel/konten-tab → preview page ID
   _MAP: {
     'dashboard':  'sc',       // Cover
     'dokumen':    'scp',      // Dokumen
-    'konten':     'smat',     // Konten (default → sub-tab Materi, auto-detected below)
+    'konten':     'smat',     // Konten (default → sub-tab Materi, auto-detected)
     'autogen':    'scp',      // Dokumen (auto-generate isi dokumen)
     'import':     'sc',       // Cover (import tidak punya halaman spesifik)
     'versions':   'sc',       // Cover
@@ -54,7 +59,6 @@ window.AT_PAGE_SYNC = {
   // Dipanggil saat panel navigasi berubah
   syncFromPanel(panelId) {
     if (this._userManualOverride) {
-      // Reset setelah 1 sync — biarkan manual override hanya 1x
       this._userManualOverride = false;
       return;
     }
@@ -69,7 +73,13 @@ window.AT_PAGE_SYNC = {
     }
 
     if (!pageId) return;
+
+    // Dedup: skip if same panel synced within last 300ms
+    const now = Date.now();
+    if (this._lastSyncedPanel === panelId && now - this._lastSyncTime < 300) return;
+
     this._lastSyncedPanel = panelId;
+    this._lastSyncTime = now;
     AT_SPLITVIEW?.goPage(pageId);
   },
 
@@ -81,11 +91,16 @@ window.AT_PAGE_SYNC = {
     }
     const pageId = this._MAP[tabId];
     if (!pageId) return;
+
+    // Dedup
+    const now = Date.now();
+    if (this._lastSyncedPanel === tabId && now - this._lastSyncTime < 300) return;
+
     this._lastSyncedPanel = tabId;
+    this._lastSyncTime = now;
     AT_SPLITVIEW?.goPage(pageId);
   },
 
-  // Dipanggil saat user manual ganti page select dropdown
   markManualOverride() {
     this._userManualOverride = true;
   },
@@ -322,7 +337,7 @@ function _injectSplitViewTip() {
   const dashStats = document.getElementById('dashStats');
   if (!dashStats || document.getElementById('splitViewTip')) return;
 
-  const tip = document.createElement('div');
+  const tip = document.createElement("div");
   tip.id = 'splitViewTip';
   tip.style.cssText = 'grid-column:1/-1;background:linear-gradient(135deg,rgba(245,200,66,.06),rgba(56,217,217,.06));border:1px solid rgba(245,200,66,.15);border-radius:12px;padding:12px 16px;display:flex;align-items:center;gap:12px;font-size:.78rem;color:var(--muted2);line-height:1.6';
   tip.innerHTML = `
@@ -338,28 +353,44 @@ function _injectSplitViewTip() {
 }
 
 /* ══════════════════════════════════════════════════════════════
-   INIT — Single source of truth for:
-     - Auto-open split view on wide screens
-     - AT_NAV.go patch (close split for non-content, scheduleRefresh, sync)
-     - switchKontenTab patch (recalc accordion, sync preview page)
-     - Page select manual override
-     - goPage sync indicator
-     - Dashboard tip
+   HELPER: Get currently active konten sub-tab reliably
+   ══════════════════════════════════════════════════════════════ */
+function _getActiveKontenTab() {
+  // Method 1: check .konten-tab-panel.active
+  const activePanel = document.querySelector('.konten-tab-panel.active');
+  if (activePanel) return activePanel.id;
+  // Method 2: check .konten-tab.active data-ktab attribute
+  const activeTab = document.querySelector('.konten-tab.active');
+  if (activeTab) return activeTab.getAttribute('data-ktab');
+  // Fallback
+  return 'konten-tab-materi';
+}
 
-   NOTE: All nav/tab patches consolidated HERE to prevent double-patching.
-   liveview.js handles: markDirty hook, undo, MutationObserver, shortcuts.
+/* ══════════════════════════════════════════════════════════════
+   HELPER: Try to auto-open split view for content panels
+   Used consistently across all navigation paths
+   ══════════════════════════════════════════════════════════════ */
+function _tryAutoOpenSplit() {
+  if (AT_SPLITVIEW.active || AT_SPLITVIEW._autoOpened) return;
+  if (!AT_SPLITVIEW._hasEnoughContent() || window.innerWidth <= 900) return;
+  AT_SPLITVIEW._autoOpened = true;
+  AT_SPLITVIEW.toggle();
+}
+
+/* ══════════════════════════════════════════════════════════════
+   INIT — Single source of truth for ALL navigation patches
+   ══════════════════════════════════════════════════════════════
+   AT_NAV.go patch → handles: close split for non-content,
+   auto-open, pre-set dropdown, scheduleRefresh, sync
    ══════════════════════════════════════════════════════════════ */
 document.addEventListener('DOMContentLoaded', () => {
-  // Init layout state dari saved data
   AT_LAYOUT._getState();
 
   // ── Auto-open split view pada layar lebar (>900px) ──
-  // Single deduplicated auto-open: use a flag to prevent double-toggle
   let _autoOpenDone = false;
   function _autoOpenSplit() {
     if (_autoOpenDone || AT_SPLITVIEW.active) return;
     _autoOpenDone = true;
-    // Check if there's enough content to preview
     const hasStateContent = AT_SPLITVIEW._hasEnoughContent();
     const hasSavedContent = !!(AT_STORAGE && AT_STORAGE.load());
     if (hasStateContent || hasSavedContent) {
@@ -371,51 +402,46 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   // ── Patch AT_NAV.go — SINGLE SOURCE ──
-  // Handles: close split for non-content panels, scheduleRefresh, auto-sync
   const _origNavGo = AT_NAV.go.bind(AT_NAV);
   AT_NAV.go = function(id) {
     _origNavGo(id);
+
     // Close split view for non-content panels
     const closePanels = ['projects', 'import', 'versions'];
     if (closePanels.includes(id) && AT_SPLITVIEW.active) {
       AT_SPLITVIEW.toggle();
       return;
     }
-    // Auto-open split view if not yet active and switching to content panel
-    if (!AT_SPLITVIEW.active && !AT_SPLITVIEW._autoOpened) {
-      if (AT_SPLITVIEW._hasEnoughContent() && window.innerWidth > 900) {
-        AT_SPLITVIEW._autoOpened = true;
-        AT_SPLITVIEW.toggle();
-      }
-    }
-    // Pre-set dropdown BEFORE refresh (so iframe onload reads correct page)
+
+    // Auto-open split view if switching to content panel
+    _tryAutoOpenSplit();
+
     if (AT_SPLITVIEW.active) {
+      // Pre-set dropdown BEFORE refresh (so iframe onload reads correct page)
       const mappedPage = AT_PAGE_SYNC._MAP[id];
       if (mappedPage && !AT_PAGE_SYNC._userManualOverride) {
         const sel = document.getElementById('splitPageSelect');
         if (sel) sel.value = mappedPage;
       }
-      // Schedule refresh for content panels
+
+      // Schedule refresh to rebuild HTML if content changed
       AT_SPLITVIEW.scheduleRefresh();
-      // Auto-sync preview page ke editor panel (delayed for iframe load)
+
+      // Sync preview page after a short delay (to let iframe settle)
       setTimeout(() => AT_PAGE_SYNC.syncFromPanel(id), 200);
     }
   };
 
   // ── Patch switchKontenTab — SINGLE SOURCE ──
-  // Handles: recalc accordion, auto-sync preview page
   const _origSwitchTab = window.switchKontenTab;
   window.switchKontenTab = function(tabId, btnEl) {
     _origSwitchTab(tabId, btnEl);
     _recalcAfterRender();
+
     // Auto-open split if not yet active
-    if (!AT_SPLITVIEW.active && !AT_SPLITVIEW._autoOpened) {
-      if (AT_SPLITVIEW._hasEnoughContent() && window.innerWidth > 900) {
-        AT_SPLITVIEW._autoOpened = true;
-        AT_SPLITVIEW.toggle();
-      }
-    }
-    // Auto-sync preview page ke konten tab
+    _tryAutoOpenSplit();
+
+    // Sync preview to the new konten sub-tab
     if (AT_SPLITVIEW.active) {
       setTimeout(() => AT_PAGE_SYNC.syncFromTab(tabId), 150);
     }
@@ -439,5 +465,5 @@ document.addEventListener('DOMContentLoaded', () => {
   // ── Inject Split View tip di Dashboard ──
   _injectSplitViewTip();
 
-  console.log('liveview_enhancements.js v6.2 — consolidated nav/tab patches, smart auto-sync, pre-set dropdown, accordion sync');
+  console.log('liveview_enhancements.js v6.3 — stabilized nav/tab patches, message queue support, dedup sync, reliable konten detection');
 });
