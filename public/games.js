@@ -149,6 +149,7 @@ window.AT_GAMES = {
           <span class="mod-type-badge" style="background:${T.color}22;color:${T.color};border:1px solid ${T.color}44">${T.icon} ${T.label}</span>
           <span class="mod-card-title">${g.title||"(tanpa judul)"}</span>
           <div class="mod-card-actions">
+            <button class="icon-btn" onclick="AT_GAMES.previewGame(${i})" title="Preview di Split View">👁️</button>
             <button class="icon-btn edit" onclick="AT_GAMES.openEditor(${i})">✏️</button>
             <button class="icon-btn del" onclick="AT_GAMES.delete(${i})">🗑️</button>
           </div>
@@ -186,6 +187,26 @@ window.AT_GAMES = {
     AT_STATE.games.splice(i, 1);
     this.render();
     AT_EDITOR.markDirty();
+  },
+
+  // ── PREVIEW GAME DI SPLIT VIEW ────────────────────────────────
+  previewGame(idx) {
+    // 1. Pastikan split view aktif
+    if (!AT_SPLITVIEW.active) {
+      AT_SPLITVIEW._autoOpened = true;
+      AT_SPLITVIEW.toggle();
+    }
+    // 2. Navigasi ke screen game ke-idx (sgame_0, sgame_1, ...)
+    const pageId = 'sgame_' + idx;
+    const sel = document.getElementById('splitPageSelect');
+    if (sel) sel.value = pageId;
+    AT_SPLITVIEW._queueMessage({ goPage: pageId });
+    AT_SPLITVIEW._sendToFrame({ goPage: pageId });
+    // 3. Update sync indicator
+    if (window.AT_PAGE_SYNC) {
+      AT_PAGE_SYNC.markManualOverride();
+      AT_PAGE_SYNC.updateSyncIndicator(pageId);
+    }
   },
 
   showPicker() {

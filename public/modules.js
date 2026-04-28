@@ -36,6 +36,7 @@ window.AT_MODULES = {
           </span>
           <span class="mod-card-title">${m.title || "(tanpa judul)"}</span>
           <div class="mod-card-actions">
+            <button class="icon-btn" onclick="AT_MODULES.previewMod(${i})" title="Preview di Split View">👁️</button>
             <button class="icon-btn" onclick="AT_MODULES.moveUp(${i})" title="Naik">↑</button>
             <button class="icon-btn" onclick="AT_MODULES.moveDown(${i})" title="Turun">↓</button>
             <button class="icon-btn edit" onclick="AT_MODULES.openEditor(${i})" title="Edit">✏️</button>
@@ -165,6 +166,30 @@ window.AT_MODULES = {
     [mods[i], mods[i+1]] = [mods[i+1], mods[i]];
     this.render();
     AT_EDITOR.markDirty();
+  },
+
+  // ── PREVIEW MODUL DI SPLIT VIEW ───────────────────────────────
+  // Klik 👁️ di card modul → buka modul tersebut di preview
+  previewMod(idx) {
+    // 1. Pastikan split view aktif
+    if (!AT_SPLITVIEW.active) {
+      AT_SPLITVIEW._autoOpened = true;
+      AT_SPLITVIEW.toggle();
+    }
+    // 2. Navigasi ke screen smods dulu
+    const sel = document.getElementById('splitPageSelect');
+    if (sel) sel.value = 'smods';
+    AT_SPLITVIEW._queueMessage({ goPage: 'smods' });
+    // 3. Lalu arahkan ke sub-page modul ke-idx
+    setTimeout(() => {
+      AT_SPLITVIEW._queueMessage({ goModP: idx });
+      AT_SPLITVIEW._sendToFrame({ goModP: idx });
+    }, 150);
+    // 4. Update sync indicator
+    if (window.AT_PAGE_SYNC) {
+      AT_PAGE_SYNC.markManualOverride();
+      AT_PAGE_SYNC.updateSyncIndicator('smods');
+    }
   },
 
   // ── MODAL PICKER (bertab: Modul | Game) ─────────────────────

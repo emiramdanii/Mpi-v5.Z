@@ -609,6 +609,8 @@ document.addEventListener('DOMContentLoaded',function(){if(CH.length)iSk();iFt()
 // postMessage navigation for split-view parent
 window.addEventListener('message',function(e){
   if(e.data&&e.data.goPage){go(e.data.goPage);}
+  if(e.data&&e.data.goModP!==undefined){goModP(e.data.goModP);}
+  if(e.data&&e.data.goMatP!==undefined){goMatP(e.data.goMatP);}
 });`;
 
     // ── ASSEMBLE ──────────────────────────────────────────────

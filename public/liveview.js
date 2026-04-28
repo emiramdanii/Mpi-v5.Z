@@ -164,6 +164,7 @@ window.AT_SPLITVIEW = {
       this._hasContent = true;
       this._errorRetries = 0;
       this._updateCharCount(html);
+      this._updateDropdown();
 
       // ── ANTI-FLICKER: skip refresh if HTML hasn't changed ──
       if (html === this._lastHTML) {
@@ -196,6 +197,8 @@ window.AT_SPLITVIEW = {
       const navScript = `<script>(function(){
   window.addEventListener('message',function(e){
     if(e.data&&e.data.goPage){var fn=window.go;if(fn)fn(e.data.goPage);}
+    if(e.data&&e.data.goModP!==undefined){var fn=window.goModP;if(fn)fn(e.data.goModP);}
+    if(e.data&&e.data.goMatP!==undefined){var fn=window.goMatP;if(fn)fn(e.data.goMatP);}
     if(e.data&&e.data.restoreState){
       var rs=e.data.restoreState;
       setTimeout(function(){
@@ -296,6 +299,42 @@ window.AT_SPLITVIEW = {
       frame.style.display = "block";
       if (emptyState) emptyState.style.display = "none";
       this._iframeReady = false;
+    }
+  },
+
+  /* ── Update page dropdown dynamically ───────────────────── */
+  _updateDropdown() {
+    const sel = document.getElementById('splitPageSelect');
+    if (!sel) return;
+    const curVal = sel.value;
+    const gameCount = (AT_STATE.games || []).length;
+
+    // Base pages (selalu ada)
+    const pages = [
+      { id: 'sc',   label: '🏠 Cover' },
+      { id: 'scp',  label: '📋 Dokumen' },
+      { id: 'ssk',  label: '🎭 Skenario' },
+      { id: 'smat', label: '📝 Materi' },
+      { id: 'smods',label: '🧩 Modul' },
+    ];
+    // Game pages (dinamis)
+    for (let g = 0; g < gameCount; g++) {
+      const gTitle = AT_STATE.games[g]?.title || '';
+      pages.push({ id: 'sgame_' + g, label: '🎮 ' + (gTitle ? gTitle : 'Game ' + (g+1)) });
+    }
+    pages.push(
+      { id: 'skuis', label: '❓ Kuis' },
+      { id: 'shas',  label: '📊 Hasil' }
+    );
+
+    sel.innerHTML = pages.map(p =>
+      `<option value="${p.id}">${p.label}</option>`
+    ).join('');
+
+    // Restore selected value jika masih valid
+    const validIds = pages.map(p => p.id);
+    if (validIds.includes(curVal)) {
+      sel.value = curVal;
     }
   },
 

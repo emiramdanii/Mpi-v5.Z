@@ -43,7 +43,8 @@ window.AT_PAGE_SYNC = {
     'konten-tab-kuis':    'skuis',  // Evaluasi/Kuis
   },
 
-  // Reverse map: pageId → editor tab/panel (untuk highlight indicator)
+  // Reverse map: pageId → editor panel/tab
+  // Note: sgame_N handled dynamically in syncToEditor()
   _REVERSE_MAP: {
     'sc':    'dashboard',
     'scp':   'dokumen',
@@ -52,7 +53,6 @@ window.AT_PAGE_SYNC = {
     'skuis': 'konten-tab-kuis',
     'shas':  'konten-tab-kuis',
     'ssk':   'konten-tab-materi',
-    'sgame_0': 'konten-tab-modules',
   },
 
   // Dipanggil saat panel navigasi berubah
@@ -104,7 +104,12 @@ window.AT_PAGE_SYNC = {
   // Reverse sync: dari dropdown preview → editor panel/tab
   // Dipanggil saat user memilih halaman dari dropdown di live preview
   syncToEditor(pageId) {
-    const target = this._REVERSE_MAP[pageId];
+    // Dynamic: handle sgame_N (game screens)
+    let target = this._REVERSE_MAP[pageId];
+    if (!target && pageId.startsWith('sgame_')) {
+      // Game screen → navigasi ke konten tab modules
+      target = 'konten-tab-modules';
+    }
     if (!target) return;
 
     // Suppress auto-sync agar tidak mengubah dropdown kembali
@@ -146,7 +151,8 @@ window.AT_PAGE_SYNC = {
     const dot = document.getElementById('syncDot');
     if (!label || !dot) return;
 
-    const source = this._REVERSE_MAP[pageId];
+    // Dynamic: sgame_N → konten-tab-modules
+    const source = this._REVERSE_MAP[pageId] || (pageId.startsWith('sgame_') ? 'konten-tab-modules' : null);
     const sourceNames = {
       'dashboard': 'Dashboard',
       'dokumen': 'Dokumen',
