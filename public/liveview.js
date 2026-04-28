@@ -1,5 +1,5 @@
 // ═══════════════════════════════════════════════════════════════
-// LIVEVIEW.JS — Split-View Live Preview v5.0 (Smooth Hybrid Rebuild)
+// LIVEVIEW.JS — Split-View Live Preview v5.1 (Hard Block Typing)
 // Berisi:
 //   AT_SPLITVIEW  — live preview berdampingan dengan editor
 //   Preview patch, init code, MutationObserver, keyboard shortcuts
@@ -9,17 +9,15 @@
 // Editor modules (AT_UNDO, AT_SK_EDITOR, AT_FUNGSI_EDITOR,
 // AT_JSON_IO, accordion helpers) are in liveview-editors.js
 //
-// v5.0 Smooth Hybrid Rebuild:
-//   - MutationObserver now uses scheduleRefresh() (respects typing skip!)
+// v5.1 Hard Block Typing:
+//   - CRITICAL FIX: refresh() has HARD BLOCK — rebuild impossible during typing
+//   - No matter WHAT calls refresh(), it will NOT rebuild while _isTyping=true
+//   - Typing detection moved to keydown CAPTURE phase (before any other handler)
+//   - markDirty hook calls _startTyping() BEFORE scheduleRefresh()
+//   - MutationObserver uses scheduleRefresh() (respects typing skip!)
 //   - Opacity CSS transition replaces hard visibility:hidden flash
 //   - State merge instead of overwrite (fixes CP/TP/ATP race condition)
-//   - COMPLETE SKIP rebuild during active typing (no iframe srcdoc write)
-//   - Typing indicator shows "Mengetik..." instead of full rebuild
-//   - Final rebuild triggered automatically when typing stops
-//   - Doc tab state (CP/TP/ATP) tracked via kT() patch → saved in preview state
-//   - _navigateFrame() restores doc tab after every rebuild
-//   - _forceNextRefresh flag for navigation actions to bypass typing skip
-//   - navigateToPage() saves doc tab to _savedPreviewState for persistence
+//   - Debounced iframe state reports (250ms) prevent race condition
 //   - Batch undo pushes during typing (avoid deep clone per keystroke)
 //   - requestAnimationFrame gating for smooth rebuild timing
 // ═══════════════════════════════════════════════════════════════
@@ -200,6 +198,17 @@ window.AT_SPLITVIEW = {
   /* ── Build & render preview ke iframe ───────────────────── */
   refresh() {
     if (!this.active) return;
+
+    // ╔══════════════════════════════════════════════════════════╗
+    // ║  HARD BLOCK: Tidak ada rebuild saat sedang mengetik!    ║
+    // ║  Ini check TERAKHIR — tidak ada code path yang bisa      ║
+    // ║  melewati ini selain forceNextRefresh=true.               ║
+    // ╚══════════════════════════════════════════════════════════╝
+    if (this._isTyping && !this._forceNextRefresh) {
+      this._hasPendingRefresh = true;
+      this._showTypingIndicator();
+      return;  // ← REBUILD DIBATALKAN
+    }
 
     // Clear flags
     this._debounceTimer = null;
@@ -701,6 +710,10 @@ document.addEventListener("DOMContentLoaded", () => {
   let _undoBatchTimer = null;
   AT_EDITOR.markDirty = function() {
     _baseMarkDirty();
+    // v5.1: Detect typing HERE — before scheduleRefresh!
+    // This fixes the race condition where inline oninput fires before
+    // the #content input listener (event bubbling order).
+    AT_SPLITVIEW._startTyping();
     // Batch undo pushes during typing to avoid expensive deep clone per keystroke
     if (AT_SPLITVIEW._isTyping) {
       clearTimeout(_undoBatchTimer);
@@ -712,7 +725,17 @@ document.addEventListener("DOMContentLoaded", () => {
     _recalcAfterRender();
   };
 
-  // ── Typing Detection: listen for input events ──
+  // ── Typing Detection: keydown CAPTURE phase (before ALL other handlers) ──
+  // Using capture phase ensures _isTyping=true BEFORE any form handler runs.
+  // This catches ALL keyboard input, including inputs not inside #content.
+  document.addEventListener("keydown", (e) => {
+    // Only for actual text input keys (not Ctrl, Alt, Shift, arrows, etc.)
+    if (e.key.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey) {
+      AT_SPLITVIEW._startTyping();
+    }
+  }, { capture: true, passive: true });
+
+  // Fallback: input event on #content for paste/drag-drop/IME
   document.getElementById("content")?.addEventListener("input", () => {
     AT_SPLITVIEW._startTyping();
   }, { passive: true });
@@ -771,5 +794,5 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   });
 
-  console.log("liveview.js v5.0 — smooth hybrid rebuild (opacity transition, MutationObserver respects typing, state merge for CP/TP/ATP)");
+  console.log("liveview.js v5.1 — hard block typing (refresh() unreachable during typing), keydown capture phase, state merge for CP/TP/ATP");
 });
