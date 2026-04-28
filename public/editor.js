@@ -527,6 +527,70 @@ window.AT_SKENARIO = {
   }
 };
 
+/* ── GLOBAL HELPERS (Accordion, Tabs, Presets) ───────────────── */
+window.toggleAccordion = function(headerEl) {
+  const section = headerEl.closest('.acc-section');
+  if (!section) return;
+  const isOpen = section.classList.contains('open');
+  // Close all siblings
+  section.parentElement.querySelectorAll('.acc-section').forEach(s => {
+    s.classList.remove('open');
+    const body = s.querySelector('.acc-body');
+    if (body) body.style.maxHeight = '0';
+  });
+  // Toggle current
+  if (!isOpen) {
+    section.classList.add('open');
+    const body = section.querySelector('.acc-body');
+    if (body) body.style.maxHeight = body.scrollHeight + 40 + 'px';
+  }
+};
+
+window.switchKontenTab = function(tabId, btnEl) {
+  // Deactivate all tabs
+  document.querySelectorAll('.konten-tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.konten-tab-panel').forEach(p => p.classList.remove('active'));
+  // Activate target
+  const panel = document.getElementById(tabId);
+  if (panel) panel.classList.add('active');
+  if (btnEl) btnEl.classList.add('active');
+};
+
+window.checkMigrateBanner = function() {
+  const banner = document.getElementById('migrateBanner');
+  if (!banner) return;
+  const hasOldSk = (AT_STATE.skenario || []).length > 0;
+  const hasModules = (AT_STATE.modules || []).length > 0;
+  banner.style.display = (hasOldSk && !hasModules) ? 'flex' : 'none';
+};
+
+window.applyFullPreset = function(presetKey) {
+  const mapping = {
+    'hakikat-norma': { meta: 'hakikat-norma', cp: 'ppkn-smp-bab3', tp: 'bab3-full', atp: 'bab3-3pertemuan', alur: 'hakikat-norma-80menit', skenario: 'norma-3-skenario', kuis: 'norma-10-soal' },
+    'macam-norma': { meta: 'macam-norma', cp: 'ppkn-smp-bab3', tp: 'bab3-full', atp: 'bab3-3pertemuan', alur: 'hakikat-norma-80menit', skenario: 'norma-3-skenario', kuis: 'norma-10-soal' },
+    'blank': { meta: 'blank', cp: 'blank', tp: 'blank', atp: 'blank', alur: 'blank', skenario: 'blank', kuis: 'blank' }
+  };
+  const preset = mapping[presetKey];
+  if (!preset) { AT_UTIL.toast('Preset tidak ditemukan', 'err'); return; }
+  if (PRESETS.meta[preset.meta]) Object.assign(AT_STATE.meta, AT_UTIL.deepClone(PRESETS.meta[preset.meta]));
+  if (PRESETS.cp[preset.cp]) AT_STATE.cp = AT_UTIL.deepClone(PRESETS.cp[preset.cp]);
+  if (PRESETS.tp[preset.tp]) AT_STATE.tp = AT_UTIL.deepClone(PRESETS.tp[preset.tp].items);
+  if (PRESETS.atp[preset.atp]) AT_STATE.atp = AT_UTIL.deepClone(PRESETS.atp[preset.atp]);
+  if (PRESETS.alur[preset.alur]) AT_STATE.alur = AT_UTIL.deepClone(PRESETS.alur[preset.alur].steps);
+  if (PRESETS.skenario[preset.skenario]) AT_STATE.skenario = AT_UTIL.deepClone(PRESETS.skenario[preset.skenario].chapters);
+  if (PRESETS.kuis[preset.kuis]) AT_STATE.kuis = AT_UTIL.deepClone(PRESETS.kuis[preset.kuis].soal);
+  // Rebind all
+  AT_META.bind(); AT_CP.bind(); AT_TP.render();
+  AT_ATP.bind(); AT_ALUR.render(); AT_KUIS.render();
+  AT_SKENARIO.render();
+  if (window.AT_MODULES) AT_MODULES.render();
+  if (window.AT_GAMES) AT_GAMES.render();
+  if (window.AT_MATERI_EDITOR) AT_MATERI_EDITOR.render();
+  AT_DASH.render();
+  AT_UNDO.push();
+  AT_UTIL.toast('Preset diterapkan: ' + presetKey);
+};
+
 /* ── GLOBAL SAVE ─────────────────────────────────────────────── */
 window.saveAll = function () {
   const ok = AT_STORAGE.save(AT_STATE);
@@ -562,12 +626,12 @@ window.AT_EDITOR_INIT = function () {
 
   // Header buttons
   document.getElementById("btnSave")?.addEventListener("click", saveAll);
-  document.getElementById("btnPreview")?.addEventListener("click", () => AT_NAV.go("preview"));
   document.getElementById("btnExport")?.addEventListener("click", () => AT_NAV.go("import"));
 
   // Init new module states
   if (!AT_STATE.games) AT_STATE.games = [];
   if (!AT_STATE.modules) AT_STATE.modules = [];
+  if (!AT_STATE.materi) AT_STATE.materi = { blok: [] };
 
   // Bind all panels
   AT_META.bind();
@@ -577,6 +641,21 @@ window.AT_EDITOR_INIT = function () {
   AT_ALUR.render();
   AT_KUIS.render();
   AT_SKENARIO.render();
+
+  // Render konten panels on init
+  if (window.AT_MATERI_EDITOR) AT_MATERI_EDITOR.render();
+  if (window.AT_MODULES) AT_MODULES.render();
+  if (typeof checkMigrateBanner === 'function') checkMigrateBanner();
+
+  // Open first accordion by default
+  setTimeout(() => {
+    const firstAcc = document.querySelector('.acc-section');
+    if (firstAcc) {
+      firstAcc.classList.add('open');
+      const body = firstAcc.querySelector('.acc-body');
+      if (body) body.style.maxHeight = body.scrollHeight + 40 + 'px';
+    }
+  }, 100);
 
   // Start on dashboard
   AT_NAV.go("dashboard");

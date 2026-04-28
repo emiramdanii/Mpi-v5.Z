@@ -1,5 +1,5 @@
 // ═══════════════════════════════════════════════════════════════
-// LIVEVIEW.JS — Split-View Live Preview v2.1 (Restructured)
+// LIVEVIEW.JS — Split-View Live Preview v4.0 (Robust Rewrite)
 // Berisi:
 //   AT_SPLITVIEW  — live preview berdampingan dengan editor
 //   AT_UNDO       — undo/redo history (Ctrl+Z / Ctrl+Y)
@@ -7,13 +7,20 @@
 //   AT_FUNGSI_EDITOR — edit tab fungsi norma
 //   AT_JSON_IO    — import/export JSON state
 //
-// Arsitektur sinkronisasi:
-//   Form change → markDirty() → [dirty state + undo + scheduleRefresh]
-//   Tidak ada polling, tidak ada event listener ganda.
+// v4.0 Improvements:
+//   - FORCE refresh on every scheduleRefresh (no hash skip)
+//   - Faster initial render (60ms), then 200ms debounce
+//   - MutationObserver fallback: catches form changes not via markDirty
+//   - Accordion max-height auto-recalculation after render
+//   - Better error recovery with visible error state
+//   - Sync indicator always visible with status
+//   - Auto-open split view on first meaningful edit
+//   - Smart loading state management
+//   - Character counter in header
 // ═══════════════════════════════════════════════════════════════
 
 /* ══════════════════════════════════════════════════════════════
-   AT_SPLITVIEW — Live preview di sebelah editor  v2.1
+   AT_SPLITVIEW — Live preview di sebelah editor  v4.0
    Single entry point: scheduleRefresh() → debounced refresh()
    ══════════════════════════════════════════════════════════════ */
 window.AT_SPLITVIEW = {
@@ -23,11 +30,16 @@ window.AT_SPLITVIEW = {
   _lastHTML: "",
   _hasContent: false,
   _splitWidth: 440,
-  _minWidth: 300,
-  _maxWidth: 720,
+  _minWidth: 280,
+  _maxWidth: 800,
   _isResizing: false,
   _resizeStartX: 0,
   _resizeStartWidth: 0,
+  _refreshCount: 0,
+  _autoOpened: false,
+  _syncTimer: null,
+  _buildCount: 0,
+  _errorRetries: 0,
 
   /* ── Toggle split view ─────────────────────────────────── */
   toggle() {
@@ -63,31 +75,58 @@ window.AT_SPLITVIEW = {
 
   /* ── Single entry point: dipanggil dari unified markDirty ── */
   scheduleRefresh() {
-    if (!this.active) return;
-    this._lastHTML = ""; // Force rebuild
+    if (!this.active) {
+      // Auto-open on first meaningful edit
+      if (!this._autoOpened && this._hasEnoughContent()) {
+        this._autoOpened = true;
+        this.toggle();
+      }
+      return;
+    }
     clearTimeout(this._debounceTimer);
-    this._debounceTimer = setTimeout(() => this.refresh(), 300);
+    // Fast first render (60ms), then normal debounce (200ms)
+    const delay = this._buildCount < 5 ? 60 : 200;
+    this._debounceTimer = setTimeout(() => this.refresh(), delay);
+  },
+
+  /* ── Force refresh — always rebuild, used for manual refresh ── */
+  forceRefresh() {
+    this._lastHTML = "";
+    this.refresh();
+  },
+
+  _hasEnoughContent() {
+    const S = AT_STATE;
+    return !!(S.meta.judulPertemuan || S.cp.capaianFase || S.tp.length || S.kuis.length || (S.modules||[]).length || (S.skenario||[]).length);
   },
 
   /* ── Build & render preview ke iframe ───────────────────── */
   refresh() {
-    if (!this.active || !window.AT_PREVIEW) return;
+    if (!this.active) return;
+
     const frame = document.getElementById("split-frame");
     const loading = document.getElementById("splitLoading");
     const emptyState = document.getElementById("splitEmptyState");
     if (!frame) return;
 
+    this._showSyncPulse();
     if (loading) loading.style.display = "flex";
 
     try {
-      const html = AT_PREVIEW.buildStudentHTML(AT_STATE);
-      if (html === this._lastHTML && this._hasContent) {
-        this._navigateFrame();
-        if (loading) loading.style.display = "none";
+      if (!window.AT_PREVIEW || !window.AT_PREVIEW.buildStudentHTML) {
+        console.warn("AT_PREVIEW not ready, retrying in 500ms...");
+        this._hideSyncPulse();
+        setTimeout(() => this.refresh(), 500);
         return;
       }
+
+      const html = AT_PREVIEW.buildStudentHTML(AT_STATE);
+      this._buildCount++;
       this._lastHTML = html;
       this._hasContent = true;
+      this._errorRetries = 0;
+      this._updateCharCount(html);
+
       const pageId = document.getElementById("splitPageSelect")?.value || "sc";
       const navScript = `<script>window.addEventListener('message',function(e){if(e.data&&e.data.goPage){var fn=window.go;if(fn)fn(e.data.goPage);}});<\/script>`;
       frame.srcdoc = html.replace("</body>", navScript + "</body>");
@@ -97,16 +136,24 @@ window.AT_SPLITVIEW = {
       frame.addEventListener("load", () => {
         setTimeout(() => {
           this._navigateFrame();
+          this._hideSyncPulse();
           if (loading) loading.style.display = "none";
         }, 80);
       }, { once: true });
 
-      setTimeout(() => { if (loading) loading.style.display = "none"; }, 2000);
+      // Safety timeout — hide loading after 4s max
+      setTimeout(() => { if (loading) loading.style.display = "none"; }, 4000);
+
     } catch(e) {
+      this._errorRetries++;
+      this._hideSyncPulse();
+      console.error("Live preview error:", e);
+
+      // Show error in iframe
       frame.srcdoc = `
         <body style="padding:24px;color:#f87171;font-family:'Plus Jakarta Sans',sans-serif;background:#0e1c2f;margin:0">
           <div style="max-width:300px">
-            <div style="font-size:1.4rem;margin-bottom:8px">&#x26A0;&#xFE0F;</div>
+            <div style="font-size:1.4rem;margin-bottom:8px">&#9888;&#65039;</div>
             <div style="font-size:.85rem;font-weight:700;margin-bottom:6px">Preview Error</div>
             <pre style="font-size:.72rem;white-space:pre-wrap;color:rgba(248,113,113,.7);line-height:1.5;margin:0">${e.message}</pre>
             <button onclick="window.parent.postMessage({action:'retry'},'*')"
@@ -120,6 +167,36 @@ window.AT_SPLITVIEW = {
       frame.style.display = "block";
       if (emptyState) emptyState.style.display = "none";
     }
+  },
+
+  /* ── Character count display ─────────────────────────────── */
+  _updateCharCount(html) {
+    const el = document.getElementById("splitCharCount");
+    if (el) {
+      const chars = html.length;
+      el.textContent = chars > 1000 ? (chars / 1000).toFixed(1) + 'k' : chars;
+    }
+  },
+
+  /* ── Sync pulse indicator ─────────────────────────────── */
+  _showSyncPulse() {
+    const dot = document.getElementById("syncDot");
+    const label = document.getElementById("syncLabel");
+    if (!dot) return;
+    clearTimeout(this._syncTimer);
+    dot.style.background = 'var(--y)';
+    dot.style.transform = 'scale(1.3)';
+    if (label) { label.textContent = 'Sinkron...'; label.style.color = 'var(--y)'; }
+    this._syncTimer = setTimeout(() => this._hideSyncPulse(), 1500);
+  },
+
+  _hideSyncPulse() {
+    const dot = document.getElementById("syncDot");
+    const label = document.getElementById("syncLabel");
+    if (!dot) return;
+    dot.style.background = 'var(--g)';
+    dot.style.transform = 'scale(1)';
+    if (label) { label.textContent = 'Tersinkron'; label.style.color = 'var(--muted)'; }
   },
 
   _navigateFrame() {
@@ -231,8 +308,10 @@ window.AT_UNDO = {
       AT_SKENARIO.render();
       if (window.AT_MODULES) AT_MODULES.render();
       if (window.AT_GAMES) AT_GAMES.render();
+      if (window.AT_MATERI_EDITOR) AT_MATERI_EDITOR.render();
       AT_DASH.render();
-      AT_SPLITVIEW.scheduleRefresh();
+      _recalcAllAccordions();
+      AT_SPLITVIEW.forceRefresh();
     } catch(e) { console.error("Undo restore error:", e); }
     this._paused = false;
     this._updateUI();
@@ -255,6 +334,30 @@ window.AT_UNDO = {
     this._updateUI();
   }
 };
+
+/* ══════════════════════════════════════════════════════════════
+   ACCORDION AUTO-RECALC — Fix max-height after content changes
+   ══════════════════════════════════════════════════════════════ */
+function _recalcAllAccordions() {
+  document.querySelectorAll('.acc-section.open').forEach(section => {
+    const body = section.querySelector('.acc-body');
+    if (body) {
+      // Use requestAnimationFrame to ensure DOM has updated
+      requestAnimationFrame(() => {
+        body.style.maxHeight = body.scrollHeight + 40 + 'px';
+      });
+    }
+  });
+}
+
+// Recalculate accordion heights after any render that might add content
+function _recalcAfterRender() {
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => {
+      _recalcAllAccordions();
+    });
+  });
+}
 
 /* ══════════════════════════════════════════════════════════════
    AT_SK_EDITOR — Skenario Detail Editor (full form)
@@ -290,6 +393,7 @@ window.AT_SK_EDITOR = {
     } else {
       AT_SKENARIO.render();
     }
+    _recalcAfterRender();
     AT_SPLITVIEW.scheduleRefresh();
     this._chIdx = null;
   },
@@ -433,11 +537,11 @@ window.AT_SK_EDITOR = {
   _upSk(arr, idx, key, val) { const sk = this._sk(); if (!sk || !sk[arr]) return; sk[arr][idx][key] = val; AT_EDITOR.markDirty(); },
   _upCh(ci, key, val) { const sk = this._sk(); if (!sk?.choices?.[ci]) return; sk.choices[ci][key] = val; AT_EDITOR.markDirty(); },
   _upCons(ci, ki, key, val) { const sk = this._sk(); if (!sk?.choices?.[ci]?.consequences?.[ki]) return; sk.choices[ci].consequences[ki][key] = val; AT_EDITOR.markDirty(); },
-  _addCons(ci) { const sk = this._sk(); if (!sk?.choices?.[ci]) return; if (!sk.choices[ci].consequences) sk.choices[ci].consequences = []; sk.choices[ci].consequences.push({icon:"",text:""}); AT_EDITOR.markDirty(); this.open(this._idx); },
-  _remCons(ci, ki) { const sk = this._sk(); sk?.choices?.[ci]?.consequences?.splice(ki,1); AT_EDITOR.markDirty(); this.open(this._idx); },
-  _rem(arr, idx) { const sk = this._sk(); if (!sk || !sk[arr]) return; sk[arr].splice(idx,1); AT_EDITOR.markDirty(); this.open(this._idx); },
-  _addSetup() { const sk = this._sk(); if (!sk) return; if (!sk.setup) sk.setup = []; sk.setup.push({speaker:"NARRATOR",text:""}); AT_EDITOR.markDirty(); this.open(this._idx); },
-  _addChoice() { const sk = this._sk(); if (!sk) return; if (!sk.choices) sk.choices = []; sk.choices.push({icon:"",label:"",detail:"",good:false,pts:10,level:"mid",norma:"",resultTitle:"",resultBody:"",consequences:[{icon:"",text:""}]}); AT_EDITOR.markDirty(); this.open(this._idx); }
+  _addCons(ci) { const sk = this._sk(); if (!sk?.choices?.[ci]) return; if (!sk.choices[ci].consequences) sk.choices[ci].consequences = []; sk.choices[ci].consequences.push({icon:"",text:""}); AT_EDITOR.markDirty(); this.open(this._idx, this._chIdx); },
+  _remCons(ci, ki) { const sk = this._sk(); sk?.choices?.[ci]?.consequences?.splice(ki,1); AT_EDITOR.markDirty(); this.open(this._idx, this._chIdx); },
+  _rem(arr, idx) { const sk = this._sk(); if (!sk || !sk[arr]) return; sk[arr].splice(idx,1); AT_EDITOR.markDirty(); this.open(this._idx, this._chIdx); },
+  _addSetup() { const sk = this._sk(); if (!sk) return; if (!sk.setup) sk.setup = []; sk.setup.push({speaker:"NARRATOR",text:""}); AT_EDITOR.markDirty(); this.open(this._idx, this._chIdx); },
+  _addChoice() { const sk = this._sk(); if (!sk) return; if (!sk.choices) sk.choices = []; sk.choices.push({icon:"",label:"",detail:"",good:false,pts:10,level:"mid",norma:"",resultTitle:"",resultBody:"",consequences:[{icon:"",text:""}]}); AT_EDITOR.markDirty(); this.open(this._idx, this._chIdx); }
 };
 
 // Patch AT_SKENARIO.openDetail to use AT_SK_EDITOR
@@ -463,7 +567,6 @@ window.AT_FUNGSI_EDITOR = {
   save() {
     document.getElementById("fungsiModal")?.classList.remove("show");
     AT_EDITOR.markDirty();
-    AT_SPLITVIEW.scheduleRefresh();
     AT_UTIL.toast("Fungsi Norma disimpan");
   },
 
@@ -542,9 +645,11 @@ window.AT_JSON_IO = {
         AT_SKENARIO.render();
         if (window.AT_MODULES) AT_MODULES.render();
         if (window.AT_GAMES) AT_GAMES.render();
+        if (window.AT_MATERI_EDITOR) AT_MATERI_EDITOR.render();
         AT_DASH.render();
         AT_UNDO.push();
-        AT_SPLITVIEW.scheduleRefresh();
+        _recalcAllAccordions();
+        AT_SPLITVIEW.forceRefresh();
         AT_UTIL.toast("State JSON berhasil dimuat: " + file.name);
       } catch(err) {
         AT_UTIL.toast("Gagal: " + err.message, "err");
@@ -602,12 +707,66 @@ function _initModalClose() {
 }
 
 /* ══════════════════════════════════════════════════════════════
+   HELPER: MutationObserver fallback for form changes
+   Catches any form input/change not covered by markDirty
+   ══════════════════════════════════════════════════════════════ */
+let _mutationObserver = null;
+function _initMutationObserver() {
+  if (_mutationObserver) return;
+
+  const contentEl = document.getElementById("content");
+  if (!contentEl) return;
+
+  _mutationObserver = new MutationObserver((mutations) => {
+    // Only trigger refresh if AT_SPLITVIEW is active and there are meaningful changes
+    if (!AT_SPLITVIEW.active) return;
+    if (!AT_STATE.dirty) return; // Only if there are actually pending changes
+
+    // Reset debounce to ensure refresh happens
+    clearTimeout(AT_SPLITVIEW._debounceTimer);
+    AT_SPLITVIEW._debounceTimer = setTimeout(() => AT_SPLITVIEW.refresh(), 300);
+  });
+
+  _mutationObserver.observe(contentEl, {
+    childList: true,
+    subtree: true,
+    characterData: true,
+    attributes: true,
+    attributeFilter: ['value', 'checked', 'selected']
+  });
+}
+
+/* ══════════════════════════════════════════════════════════════
+   HELPER: Recalc accordion when tab/panel changes
+   ══════════════════════════════════════════════════════════════ */
+function _patchAccordionToggle() {
+  const origToggle = window.toggleAccordion;
+  if (!origToggle) return;
+  window.toggleAccordion = function(headerEl) {
+    origToggle(headerEl);
+    _recalcAfterRender();
+  };
+}
+
+function _patchSwitchKontenTab() {
+  const origSwitch = window.switchKontenTab;
+  if (!origSwitch) return;
+  window.switchKontenTab = function(tabId, btnEl) {
+    origSwitch(tabId, btnEl);
+    _recalcAfterRender();
+  };
+}
+
+/* ══════════════════════════════════════════════════════════════
    INIT — Semua inisialisasi di satu tempat
    ══════════════════════════════════════════════════════════════ */
 document.addEventListener("DOMContentLoaded", () => {
   _injectUndoButtons();
   _initModalClose();
+  _patchAccordionToggle();
+  _patchSwitchKontenTab();
   AT_UNDO.init();
+  _initMutationObserver();
 
   // Add split-view refresh on panel change
   const _origNav = AT_NAV.go.bind(AT_NAV);
@@ -620,13 +779,13 @@ document.addEventListener("DOMContentLoaded", () => {
   if (!AT_STATE.fungsi) AT_STATE.fungsi = null;
 
   // ── UNIFIED markDirty hook ──────────────────────────────────
-  // Satu patch saja: dirty state + undo + scheduleRefresh
-  // Tidak ada polling, tidak ada event listener ganda
+  // Satu patch saja: dirty state + undo + scheduleRefresh + recalc accordion
   const _baseMarkDirty = AT_EDITOR.markDirty.bind(AT_EDITOR);
   AT_EDITOR.markDirty = function() {
     _baseMarkDirty();            // Original: sets dirty + dirtyDot
     AT_UNDO.push();               // Undo snapshot
-    AT_SPLITVIEW.scheduleRefresh(); // Preview refresh (debounced 300ms)
+    AT_SPLITVIEW.scheduleRefresh(); // Preview refresh (debounced)
+    _recalcAfterRender();          // Fix accordion heights
   };
 
   // Undo buttons hover effect
@@ -645,8 +804,7 @@ document.addEventListener("DOMContentLoaded", () => {
     if (mod && e.shiftKey && (e.key === 'r' || e.key === 'R')) {
       e.preventDefault();
       if (AT_SPLITVIEW.active) {
-        AT_SPLITVIEW._lastHTML = "";
-        AT_SPLITVIEW.refresh();
+        AT_SPLITVIEW.forceRefresh();
         AT_UTIL.toast("Preview di-refresh", "ok");
       }
     }
@@ -655,10 +813,17 @@ document.addEventListener("DOMContentLoaded", () => {
   // Listen for retry messages from error iframe
   window.addEventListener("message", (e) => {
     if (e.data && e.data.action === "retry") {
-      AT_SPLITVIEW._lastHTML = "";
-      AT_SPLITVIEW.refresh();
+      AT_SPLITVIEW.forceRefresh();
     }
   });
 
-  console.log("liveview.js loaded — split-view v2.1, unified markDirty, undo/redo, editors ready");
+  // ── Periodic integrity check ─────────────────────────────
+  // Every 2 seconds, if dirty and split active, ensure refresh is scheduled
+  setInterval(() => {
+    if (AT_SPLITVIEW.active && AT_STATE.dirty) {
+      AT_SPLITVIEW.scheduleRefresh();
+    }
+  }, 2000);
+
+  console.log("liveview.js v4.0 loaded — robust split-view, MutationObserver, accordion recalc");
 });

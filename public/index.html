@@ -604,6 +604,11 @@
     <div id="split-resize-handle" title="Seret untuk ubah ukuran panel"></div>
     <div class="split-header">
       <span class="split-header-title"><span class="split-header-icon">⚡</span> Live Preview</span>
+      <div class="split-sync-indicator" id="splitSyncIndicator">
+        <span class="split-sync-dot" id="syncDot"></span>
+        <span id="syncLabel">Siap</span>
+        <span id="splitCharCount" style="opacity:.5;margin-left:2px"></span>
+      </div>
       <div class="split-header-controls">
         <select id="splitPageSelect" onchange="AT_SPLITVIEW?.goPage(this.value)">
           <option value="sc">🏠 Cover</option><option value="scp">📋 Dokumen</option>
