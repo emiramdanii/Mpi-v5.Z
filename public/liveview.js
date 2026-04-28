@@ -1,5 +1,5 @@
 // ═══════════════════════════════════════════════════════════════
-// LIVEVIEW.JS — Split-View Live Preview v4.4 (Stabilization)
+// LIVEVIEW.JS — Split-View Live Preview v4.5 (Typing Stability)
 // Berisi:
 //   AT_SPLITVIEW  — live preview berdampingan dengan editor
 //   Preview patch, init code, MutationObserver, keyboard shortcuts
@@ -9,15 +9,16 @@
 // Editor modules (AT_UNDO, AT_SK_EDITOR, AT_FUNGSI_EDITOR,
 // AT_JSON_IO, accordion helpers) are in liveview-editors.js
 //
-// v4.4 Stabilization:
-//   - Message queue: switchDocTab/scrollToEnd queued until iframe ready
-//   - Accordion sync waits for iframe load before sub-tab switch
-//   - refresh() flushes pending messages after iframe.onload
-//   - Robust switchDocTab handler with fallback
+// v4.5 Typing Stability:
+//   - Typing-aware debounce: 800ms during typing, 300ms for clicks/navigation
+//   - Skip loading overlay during typing (no visual flicker)
+//   - Batch undo pushes during typing (avoid deep clone per keystroke)
+//   - Fix MutationObserver fallback (clear _debounceTimer after fire)
+//   - Move sync pulse after HTML comparison (reduce visual noise)
 // ═══════════════════════════════════════════════════════════════
 
 /* ══════════════════════════════════════════════════════════════
-   AT_SPLITVIEW — Live preview di sebelah editor  v4.4
+   AT_SPLITVIEW — Live preview di sebelah editor  v4.5
    Single entry point: scheduleRefresh() → debounced refresh()
    ══════════════════════════════════════════════════════════════ */
 window.AT_SPLITVIEW = {
@@ -38,6 +39,12 @@ window.AT_SPLITVIEW = {
   _buildCount: 0,
   _errorRetries: 0,
   _savedPreviewState: null,
+
+  // ── Typing Detection: longer debounce during active typing ──
+  _isTyping: false,
+  _typingTimer: null,
+  _typingDebounce: 800,
+  _normalDebounce: 300,
 
   // ── Message Queue: prevents race condition with iframe rebuild ──
   _pendingMessages: [],    // queued messages to send after iframe loads
@@ -115,6 +122,15 @@ window.AT_SPLITVIEW = {
     this.refresh();
   },
 
+  /* ── Detect active typing — use longer debounce ── */
+  _startTyping() {
+    this._isTyping = true;
+    clearTimeout(this._typingTimer);
+    this._typingTimer = setTimeout(() => {
+      this._isTyping = false;
+    }, 1500);
+  },
+
   /* ── Single entry point: dipanggil dari unified markDirty ── */
   scheduleRefresh() {
     if (!this.active) {
@@ -125,7 +141,8 @@ window.AT_SPLITVIEW = {
       return;
     }
     clearTimeout(this._debounceTimer);
-    const delay = this._buildCount < 2 ? 120 : 350;
+    // Typing mode = 800ms debounce, normal mode = 300ms
+    const delay = this._buildCount < 2 ? 120 : (this._isTyping ? this._typingDebounce : this._normalDebounce);
     this._debounceTimer = setTimeout(() => this.refresh(), delay);
   },
 
@@ -144,17 +161,17 @@ window.AT_SPLITVIEW = {
   refresh() {
     if (!this.active) return;
 
+    // Clear debounce flag — timer has fired, allow MutationObserver fallback
+    this._debounceTimer = null;
+
     const frame = document.getElementById("split-frame");
     const loading = document.getElementById("splitLoading");
     const emptyState = document.getElementById("splitEmptyState");
     if (!frame) return;
 
-    this._showSyncPulse();
-
     try {
       if (!window.AT_PREVIEW || !window.AT_PREVIEW.buildStudentHTML) {
         console.warn("AT_PREVIEW not ready, retrying in 500ms...");
-        this._hideSyncPulse();
         setTimeout(() => this.refresh(), 500);
         return;
       }
@@ -168,7 +185,6 @@ window.AT_SPLITVIEW = {
 
       // ── ANTI-FLICKER: skip refresh if HTML hasn't changed ──
       if (html === this._lastHTML) {
-        this._hideSyncPulse();
         // Flush any pending messages even when HTML unchanged
         if (this._pendingMessages.length > 0) {
           this._flushPendingMessages();
@@ -178,12 +194,21 @@ window.AT_SPLITVIEW = {
         return;
       }
 
+      // HTML changed — show sync pulse ONLY now (not before comparison)
+      this._showSyncPulse();
+
       this._lastHTML = html;
-      if (loading) loading.style.display = "flex";
+
+      // Skip loading overlay during typing to prevent visual flicker
+      const isTypingRefresh = this._isTyping;
+      if (!isTypingRefresh && loading) loading.style.display = "flex";
       this._resetIframeState();
 
-      // ── Hide iframe during srcdoc write to prevent white flash ──
-      frame.style.visibility = 'hidden';
+      // Hide iframe during srcdoc write to prevent white flash
+      // Skip during typing for smoother experience (anti-flicker CSS still applies)
+      if (!isTypingRefresh) {
+        frame.style.visibility = 'hidden';
+      }
 
       // ── Aggressive anti-flicker: kill ALL animations + transitions ──
       const antiFlicker = `<style>
@@ -264,7 +289,7 @@ window.AT_SPLITVIEW = {
       // Remove old listeners to prevent stacking
       frame.onload = null;
       frame.addEventListener("load", () => {
-        frame.style.visibility = 'visible';
+        if (!isTypingRefresh) frame.style.visibility = 'visible';
         setTimeout(() => {
           // 1. Navigate to correct page
           this._navigateFrame();
@@ -283,7 +308,7 @@ window.AT_SPLITVIEW = {
 
       // Safety timeout
       setTimeout(() => {
-        frame.style.visibility = 'visible';
+        if (!isTypingRefresh) frame.style.visibility = 'visible';
         if (loading) loading.style.display = "none";
         // Force flush if onload was missed
         if (!this._iframeReady) this._flushPendingMessages();
@@ -509,7 +534,7 @@ function _initModalClose() {
 
 /* ══════════════════════════════════════════════════════════════
    HELPER: MutationObserver fallback for form changes
-   Throttled 500ms, only acts if markDirty didn't fire
+   Throttled 800ms, only acts if markDirty didn't fire
    ══════════════════════════════════════════════════════════════ */
 let _mutationObserver = null;
 function _initMutationObserver() {
@@ -522,12 +547,13 @@ function _initMutationObserver() {
   _mutationObserver = new MutationObserver((mutations) => {
     if (!AT_SPLITVIEW.active) return;
     const now = Date.now();
-    if (now - _lastMutCheck < 500) return;
+    if (now - _lastMutCheck < 800) return;
     _lastMutCheck = now;
     if (!AT_STATE.dirty) return;
+    // Only act as fallback if no debounce is already scheduled
     if (AT_SPLITVIEW._debounceTimer) return;
     clearTimeout(AT_SPLITVIEW._debounceTimer);
-    AT_SPLITVIEW._debounceTimer = setTimeout(() => AT_SPLITVIEW.refresh(), 500);
+    AT_SPLITVIEW._debounceTimer = setTimeout(() => AT_SPLITVIEW.refresh(), 800);
   });
 
   _mutationObserver.observe(contentEl, {
@@ -593,14 +619,26 @@ document.addEventListener("DOMContentLoaded", () => {
   // Add fungsi to AT_STATE if missing
   if (!AT_STATE.fungsi) AT_STATE.fungsi = null;
 
-  // ── UNIFIED markDirty hook ──────────────────────────────────
+  // ── UNIFIED markDirty hook (with typing-optimized undo) ──────
   const _baseMarkDirty = AT_EDITOR.markDirty.bind(AT_EDITOR);
+  let _undoBatchTimer = null;
   AT_EDITOR.markDirty = function() {
     _baseMarkDirty();
-    AT_UNDO.push();
+    // Batch undo pushes during typing to avoid expensive deep clone per keystroke
+    if (AT_SPLITVIEW._isTyping) {
+      clearTimeout(_undoBatchTimer);
+      _undoBatchTimer = setTimeout(() => AT_UNDO.push(), 1500);
+    } else {
+      AT_UNDO.push();
+    }
     AT_SPLITVIEW.scheduleRefresh();
     _recalcAfterRender();
   };
+
+  // ── Typing Detection: listen for input events to activate longer debounce ──
+  document.getElementById("content")?.addEventListener("input", () => {
+    AT_SPLITVIEW._startTyping();
+  }, { passive: true });
 
   // Undo buttons hover effect
   document.querySelectorAll("#undoBtn,#redoBtn").forEach(b => {
@@ -644,5 +682,5 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   });
 
-  console.log("liveview.js v4.4 loaded — markDirty hook, undo, MutationObserver, keyboard shortcuts, accordion sync with message queue");
+  console.log("liveview.js v4.5 loaded — typing-aware debounce (800ms), batched undo, loading skip during typing, MutationObserver fix");
 });

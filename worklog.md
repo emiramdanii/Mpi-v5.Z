@@ -225,3 +225,26 @@ Stage Summary:
 - Semua section (Dokumen: 5 accordion, Konten: 3 tab, Tools: auto+import+versions) terverifikasi mapping-nya
 - Files synced to /home/z/my-project/public/
 
+---
+Task ID: 1
+Agent: Super Z (Main)
+Task: Fix preview loading per-karakter saat mengetik form + complete Phase 1 stabilization
+
+Work Log:
+- Analyzed root cause: 350ms debounce too short for typing, AT_UNDO.push() expensive per keystroke, loading overlay flashes on every rebuild, _showSyncPulse() fires before HTML comparison, MutationObserver fallback broken
+- Implemented typing-aware debounce: 800ms during typing, 300ms for navigation/clicks
+- Added global input event listener on #content to detect typing mode
+- Skip loading overlay during typing (no visual flicker)
+- Skip visibility:hidden during typing (anti-flicker CSS in srcdoc handles it)
+- Batch undo pushes during typing (1500ms delay, avoid deep clone per keystroke)
+- Moved _showSyncPulse() after HTML comparison (only show when HTML actually changed)
+- Fixed MutationObserver fallback: clear _debounceTimer at start of refresh()
+- Increased MutationObserver throttle from 500ms to 800ms
+- Version bumped liveview.js to v4.5
+- Deployed to public/
+- Updated PROGRESS_PENGEMBANGAN.md with MASALAH 12 and Phase 1 item 9
+
+Stage Summary:
+- liveview.js v4.5 deployed with typing stability improvements
+- Phase 1 fully complete (9/9 items)
+- Key improvement: typing now uses 800ms debounce + no loading overlay = smooth editing experience

@@ -338,6 +338,16 @@ preview.js → animations.js → extras.js → liveview.js → liveview_enhancem
 | **Solusi** | 1. Buat method `syncToEditor(pageId)` untuk reverse sync dari dropdown ke editor panel/tab; 2. Ubah `markManualOverride()` dari one-shot menjadi timeout 500ms agar suppress berlaku selama proses navigasi; 3. Update dropdown handler untuk memanggil `syncToEditor()` |
 | **Status** | Selesai (v6.4) |
 
+### MASALAH 12: Preview Loading Per-Karakter Saat Mengetik
+
+| Detail | |
+|--------|-|
+| **Gejala** | Saat mengetik di form, preview reload setiap 1 karakter — loading overlay muncul/hilang terus-menerus, sangat tidak nyaman |
+| **Root Cause** | 1. Debounce 350ms terlalu pendek — jika user mengetik pelan (>350ms antar keystroke), setiap keystroke memicu full rebuild; 2. `AT_UNDO.push()` (deep clone state) dipanggil setiap keystroke — operasi mahal; 3. Loading overlay dan `visibility:hidden` diterapkan pada setiap rebuild meskipun perubahan hanya 1 karakter; 4. `_showSyncPulse()` dipanggil sebelum HTML comparison — menampilkan indikator "Sinkron..." meskipun HTML tidak berubah; 5. MutationObserver `_debounceTimer` tidak di-clear setelah timer fire — membuat fallback tidak pernah jalan |
+| **Lokasi** | `liveview.js` `scheduleRefresh()`, `refresh()`, markDirty hook, MutationObserver |
+| **Solusi** | 1. **Typing-aware debounce**: 800ms saat mengetik, 300ms untuk navigasi/klik; 2. **Global `input` event listener** di `#content` untuk deteksi typing; 3. **Skip loading overlay** saat typing — tidak ada loading spinner; 4. **Skip `visibility:hidden`** saat typing — anti-flicker CSS di dalam srcdoc sudah cukup; 5. **Batch undo push** — `AT_UNDO.push()` di-defer 1500ms saat typing (hindari deep clone per keystroke); 6. **Pindah `_showSyncPulse()`** ke setelah HTML comparison — hanya muncul saat HTML benar-benar berubah; 7. **Clear `_debounceTimer`** di awal `refresh()` — fix MutationObserver fallback |
+| **Status** | Selesai (v4.5) |
+
 ### MASALAH 11: Game Tidak Masuk ke Preview
 
 | Detail | |
@@ -412,6 +422,7 @@ preview.js → animations.js → extras.js → liveview.js → liveview_enhancem
 6. ~~**Click-to-preview per modul/game** — tombol 👁️ di setiap card~~ ✅
 7. ~~**Dropdown dinamis** — game screens otomatis muncul sesuai jumlah game~~ ✅
 8. ~~**PostMessage handler goModP/goMatP** — navigate sub-page dari editor~~ ✅
+9. ~~**Typing stability** — debounce 800ms saat mengetik, skip loading overlay, batch undo~~ ✅ (v4.5)
 
 ### Fase 2: Penyempurnaan UX (Selanjutnya)
 1. **Smart navigation history**: Ingat halaman preview terakhir per panel editor
@@ -442,16 +453,20 @@ preview.js → animations.js → extras.js → liveview.js → liveview_enhancem
 ```
 Form Input
     ↓
+input event → AT_SPLITVIEW._startTyping() → _isTyping = true (1500ms)
+    ↓
 markDirty()
     ↓
-AT_UNDO.push()          → snapshot state
-AT_SPLITVIEW.scheduleRefresh()  → debounce 120ms/350ms
+AT_UNDO.push() [batched: 1500ms delay during typing]   → snapshot state
+AT_SPLITVIEW.scheduleRefresh()  → debounce 800ms (typing) / 300ms (normal)
     ↓
 refresh()
     ↓
 AT_PREVIEW.buildStudentHTML(AT_STATE)   → generate HTML
     ↓
-frame.srcdoc = html + antiFlicker CSS + navScript
+html === _lastHTML? → skip (no visual change)
+    ↓
+frame.srcdoc = html + antiFlicker CSS + navScript  [no loading overlay if typing]
     ↓
 iframe.onload → _navigateFrame()  → postMessage({goPage: pageId})
 ```
