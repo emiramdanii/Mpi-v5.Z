@@ -125,6 +125,10 @@ window.AT_MODULES = {
       case "statistik":   return `<span>📊 ${m.items?.length||0} data · ${m.layout||"grid"}${m.items?.length?" · "+m.items.slice(0,2).map(it=>it.angka+" "+it.satuan).join(", "):""}</span>`;
       case "polling":     return `<span>📊 ${m.opsi?.length||0} opsi${m.opsi?.length?" · "+tx(m.opsi[0]?.teks,40):""}</span>`;
       case "embed":       return `<span>🔗 ${shortUrl(m.url)}${m.tinggi?" · tinggi "+m.tinggi+"px":""}</span>`;
+      case "tab-icons":   return `<span>📑 ${(m.tabs||[]).length} tab${m.tabs?.length?" · "+m.tabs.map(t=>t.icon).join(" "):""}</span>`;
+      case "icon-explore":return `<span>🔍 ${(m.items||[]).length} item eksplorasi${m.items?.length?" · "+tx(m.items[0]?.judul,30):""}</span>`;
+      case "comparison":  return `<span>⚖️ ${(m.kolom||[]).length} kolom · ${(m.baris||[]).length} baris</span>`;
+      case "card-showcase":return `<span>🎭 ${(m.cards||[]).length} card${m.cards?.length?" · "+tx(m.cards[0]?.judul,30):""}</span>`;
       default:            return `<span style="color:var(--muted)">${m.type}</span>`;
     }
   },
@@ -796,6 +800,156 @@ window.AT_MODULES = {
         <button class="btn btn-ghost btn-sm" style="margin-top:8px" onclick="AT_MODULES._addDeep('opsi',{icon:'💬',teks:'',warna:'var(--c)'})">＋ Tambah Opsi</button>`;
       }
 
+      // ── TAB ICONS ──
+      case "tab-icons": {
+        const layoutOpts = ["vertical","horizontal","pills"].map(l=>
+          `<option value="${l}"${m.layout===l?" selected":""}>${l}</option>`).join("");
+        return `
+        <div class="field-group"><label class="field-label">Judul</label>
+          <input class="field-input" id="me_title" value="${esc(m.title||"")}"></div>
+        <div class="field-group"><label class="field-label">Intro</label>
+          <input class="field-input" id="me_intro" value="${esc(m.intro||"")}"></div>
+        <div class="field-row">
+          <div class="field-group"><label class="field-label">Layout Tab</label>
+            <select class="field-select" id="me_layout">${layoutOpts}</select></div>
+          <div class="field-group">${AT_MODULES.renderAnimPicker(m,'animasi')}</div>
+        </div>
+        <div class="divider"></div>
+        <div class="at-card-title">📑 Daftar Tab</div>
+        <div id="me_tabsList">${(m.tabs||[]).map((t,ti)=>`
+          <div class="sub-item" id="me_tab_${ti}">
+            <div class="field-row" style="margin-bottom:5px">
+              ${AT_MODULES.emojiBtn(t.icon||"📌", `AT_MODULES._updateDeep('tabs',${ti},'icon',v)`)}
+              <input class="field-input" value="${esc(t.judul||"")}" placeholder="Judul tab" oninput="AT_MODULES._updateDeep('tabs',${ti},'judul',this.value)">
+              <button class="icon-btn del" onclick="AT_MODULES._removeDeep('tabs',${ti})">🗑️</button>
+            </div>
+            <textarea class="field-textarea" rows="2" placeholder="Isi tab…" oninput="AT_MODULES._updateDeep('tabs',${ti},'isi',this.value)">${esc(t.isi||"")}</textarea>
+            <div style="display:flex;gap:5px;align-items:center;margin-top:5px">
+              <span style="font-size:.71rem;color:var(--muted)">Warna:</span>
+              ${["var(--y)","var(--c)","var(--p)","var(--g)","var(--r)","var(--o)"].map(col=>`<div onclick="AT_MODULES._updateDeep('tabs',${ti},'warna','${col}')" style="width:16px;height:16px;border-radius:50%;background:${col};cursor:pointer;border:2px solid ${(t.warna||"var(--y)")===col?"#fff":"transparent"}"></div>`).join("")}
+            </div>
+            <div style="margin-top:6px"><label class="field-label">Poin-poin (satu per baris)</label>
+              <textarea class="field-textarea" rows="2" placeholder="Poin 1\nPoin 2\nPoin 3" oninput="AT_MODULES._updateDeep('tabs',${ti},'poin',this.value.split('\n').filter(Boolean))">${esc((t.poin||[]).join('\n'))}</textarea></div>
+            <div style="margin-top:5px"><label class="field-label">Pertanyaan Refleksi</label>
+              <input class="field-input" value="${esc(t.refleksi||"")}" placeholder="Pertanyaan untuk siswa…" oninput="AT_MODULES._updateDeep('tabs',${ti},'refleksi',this.value)"></div>
+          </div>`).join("")}
+        </div>
+        <button class="btn btn-ghost btn-sm" style="margin-top:8px" onclick="AT_MODULES._addDeep('tabs',{icon:'📌',judul:'',warna:'var(--y)',isi:'',poin:[],refleksi:''})">＋ Tambah Tab</button>`;
+      }
+
+      // ── ICON EXPLORE ──
+      case "icon-explore": {
+        const layoutOpts = ["grid","carousel","wheel"].map(l=>
+          `<option value="${l}"${m.layout===l?" selected":""}>${l}</option>`).join("");
+        return `
+        <div class="field-group"><label class="field-label">Judul</label>
+          <input class="field-input" id="me_title" value="${esc(m.title||"")}"></div>
+        <div class="field-group"><label class="field-label">Intro</label>
+          <input class="field-input" id="me_intro" value="${esc(m.intro||"")}"></div>
+        <div class="field-row">
+          <div class="field-group"><label class="field-label">Layout</label>
+            <select class="field-select" id="me_layout">${layoutOpts}</select></div>
+          <div class="field-group">${AT_MODULES.renderAnimPicker(m,'animasi')}</div>
+        </div>
+        <div class="divider"></div>
+        <div class="at-card-title">🔍 Daftar Item Eksplorasi</div>
+        <div id="me_ieList">${(m.items||[]).map((it,ii)=>`
+          <div class="sub-item" id="me_ie_${ii}">
+            <div class="field-row" style="margin-bottom:5px">
+              ${AT_MODULES.emojiBtn(it.icon||"📌", `AT_MODULES._updateDeep('items',${ii},'icon',v)`)}
+              <input class="field-input" value="${esc(it.judul||"")}" placeholder="Judul" oninput="AT_MODULES._updateDeep('items',${ii},'judul',this.value)">
+              <button class="icon-btn del" onclick="AT_MODULES._removeDeep('items',${ii})">🗑️</button>
+            </div>
+            <input class="field-input" value="${esc(it.ringkasan||"")}" placeholder="Ringkasan singkat…" oninput="AT_MODULES._updateDeep('items',${ii},'ringkasan',this.value)">
+            <textarea class="field-textarea" rows="2" style="margin-top:5px" placeholder="Isi detail…" oninput="AT_MODULES._updateDeep('items',${ii},'isi',this.value)">${esc(it.isi||"")}</textarea>
+            <div style="margin-top:5px"><label class="field-label">Contoh (satu per baris)</label>
+              <textarea class="field-textarea" rows="2" oninput="AT_MODULES._updateDeep('items',${ii},'contoh',this.value.split('\n').filter(Boolean))">${esc((it.contoh||[]).join('\n'))}</textarea></div>
+            <input class="field-input" value="${esc(it.sanksi||"")}" placeholder="Sanksi…" style="margin-top:5px" oninput="AT_MODULES._updateDeep('items',${ii},'sanksi',this.value)">
+            <div style="display:flex;gap:5px;align-items:center;margin-top:5px">
+              <span style="font-size:.71rem;color:var(--muted)">Warna:</span>
+              ${["var(--y)","var(--c)","var(--p)","var(--g)","var(--r)","var(--o)"].map(col=>`<div onclick="AT_MODULES._updateDeep('items',${ii},'warna','${col}')" style="width:16px;height:16px;border-radius:50%;background:${col};cursor:pointer;border:2px solid ${(it.warna||"var(--y)")===col?"#fff":"transparent"}"></div>`).join("")}
+            </div>
+          </div>`).join("")}
+        </div>
+        <button class="btn btn-ghost btn-sm" style="margin-top:8px" onclick="AT_MODULES._addDeep('items',{icon:'📌',judul:'',warna:'var(--y)',ringkasan:'',isi:'',contoh:[],sanksi:''})">＋ Tambah Item</button>`;
+      }
+
+      // ── COMPARISON ──
+      case "comparison": return `
+        <div class="field-group"><label class="field-label">Judul</label>
+          <input class="field-input" id="me_title" value="${esc(m.title||"")}"></div>
+        <div class="field-group"><label class="field-label">Intro</label>
+          <input class="field-input" id="me_intro" value="${esc(m.intro||"")}"></div>
+        <div class="field-group">${AT_MODULES.renderAnimPicker(m,'animasi')}</div>
+        <div class="divider"></div>
+        <div class="at-card-title">📊 Kolom (Kategori)</div>
+        <div id="me_kolomList">${(m.kolom||[]).map((k,ki)=>`
+          <div class="sub-item" id="me_kol_${ki}">
+            <div class="field-row" style="margin-bottom:5px">
+              ${AT_MODULES.emojiBtn(k.icon||"📌", `AT_MODULES._updateDeep('kolom',${ki},'icon',v)`)}
+              <input class="field-input" value="${esc(k.judul||"")}" placeholder="Nama kategori" oninput="AT_MODULES._updateDeep('kolom',${ki},'judul',this.value)">
+              <button class="icon-btn del" onclick="AT_MODULES._removeDeep('kolom',${ki})">🗑️</button>
+            </div>
+            <div style="display:flex;gap:5px;align-items:center">
+              <span style="font-size:.71rem;color:var(--muted)">Warna:</span>
+              ${["var(--y)","var(--c)","var(--p)","var(--g)","var(--r)","var(--o)"].map(col=>`<div onclick="AT_MODULES._updateDeep('kolom',${ki},'warna','${col}')" style="width:16px;height:16px;border-radius:50%;background:${col};cursor:pointer;border:2px solid ${(k.warna||"var(--y)")===col?"#fff":"transparent"}"></div>`).join("")}
+            </div>
+          </div>`).join("")}
+        </div>
+        <button class="btn btn-ghost btn-sm" style="margin-top:8px" onclick="AT_MODULES._addDeep('kolom',{icon:'📌',judul:'',warna:'var(--y)'})">＋ Tambah Kolom</button>
+        <div class="divider"></div>
+        <div class="at-card-title">📏 Baris Perbandingan</div>
+        <div id="me_barisList">${(m.baris||[]).map((b,bi)=>`
+          <div class="sub-item" id="me_br_${bi}">
+            <div class="field-row" style="margin-bottom:5px">
+              ${AT_MODULES.emojiBtn(b.icon||"📌", `AT_MODULES._updateDeep('baris',${bi},'icon',v)`)}
+              <input class="field-input" value="${esc(b.label||"")}" placeholder="Label baris" style="flex:1" oninput="AT_MODULES._updateDeep('baris',${bi},'label',this.value)">
+              <button class="icon-btn del" onclick="AT_MODULES._removeDeep('baris',${bi})">🗑️</button>
+            </div>
+            <div style="font-size:.72rem;color:var(--muted);margin-bottom:4px">Nilai per kolom (pisahkan dengan |):</div>
+            <input class="field-input" value="${esc((b.nilai||[]).join(' | '))}" placeholder="Nilai A | Nilai B | Nilai C…" oninput="AT_MODULES._updateDeep('baris',${bi},'nilai',this.value.split('|').map(s=>s.trim()).filter(Boolean))">
+          </div>`).join("")}
+        </div>
+        <button class="btn btn-ghost btn-sm" style="margin-top:8px" onclick="AT_MODULES._addDeep('baris',{icon:'📌',label:'',nilai:[]})">＋ Tambah Baris</button>
+        <div class="field-group" style="margin-top:10px"><label class="field-label">Pertanyaan Refleksi</label>
+          <textarea class="field-textarea" rows="2" id="me_tanya" placeholder="Pertanyaan untuk siswa…">${esc(m.tanya||"")}</textarea></div>`;
+
+      // ── CARD SHOWCASE ──
+      case "card-showcase": {
+        const layoutOpts = ["grid","list","masonry"].map(l=>
+          `<option value="${l}"${m.layout===l?" selected":""}>${l}</option>`).join("");
+        return `
+        <div class="field-group"><label class="field-label">Judul</label>
+          <input class="field-input" id="me_title" value="${esc(m.title||"")}"></div>
+        <div class="field-group"><label class="field-label">Intro</label>
+          <input class="field-input" id="me_intro" value="${esc(m.intro||"")}"></div>
+        <div class="field-row">
+          <div class="field-group"><label class="field-label">Layout</label>
+            <select class="field-select" id="me_layout">${layoutOpts}</select></div>
+          <div class="field-group">${AT_MODULES.renderAnimPicker(m,'animasi')}</div>
+        </div>
+        <div class="divider"></div>
+        <div class="at-card-title">🎭 Daftar Card</div>
+        <div id="me_cardsList">${(m.cards||[]).map((c,ci)=>`
+          <div class="sub-item" id="me_card_${ci}">
+            <div class="field-row" style="margin-bottom:5px">
+              ${AT_MODULES.emojiBtn(c.icon||"📌", `AT_MODULES._updateDeep('cards',${ci},'icon',v)`)}
+              <input class="field-input" value="${esc(c.judul||"")}" placeholder="Judul card" oninput="AT_MODULES._updateDeep('cards',${ci},'judul',this.value)">
+              <button class="icon-btn del" onclick="AT_MODULES._removeDeep('cards',${ci})">🗑️</button>
+            </div>
+            <input class="field-input" value="${esc(c.subtitle||"")}" placeholder="Subtitle…" oninput="AT_MODULES._updateDeep('cards',${ci},'subtitle',this.value)">
+            <textarea class="field-textarea" rows="2" style="margin-top:5px" placeholder="Isi card…" oninput="AT_MODULES._updateDeep('cards',${ci},'isi',this.value)">${esc(c.isi||"")}</textarea>
+            <div style="margin-top:5px"><label class="field-label">Tag (pisahkan koma)</label>
+              <input class="field-input" value="${esc((c.tag||[]).join(', '))}" placeholder="Tag1, Tag2, Tag3" oninput="AT_MODULES._updateDeep('cards',${ci},'tag',this.value.split(',').map(s=>s.trim()).filter(Boolean))"></div>
+            <div style="display:flex;gap:5px;align-items:center;margin-top:5px">
+              <span style="font-size:.71rem;color:var(--muted)">Warna:</span>
+              ${["var(--y)","var(--c)","var(--p)","var(--g)","var(--r)","var(--o)"].map(col=>`<div onclick="AT_MODULES._updateDeep('cards',${ci},'warna','${col}')" style="width:16px;height:16px;border-radius:50%;background:${col};cursor:pointer;border:2px solid ${(c.warna||"var(--y)")===col?"#fff":"transparent"}"></div>`).join("")}
+            </div>
+          </div>`).join("")}
+        </div>
+        <button class="btn btn-ghost btn-sm" style="margin-top:8px" onclick="AT_MODULES._addDeep('cards',{icon:'📌',judul:'',warna:'var(--y)',subtitle:'',isi:'',tag:[]})">＋ Tambah Card</button>`;
+      }
+
       // ── EMBED / iFRAME ──
       case "embed": return `
         <div class="field-group">
@@ -942,7 +1096,16 @@ window.AT_MODULES = {
                   }],
       chapters:   ["skm_chapters",      () => (m.chapters||[]).map((ch,ci) => this._chapterRow(m, ci, ch)).join("")
                                               || '<div class="empty-state" style="padding:16px"><div class="empty-state-text">Belum ada chapter.</div></div>'],
+      tabs:       ["me_tabsList",       () => (m.tabs||[]).map((t,ti)=>this._tabRow(t,ti)).join("")],
+      kolom:      ["me_kolomList",      () => (m.kolom||[]).map((k,ki)=>this._kolomRow(k,ki)).join("")],
+      baris:      ["me_barisList",      () => (m.baris||[]).map((b,bi)=>this._barisRow(b,bi)).join("")],
+      cards:      ["me_cardsList",      () => (m.cards||[]).map((c,ci)=>this._cardRow(c,ci)).join("")],
     };
+    // icon-explore uses 'items' key — reuse existing items handler
+    if (key === 'items' && m.type === 'icon-explore') {
+      const cont = document.getElementById('me_ieList');
+      if (cont) { cont.innerHTML = (m.items||[]).map((it,ii)=>this._ieRow(it,ii)).join(""); return; }
+    }
     const entry = listIdMap[key];
     if (!entry) { this.openEditor(this._editIdx); return; } // fallback
     const [listId, buildFn] = entry;
@@ -1107,6 +1270,91 @@ window.AT_MODULES = {
       </div>`;
   },
 
+  // ── TAB ICONS row builder ──
+  _tabRow(t, ti) {
+    return `<div class="sub-item" id="me_tab_${ti}">
+      <div class="field-row" style="margin-bottom:5px">
+        ${AT_MODULES.emojiBtn(t.icon||"📌", `AT_MODULES._updateDeep('tabs',${ti},'icon',v)`)}
+        <input class="field-input" value="${esc(t.judul||"")}" placeholder="Judul tab" oninput="AT_MODULES._updateDeep('tabs',${ti},'judul',this.value)">
+        <button class="icon-btn del" onclick="AT_MODULES._removeDeep('tabs',${ti})">🗑️</button>
+      </div>
+      <textarea class="field-textarea" rows="2" placeholder="Isi tab…" oninput="AT_MODULES._updateDeep('tabs',${ti},'isi',this.value)">${esc(t.isi||"")}</textarea>
+      <div style="display:flex;gap:5px;align-items:center;margin-top:5px">
+        <span style="font-size:.71rem;color:var(--muted)">Warna:</span>
+        ${["var(--y)","var(--c)","var(--p)","var(--g)","var(--r)","var(--o)"].map(col=>`<div onclick="AT_MODULES._updateDeep('tabs',${ti},'warna','${col}')" style="width:16px;height:16px;border-radius:50%;background:${col};cursor:pointer;border:2px solid ${(t.warna||"var(--y)")===col?"#fff":"transparent"}"></div>`).join("")}
+      </div>
+      <div style="margin-top:6px"><label class="field-label">Poin (satu per baris)</label>
+        <textarea class="field-textarea" rows="2" oninput="AT_MODULES._updateDeep('tabs',${ti},'poin',this.value.split('\n').filter(Boolean))">${esc((t.poin||[]).join('\n'))}</textarea></div>
+      <div style="margin-top:5px"><label class="field-label">Pertanyaan Refleksi</label>
+        <input class="field-input" value="${esc(t.refleksi||"")}" placeholder="Pertanyaan…" oninput="AT_MODULES._updateDeep('tabs',${ti},'refleksi',this.value)"></div>
+    </div>`;
+  },
+
+  // ── ICON EXPLORE row builder ──
+  _ieRow(it, ii) {
+    return `<div class="sub-item" id="me_ie_${ii}">
+      <div class="field-row" style="margin-bottom:5px">
+        ${AT_MODULES.emojiBtn(it.icon||"📌", `AT_MODULES._updateDeep('items',${ii},'icon',v)`)}
+        <input class="field-input" value="${esc(it.judul||"")}" placeholder="Judul" oninput="AT_MODULES._updateDeep('items',${ii},'judul',this.value)">
+        <button class="icon-btn del" onclick="AT_MODULES._removeDeep('items',${ii})">🗑️</button>
+      </div>
+      <input class="field-input" value="${esc(it.ringkasan||"")}" placeholder="Ringkasan…" oninput="AT_MODULES._updateDeep('items',${ii},'ringkasan',this.value)">
+      <textarea class="field-textarea" rows="2" style="margin-top:5px" placeholder="Detail…" oninput="AT_MODULES._updateDeep('items',${ii},'isi',this.value)">${esc(it.isi||"")}</textarea>
+      <div style="margin-top:5px"><label class="field-label">Contoh (satu per baris)</label>
+        <textarea class="field-textarea" rows="2" oninput="AT_MODULES._updateDeep('items',${ii},'contoh',this.value.split('\n').filter(Boolean))">${esc((it.contoh||[]).join('\n'))}</textarea></div>
+      <input class="field-input" value="${esc(it.sanksi||"")}" placeholder="Sanksi…" style="margin-top:5px" oninput="AT_MODULES._updateDeep('items',${ii},'sanksi',this.value)">
+      <div style="display:flex;gap:5px;align-items:center;margin-top:5px">
+        <span style="font-size:.71rem;color:var(--muted)">Warna:</span>
+        ${["var(--y)","var(--c)","var(--p)","var(--g)","var(--r)","var(--o)"].map(col=>`<div onclick="AT_MODULES._updateDeep('items',${ii},'warna','${col}')" style="width:16px;height:16px;border-radius:50%;background:${col};cursor:pointer;border:2px solid ${(it.warna||"var(--y)")===col?"#fff":"transparent"}"></div>`).join("")}
+      </div>
+    </div>`;
+  },
+
+  // ── COMPARISON row builders ──
+  _kolomRow(k, ki) {
+    return `<div class="sub-item" id="me_kol_${ki}">
+      <div class="field-row" style="margin-bottom:5px">
+        ${AT_MODULES.emojiBtn(k.icon||"📌", `AT_MODULES._updateDeep('kolom',${ki},'icon',v)`)}
+        <input class="field-input" value="${esc(k.judul||"")}" placeholder="Nama kategori" oninput="AT_MODULES._updateDeep('kolom',${ki},'judul',this.value)">
+        <button class="icon-btn del" onclick="AT_MODULES._removeDeep('kolom',${ki})">🗑️</button>
+      </div>
+      <div style="display:flex;gap:5px;align-items:center">
+        <span style="font-size:.71rem;color:var(--muted)">Warna:</span>
+        ${["var(--y)","var(--c)","var(--p)","var(--g)","var(--r)","var(--o)"].map(col=>`<div onclick="AT_MODULES._updateDeep('kolom',${ki},'warna','${col}')" style="width:16px;height:16px;border-radius:50%;background:${col};cursor:pointer;border:2px solid ${(k.warna||"var(--y)")===col?"#fff":"transparent"}"></div>`).join("")}
+      </div>
+    </div>`;
+  },
+  _barisRow(b, bi) {
+    return `<div class="sub-item" id="me_br_${bi}">
+      <div class="field-row" style="margin-bottom:5px">
+        ${AT_MODULES.emojiBtn(b.icon||"📌", `AT_MODULES._updateDeep('baris',${bi},'icon',v)`)}
+        <input class="field-input" value="${esc(b.label||"")}" placeholder="Label baris" style="flex:1" oninput="AT_MODULES._updateDeep('baris',${bi},'label',this.value)">
+        <button class="icon-btn del" onclick="AT_MODULES._removeDeep('baris',${bi})">🗑️</button>
+      </div>
+      <div style="font-size:.72rem;color:var(--muted);margin-bottom:4px">Nilai per kolom (pisahkan dengan |):</div>
+      <input class="field-input" value="${esc((b.nilai||[]).join(' | '))}" placeholder="Nilai A | Nilai B | Nilai C…" oninput="AT_MODULES._updateDeep('baris',${bi},'nilai',this.value.split('|').map(s=>s.trim()).filter(Boolean))">
+    </div>`;
+  },
+
+  // ── CARD SHOWCASE row builder ──
+  _cardRow(c, ci) {
+    return `<div class="sub-item" id="me_card_${ci}">
+      <div class="field-row" style="margin-bottom:5px">
+        ${AT_MODULES.emojiBtn(c.icon||"📌", `AT_MODULES._updateDeep('cards',${ci},'icon',v)`)}
+        <input class="field-input" value="${esc(c.judul||"")}" placeholder="Judul card" oninput="AT_MODULES._updateDeep('cards',${ci},'judul',this.value)">
+        <button class="icon-btn del" onclick="AT_MODULES._removeDeep('cards',${ci})">🗑️</button>
+      </div>
+      <input class="field-input" value="${esc(c.subtitle||"")}" placeholder="Subtitle…" oninput="AT_MODULES._updateDeep('cards',${ci},'subtitle',this.value)">
+      <textarea class="field-textarea" rows="2" style="margin-top:5px" placeholder="Isi card…" oninput="AT_MODULES._updateDeep('cards',${ci},'isi',this.value)">${esc(c.isi||"")}</textarea>
+      <div style="margin-top:5px"><label class="field-label">Tag (koma)</label>
+        <input class="field-input" value="${esc((c.tag||[]).join(', '))}" placeholder="Tag1, Tag2" oninput="AT_MODULES._updateDeep('cards',${ci},'tag',this.value.split(',').map(s=>s.trim()).filter(Boolean))"></div>
+      <div style="display:flex;gap:5px;align-items:center;margin-top:5px">
+        <span style="font-size:.71rem;color:var(--muted)">Warna:</span>
+        ${["var(--y)","var(--c)","var(--p)","var(--g)","var(--r)","var(--o)"].map(col=>`<div onclick="AT_MODULES._updateDeep('cards',${ci},'warna','${col}')" style="width:16px;height:16px;border-radius:50%;background:${col};cursor:pointer;border:2px solid ${(c.warna||"var(--y)")===col?"#fff":"transparent"}"></div>`).join("")}
+      </div>
+    </div>`;
+  },
+
   _butirItems(blokIdx, butir) {
     return (butir||[]).map((bt,bti)=>`
       <div style="display:flex;gap:6px;margin-bottom:5px">
@@ -1222,6 +1470,19 @@ window.AT_MODULES = {
       case "polling":
         bind("me_tipe",    "tipe");
         bind("me_anonim",  "anonim");
+        break;
+
+      case "tab-icons":
+      case "icon-explore":
+        bind("me_layout", "layout");
+        break;
+
+      case "comparison":
+        bind("me_tanya", "tanya");
+        break;
+
+      case "card-showcase":
+        bind("me_layout", "layout");
         break;
 
       case "embed":

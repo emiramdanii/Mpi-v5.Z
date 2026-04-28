@@ -308,5 +308,139 @@ window.MODULE_TYPES = {
         url:"", tinggi:420
       };
     }
+  },
+
+  // ── 17. TAB ICONS — Tab interaktif dengan emoji ───────────────
+  "tab-icons": {
+    id:"tab-icons", icon:"📑", label:"Tab Interaktif", color:"var(--c)",
+    desc:"Tab navigasi dengan emoji icon. Klik tab untuk menampilkan konten berbeda. Cocok untuk menjelajahi sub-topik, fungsi, atau kategori.",
+    defaultData() {
+      return {
+        type:"tab-icons", title:"Fungsi Norma",
+        intro:"Klik tab untuk menjelajahi fungsi norma.",
+        layout:"vertical", // vertical | horizontal | pills
+        animasi:"fade-in", // fade-in | slide-up | zoom | bounce
+        tabs:[
+          { icon:"🗺️", judul:"Pedoman Tingkah Laku", warna:"var(--y)",
+            isi:"Norma memberi petunjuk kepada setiap individu tentang cara bertindak yang baik dan benar dalam pergaulan sehari-hari.",
+            poin:["Norma sopan santun mengajarkan kita untuk mengucapkan salam saat bertemu","Norma hukum lalu lintas memberi tahu kita harus berhenti saat lampu merah","Norma agama memandu kita untuk berdoa sebelum makan dan bekerja"],
+            refleksi:"Sebutkan 1 norma yang selama ini menjadi panduan perilakumu di sekolah!" },
+          { icon:"🤝", judul:"Menciptakan Ketertiban", warna:"var(--c)",
+            isi:"Norma menciptakan ketertiban dalam masyarakat sehingga setiap anggota dapat hidup secara harmonis dan teratur.",
+            poin:["Mengatur lalu lintas di jalan raya","Mengatur antrian di tempat umum","Mengatur tata tertib di sekolah"],
+            refleksi:"Apa yang akan terjadi jika tidak ada norma di masyarakat?" },
+          { icon:"🛡️", judul:"Melindungi Hak Warga", warna:"var(--g)",
+            isi:"Norma melindungi hak-hak setiap warga agar tidak dirugikan oleh pihak lain.",
+            poin:["Hak atas pendidikan dilindungi oleh norma hukum","Hak atas rasa aman dilindungi oleh norma sosial","Hak beribadah dilindungi oleh norma agama"],
+            refleksi:"Ceritakan pengalamanmu saat hakmu dilindungi oleh sebuah norma!" },
+          { icon:"💚", judul:"Memperkuat Solidaritas", warna:"var(--p)",
+            isi:"Norma mempererat ikatan sosial antar anggota masyarakat melalui nilai-nilai kebersamaan dan gotong royong.",
+            poin:["Gotong royong membersihkan lingkungan","Kerja bakti membangun fasilitas umum","Saling membantu saat ada warga yang terkena musibah"],
+            refleksi:"Apa kontribusimu dalam memperkuat solidaritas di lingkunganmu?" },
+          { icon:"⚖️", judul:"Mewujudkan Keadilan", warna:"var(--r)",
+            isi:"Norma menjamin keadilan bagi semua anggota masyarakat tanpa memandang status, suku, atau agama.",
+            poin:["Sanksi yang sama untuk pelanggaran yang sama","Perlindungan terhadap diskriminasi","Kesempatan yang merata untuk semua warga"],
+            refleksi:"Menurutmu, apakah norma saat ini sudah cukup adil?" }
+        ]
+      };
+    }
+  },
+
+  // ── 18. ICON EXPLORE — Grid ikon eksplorasi ───────────────────
+  "icon-explore": {
+    id:"icon-explore", icon:"🔍", label:"Eksplorasi Ikon", color:"var(--o)",
+    desc:"Grid ikon besar yang bisa diklik untuk membuka detail. Cocok untuk menjelajahi konsep, karakteristik, atau jenis-jenis sesuatu.",
+    defaultData() {
+      return {
+        type:"icon-explore", title:"Jenis-Jenis Norma",
+        intro:"Klik ikon untuk mempelajari setiap jenis norma.",
+        layout:"grid", // grid | carousel | wheel
+        animasi:"zoom",
+        items:[
+          { icon:"🕌", judul:"Norma Agama", warna:"var(--y)",
+            ringkasan:"Aturan yang bersumber dari ajaran agama",
+            isi:"Norma agama adalah aturan yang bersumber dari kitab suci, dalil, atau ajaran agama. Norma ini mengatur hubungan manusia dengan Tuhan dan sesama manusia menurut keyakinan beragama.",
+            contoh:["Sholat 5 waktu bagi umat Islam","Tidak berbohong dalam agama apapun","Berpuasa di bulan Ramadhan"],
+            sanksi:"Dosa, siksa neraka, atau hukuman dari Tuhan" },
+          { icon:"💎", judul:"Norma Kesusilaan", warna:"var(--c)",
+            ringkasan:"Aturan yang berhubungan dengan hati nurani",
+            isi:"Norma kesusilaan adalah aturan yang berhubungan dengan hati nurani manusia. Norma ini bersifat universal dan berlaku bagi semua orang tanpa memandang latar belakang.",
+            contoh:["Tidak mencuri milik orang lain","Tidak berbuat kekerasan","Saling menghargai sesame manusia"],
+            sanksi:"Rasa bersalah dan malu secara internal" },
+          { icon:"😊", judul:"Norma Kesopanan", warna:"var(--g)",
+            ringkasan:"Aturan tidak tertulis tentang sopan santun",
+            isi:"Norma kesopanan adalah aturan tidak tertulis yang mengatur cara berperilaku sopan dan santun dalam pergaulan masyarakat sehari-hari. Berbeda-beda di setiap daerah.",
+            contoh:["Mengucapkan salam saat bertemu","Menggunakan bahasa yang santun","Menundukkan badan saat melewati orang tua"],
+            sanksi:"Dikucilkan dari masyarakat, mendapat teguran" },
+          { icon:"⚖️", judul:"Norma Hukum", warna:"var(--r)",
+            ringkasan:"Aturan tertulis yang dibuat oleh pemerintah",
+            isi:"Norma hukum adalah aturan tertulis yang dibuat oleh lembaga resmi negara, bersifat memaksa, dan pelanggarannya diancam sanksi tegas. Bersumber dari UUD, undang-undang, dan peraturan.",
+            contoh:["Berhenti saat lampu merah","Membayar pajak tepat waktu","Tidak mengemudi dalam keadaan mabuk"],
+            sanksi:"Denda, penjara, atau hukuman sesuai undang-undang" }
+        ]
+      };
+    }
+  },
+
+  // ── 19. COMPARISON — Perbandingan kategori ────────────────────
+  comparison: {
+    id:"comparison", icon:"⚖️", label:"Perbandingan", color:"var(--p)",
+    desc:"Bandingkan 2-4 kategori berdampingan. Cocok untuk membandingkan jenis norma, bentuk pemerintahan, atau konsep berlawanan.",
+    defaultData() {
+      return {
+        type:"comparison", title:"Perbandingan Jenis Norma",
+        intro:"Bandingkan karakteristik setiap jenis norma berikut.",
+        animasi:"slide-up",
+        kolom:[
+          { icon:"🕌", judul:"Norma Agama", warna:"var(--y)" },
+          { icon:"💎", judul:"Norma Kesusilaan", warna:"var(--c)" },
+          { icon:"😊", judul:"Norma Kesopanan", warna:"var(--g)" },
+          { icon:"⚖️", judul:"Norma Hukum", warna:"var(--r)" }
+        ],
+        baris:[
+          { label:"Sumber", icon:"📜",
+            nilai:["Kitab suci & ajaran agama","Hati nurani manusia","Kebiasaan & adat istiadat","Peraturan perundang-undangan"] },
+          { label:"Bentuk", icon:"📝",
+            nilai:["Tertulis & lisan","Tidak tertulis","Tidak tertulis","Tertulis"] },
+          { label:"Sanksi", icon:"⚠️",
+            nilai:["Dosa / siksa akhirat","Rasa bersalah","Teguran / dikucilkan","Denda / penjara"] },
+          { label:"Berlaku untuk", icon:"👥",
+            nilai:["Penganut agama tertentu","Semua manusia","Masyarakat tertentu","Seluruh warga negara"] }
+        ],
+        tanya:"Dari keempat norma di atas, mana yang paling berpengaruh dalam kehidupanmu sehari-hari? Jelaskan alasannya."
+      };
+    }
+  },
+
+  // ── 20. CARD SHOWCASE — Card animasi showcase ──────────────────
+  "card-showcase": {
+    id:"card-showcase", icon:"🎭", label:"Card Showcase", color:"var(--y)",
+    desc:"Card-card visual dengan hover effects dan animasi. Cocok untuk menampilkan profil tokoh, contoh kasus, atau galery konsep.",
+    defaultData() {
+      return {
+        type:"card-showcase", title:"Tokoh Penting",
+        intro:"Pelajari kontribusi tokoh-tokoh berikut terhadap perkembangan norma di Indonesia.",
+        layout:"grid", // grid | list | masonry
+        animasi:"fade-in",
+        cards:[
+          { icon:"🏛️", judul:"Ir. Soekarno", warna:"var(--y)",
+            subtitle:"Proklamator & Bapak Bangsa",
+            isi:"Ir. Soekarno adalah proklamator kemerdekaan Indonesia yang menegaskan pentingnya norma hukum dan norma sosial dalam kehidupan berbangsa melalui Pancasila dan UUD 1945.",
+            tag:["Pancasila","UUD 1945","Kemerdekaan"] },
+          { icon:"⚖️", judul:"Moh. Yamin", warna:"var(--c)",
+            subtitle:"Perumus Dasar Negara",
+            isi:"Mohammad Yamin merupakan salah satu perumus dasar negara yang berkontribusi dalam merumuskan norma konstitusional yang menjadi fondasi kehidupan berbangsa.",
+            tag:["Konstitusi","Dasar Negara","Sejarah"] },
+          { icon:"📖", judul:"Ki Hajar Dewantara", warna:"var(--g)",
+            subtitle:"Bapak Pendidikan Indonesia",
+            isi:"Ki Hajar Dewantara memperjuangkan pendidikan sebagai hak setiap warga negara dan menanamkan norma-norma pendidikan yang berlaku hingga saat ini.",
+            tag:["Pendidikan","Taman Siswa","Perjuangan"] },
+          { icon:"📜", judul:"Supomo", warna:"var(--p)",
+            subtitle:"Perancang UUD 1945",
+            isi:"Supomo adalah ahli hukum yang berperan besar dalam merancang UUD 1945 sebagai sumber norma hukum tertinggi yang mengatur kehidupan berbangsa dan bernegara.",
+            tag:["Hukum","UUD 1945","Konstitusi"] }
+        ]
+      };
+    }
   }
 };
