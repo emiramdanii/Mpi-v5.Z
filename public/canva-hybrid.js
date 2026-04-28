@@ -131,13 +131,6 @@
         { type:"nav-back", x:25, y:92, icon:"\u2190",     label:"Kembali", shape:"pill", color:"#38D9D9", opacity:95, size:"small" },
         { type:"nav-next", x:75, y:92, icon:"\u2192",     label:"Lanjut",  shape:"pill", color:"#38D9D9", opacity:95, size:"small" },
       ]},
-      overlays: [
-        { type:"nav-home", x:12, y:5,  icon:"\u{1F3E0}", label:"Home",    shape:"pill", color:"#FFFFFF", opacity:90, size:"small" },
-        { type:"menu-btn", x:88, y:5,  icon:"\u2630",    label:"Menu",    shape:"pill", color:"#FFFFFF", opacity:90, size:"small" },
-        { type:"quiz-btn", x:50, y:45, icon:"\u{1F9EA}", label:"Kuis",    shape:"rounded", color:"#F5C842", opacity:100, size:"large", customW:100, customH:50 },
-        { type:"nav-back", x:25, y:92, icon:"\u2190",     label:"Kembali", shape:"pill", color:"#38D9D9", opacity:95, size:"small" },
-        { type:"nav-next", x:75, y:92, icon:"\u2192",     label:"Lanjut",  shape:"pill", color:"#38D9D9", opacity:95, size:"small" },
-      ]},
     { id: "empty-canvas", name: "Kanvas Kosong",       icon: "\u{1F3A8}", desc: "Tidak ada overlay — mulai dari nol",
       overlays: [] },
     { id: "hero-cover",   name: "Hero / Cover",        icon: "\u{1F3AC}", desc: "Tombol besar Mulai Belajar di tengah",
