@@ -565,6 +565,7 @@
       this._injectModals();
       this._injectDock();
       this._injectModeToggle();
+      this._renderCanvaPanel();
       this._patchPreviewBuilder();
     },
 
@@ -781,12 +782,17 @@
 .canva-overlay-el {
   position: absolute; cursor: grab; user-select: none;
   display: flex; align-items: center; justify-content: center;
-  font-weight: 800; font-family: 'Plus Jakarta Sans', sans-serif;
-  transition: box-shadow .15s; touch-action: none;
+  font-weight: 800; font-family: 'Nunito', sans-serif;
+  transition: box-shadow .15s, transform .15s; touch-action: none;
+  border: 1px solid rgba(255,255,255,.12);
+  box-shadow: 0 2px 8px rgba(0,0,0,.25);
+  backdrop-filter: blur(4px);
+  text-shadow: 0 1px 2px rgba(0,0,0,.15);
+  letter-spacing: .01em;
 }
-.canva-overlay-el:hover { box-shadow: 0 0 0 2px rgba(255,255,255,.3); }
-.canva-overlay-el.selected { box-shadow: 0 0 0 3px var(--y), 0 0 12px rgba(249,200,66,.3); }
-.canva-overlay-el.dragging { cursor: grabbing; opacity: .85; z-index: 10; }
+.canva-overlay-el:hover { box-shadow: 0 4px 16px rgba(0,0,0,.35); transform: translate(-50%,-50%) scale(1.06); }
+.canva-overlay-el.selected { box-shadow: 0 0 0 3px var(--y), 0 0 16px rgba(249,200,66,.35); }
+.canva-overlay-el.dragging { cursor: grabbing; opacity: .9; z-index: 10; }
 
 /* ── Overlay Element Styling ── */
 .canva-el-pill    { border-radius: 99px; }
@@ -866,6 +872,72 @@
   outline: none; cursor: pointer;
 }
 .canva-display-select:focus { border-color: var(--y); }
+
+/* ── Canva Guide Banner ── */
+.canva-guide-banner {
+  background: linear-gradient(135deg, rgba(249,200,66,.08), rgba(167,139,250,.08));
+  border: 1px solid rgba(249,200,66,.15);
+  border-radius: var(--rad-sm, 9px);
+  padding: 12px 16px; margin-bottom: 16px;
+}
+.canva-guide-title {
+  font-size: .82rem; font-weight: 800; color: var(--y);
+  margin-bottom: 8px;
+}
+.canva-guide-steps {
+  display: flex; gap: 6px; flex-wrap: wrap;
+}
+.canva-guide-step {
+  display: flex; align-items: center; gap: 6px;
+  padding: 4px 10px; border-radius: 99px;
+  font-size: .7rem; font-weight: 700; color: var(--muted);
+  background: rgba(255,255,255,.04);
+  border: 1px solid var(--border);
+}
+.canva-guide-step.active {
+  color: var(--y); border-color: rgba(249,200,66,.3);
+  background: rgba(249,200,66,.08);
+}
+.canva-guide-step.done {
+  color: var(--g); border-color: rgba(52,211,153,.3);
+  background: rgba(52,211,153,.08);
+}
+.canva-guide-num {
+  width: 18px; height: 18px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: .6rem; font-weight: 900; flex-shrink: 0;
+  background: rgba(255,255,255,.08); color: var(--muted);
+}
+.canva-guide-step.active .canva-guide-num { background: var(--y); color: #0e1c2f; }
+.canva-guide-step.done .canva-guide-num { background: var(--g); color: #0e1c2f; }
+
+/* ── Step Headers ── */
+.canva-step-header {
+  display: flex; align-items: center; gap: 8px;
+  font-size: .88rem; font-weight: 800; color: var(--text);
+}
+.canva-step-badge {
+  width: 26px; height: 26px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: .72rem; font-weight: 900; flex-shrink: 0;
+  background: var(--y); color: #0e1c2f;
+}
+
+/* ── Background actions ── */
+.canva-bg-actions {
+  display: flex; align-items: center; gap: 10px;
+  margin-bottom: 10px;
+}
+.canva-current-asset {
+  display: flex; align-items: center; gap: 10px;
+  padding: 8px 12px; background: rgba(255,255,255,.04);
+  border: 1px solid var(--border); border-radius: var(--rad-sm);
+}
+
+/* ── Panel Toggle ── */
+.canva-panel-toggle-wrap {
+  display: flex; align-items: center; gap: 8px;
+}
 
 /* ── Responsive dock spacing ── */
 body.has-atp-dock #main { padding-bottom: 72px; }
@@ -1052,8 +1124,7 @@ body.has-atp-dock #split-pane { padding-bottom: 72px; }
         </select>
         <div class="canva-mode-toggle-switch" id="canvaModeSwitch" onclick="AT_CANVA._onToggleSwitch()"></div>
         <span class="canva-mode-badge generic" id="canvaModeBadge">Generic</span>
-        <button class="btn btn-ghost btn-sm" style="margin-left:auto" onclick="AT_CANVA._openGallery()" title="Galeri Asset">\u{1F5BC}\uFE0F</button>
-        <button class="btn btn-ghost btn-sm" onclick="AT_CANVA._openOverlayEditor()" title="Canva Editor" id="canvaEditorBtn" style="display:none">\u{1F3A8} Editor</button>
+        <button class="btn btn-y btn-sm" style="margin-left:auto" onclick="AT_NAV.go('canva')" title="Buka Canva Editor">\u{1F3A8} Buka Editor</button>
       `;
       tabs.parentNode.insertBefore(toggleWrap, tabs.nextSibling);
 
@@ -1063,7 +1134,6 @@ body.has-atp-dock #split-pane { padding-bottom: 72px; }
     _updateModeToggleUI() {
       const sw = document.getElementById("canvaModeSwitch");
       const badge = document.getElementById("canvaModeBadge");
-      const editorBtn = document.getElementById("canvaEditorBtn");
       const select = document.getElementById("canvaPageSelect");
       if (!sw || !badge || !select) return;
 
@@ -1075,8 +1145,9 @@ body.has-atp-dock #split-pane { padding-bottom: 72px; }
       badge.textContent = isCanva ? "Canva" : "Generic";
       badge.className = "canva-mode-badge " + mode;
 
-      if (editorBtn) {
-        editorBtn.style.display = isCanva ? "inline-flex" : "none";
+      // Also refresh the Canva panel if visible
+      if (AT_NAV.current === "canva") {
+        this._renderCanvaPanel();
       }
     },
 
@@ -1084,6 +1155,210 @@ body.has-atp-dock #split-pane { padding-bottom: 72px; }
       const select = document.getElementById("canvaPageSelect");
       const pageId = select ? select.value : "smat";
       this.toggleMode(pageId);
+    },
+
+    // ───────────────────────────────────────────────────────────
+    //  DEDICATED CANVA PANEL (p-canva)
+    // ───────────────────────────────────────────────────────────
+
+    _currentPageId: "smat",
+
+    _renderCanvaPanel() {
+      const container = document.getElementById("canvaPanelContent");
+      if (!container) return;
+
+      const pageId = this._currentPageId;
+      const mode = this.getMode(pageId);
+      const isCanva = mode === "canva";
+      const overlays = this.getOverlays(pageId);
+      const asset = this.getAsset(pageId);
+
+      let html = "";
+
+      // ── STEP GUIDE BANNER ──
+      html += "<div class=\"canva-guide-banner\">";
+      html += "<div class=\"canva-guide-title\">\u{1F680} Cara Pakai Canva Editor</div>";
+      html += "<div class=\"canva-guide-steps\">";
+      html += "<div class=\"canva-guide-step" + (isCanva ? " done" : " active") + "\"><span class=\"canva-guide-num\">1</span> Pilih Halaman & Aktifkan Mode</div>";
+      html += "<div class=\"canva-guide-step" + (asset ? " done" : "") + "\"><span class=\"canva-guide-num\">2</span> Pilih Background</div>";
+      html += "<div class=\"canva-guide-step" + (overlays.length > 0 ? " done" : "") + "\"><span class=\"canva-guide-num\">3</span> Atur Tombol & Preset</div>";
+      html += "</div></div>";
+
+      // ── STEP 1: PAGE SELECTOR + MODE TOGGLE ──
+      html += "<div class=\"at-card\">";
+      html += "<div class=\"canva-step-header\"><span class=\"canva-step-badge\">1</span> Pilih Halaman</div>";
+      html += "<div class=\"field-row\" style=\"margin-top:10px\">";
+      html += "<div class=\"field-group\" style=\"flex:1\">";
+      html += "<label class=\"field-label\">Halaman</label>";
+      html += "<select class=\"field-select\" id=\"canvaPanelPageSelect\" onchange=\"AT_CANVA._currentPageId=this.value;AT_CANVA._renderCanvaPanel()\">";
+      const pageLabels = { smat: "Materi", scp: "Dokumen", ssk: "Skenario", skuis: "Kuis" };
+      Object.keys(pageLabels).forEach(pid => {
+        html += "<option value=\"" + pid + "\"" + (pageId === pid ? " selected" : "") + ">" + pageLabels[pid] + "</option>";
+      });
+      html += "</select></div>";
+      html += "<div class=\"field-group\">";
+      html += "<label class=\"field-label\">Mode</label>";
+      html += "<div class=\"canva-panel-toggle-wrap\">";
+      html += "<span style=\"font-size:.72rem;font-weight:700;color:var(--muted)\">Generic</span>";
+      html += "<div class=\"canva-mode-toggle-switch" + (isCanva ? " active" : "") + "\" onclick=\"AT_CANVA.toggleMode('" + pageId + "');AT_CANVA._renderCanvaPanel()\"></div>";
+      html += "<span style=\"font-size:.72rem;font-weight:700;color:var(--p)\">Canva</span>";
+      html += "</div></div></div>";
+
+      if (isCanva) {
+        html += "<div style=\"margin-top:10px;padding:8px 12px;background:rgba(167,139,250,.08);border:1px solid rgba(167,139,250,.2);border-radius:8px;font-size:.72rem;color:var(--p)\">\u{2705} Canva mode aktif untuk halaman <strong>" + pageLabels[pageId] + "</strong>. Lanjut ke langkah berikutnya.</div>";
+      } else {
+        html += "<div style=\"margin-top:10px;padding:8px 12px;background:rgba(255,255,255,.03);border:1px solid var(--border);border-radius:8px;font-size:.72rem;color:var(--muted)\">\u{1F4A1} Klik toggle di atas untuk mengaktifkan Canva mode. Halaman akan ditampilkan sebagai gambar background dengan tombol overlay.</div>";
+      }
+      html += "</div>";
+
+      // ── If not canva mode, show helpful message and stop ──
+      if (!isCanva) {
+        html += "<div class=\"at-card\" style=\"text-align:center;padding:32px 20px\">";
+        html += "<div style=\"font-size:2.4rem;margin-bottom:10px\">\u{1F3A8}</div>";
+        html += "<div style=\"font-size:.88rem;font-weight:700;color:var(--text);margin-bottom:6px\">Aktifkan Canva Mode di atas</div>";
+        html += "<div style=\"font-size:.76rem;color:var(--muted);line-height:1.6\">Setelah Canva mode aktif, kamu bisa memilih background gradient, upload gambar, menambah tombol interaktif, dan menerapkan preset layout.</div>";
+        html += "</div>";
+        container.innerHTML = html;
+        return;
+      }
+
+      // ── STEP 2: BACKGROUND ──
+      html += "<div class=\"at-card\">";
+      html += "<div class=\"canva-step-header\"><span class=\"canva-step-badge\">2</span> Background</div>";
+
+      // Inline upload + gallery
+      html += "<div class=\"canva-bg-actions\">";
+      html += "<button class=\"btn btn-ghost btn-sm\" onclick=\"AT_CANVA._openGallery()\">\u{1F5BC}\uFE0F Galeri Asset</button>";
+      html += "<span style=\"font-size:.7rem;color:var(--muted)\">atau pilih gradient preset di bawah</span>";
+      html += "</div>";
+
+      // Current asset display
+      if (asset) {
+        html += "<div class=\"canva-current-asset\">";
+        html += "<img src=\"" + asset.thumbUrl + "\" alt=\"" + this._esc(asset.name) + "\" style=\"width:80px;height:50px;object-fit:cover;border-radius:6px;border:1px solid var(--border)\">";
+        html += "<div><div style=\"font-size:.76rem;font-weight:700;color:var(--text)\">" + this._esc(asset.name) + "</div>";
+        html += "<div style=\"font-size:.68rem;color:var(--muted)\">" + asset.width + " \u00D7 " + asset.height + " px</div></div>";
+        html += "<button class=\"btn btn-ghost btn-sm\" style=\"margin-left:auto;color:var(--r)\" onclick=\"AT_CANVA._changePageAsset('" + pageId + "','');AT_CANVA._renderCanvaPanel()\">\u{1F5D1}\uFE0F</button>";
+        html += "</div>";
+
+        // Display mode
+        const config = this.getPageConfig(pageId);
+        const displayMode = (config && config.display) || "contain";
+        html += "<div class=\"field-row\" style=\"margin-top:8px\">";
+        html += "<div class=\"field-group\">";
+        html += "<label class=\"field-label\">Tampilan</label>";
+        html += "<select class=\"field-select\" onchange=\"AT_CANVA._changePageDisplay('" + pageId + "',this.value)\" style=\"width:auto\">";
+        ["contain", "cover", "manual"].forEach(d => {
+          html += "<option value=\"" + d + "\"" + (displayMode === d ? " selected" : "") + ">" + d + "</option>";
+        });
+        html += "</select></div>";
+        if (displayMode === "manual") {
+          const mh = (config && config.manualHeight) || 600;
+          html += "<div class=\"field-group\" style=\"flex:0 0 100px\">";
+          html += "<label class=\"field-label\">Tinggi (px)</label>";
+          html += "<input class=\"field-input\" type=\"number\" value=\"" + mh + "\" min=\"200\" max=\"2000\" onchange=\"AT_CANVA._changeManualHeight('" + pageId + "',+this.value);AT_CANVA._renderCanvaPanel()\" style=\"width:80px\">";
+          html += "</div>";
+        }
+        html += "</div>";
+      }
+
+      // Gradient presets (compact)
+      html += "<div style=\"margin-top:12px\">";
+      html += "<div style=\"font-size:.72rem;font-weight:700;color:var(--muted);margin-bottom:8px\">\u{1F3A8} Background Gradient Preset</div>";
+      const cats = AT_CANVA_PRESETS.getGradientsByCategory();
+      const catLabels = { pendidikan: "\u{1F393} Pendidikan", energik: "\u{1F525} Energik", profesional: "\u{1F4BC} Profesional", fun: "\u{1F389} Fun", minimal: "\u2795 Minimal" };
+      Object.keys(cats).forEach(cat => {
+        html += "<div style=\"font-size:.66rem;font-weight:700;color:var(--muted);margin:8px 0 4px;text-transform:uppercase;letter-spacing:.04em\">" + (catLabels[cat] || cat) + "</div>";
+        html += "<div class=\"canva-preset-grid\" style=\"grid-template-columns:repeat(auto-fill,minmax(90px,1fr))\">";
+        cats[cat].forEach(g => {
+          const thumb = AT_CANVA_PRESETS._gradientThumb(g.id);
+          html += "<div class=\"canva-preset-card\" onclick=\"AT_CANVA_PRESETS.applyGradient('" + pageId + "','" + g.id + "');setTimeout(()=>AT_CANVA._renderCanvaPanel(),60)\" title=\"" + this._esc(g.name) + " (" + g.aspect + ")\">"
+            + "<div class=\"canva-preset-thumb\"><img src=\"" + thumb + "\" alt=\"\" loading=\"lazy\"></div>"
+            + "<div class=\"canva-preset-info\">" + g.badge + " " + this._esc(g.name) + "</div>"
+            + "<div class=\"canva-preset-meta\">" + g.aspect + "</div>"
+            + "</div>";
+        });
+        html += "</div>";
+      });
+      html += "</div>";
+
+      html += "</div>";
+
+      // ── STEP 3: OVERLAY EDITOR ──
+      html += "<div class=\"at-card\">";
+      html += "<div class=\"canva-step-header\"><span class=\"canva-step-badge\">3</span> Tombol Overlay</div>";
+      html += "<div style=\"font-size:.72rem;color:var(--muted);margin-bottom:10px\">Klik tombol di canvas untuk pilih & geser. Gunakan preset layout untuk cepat.</div>";
+
+      // Canvas area
+      const config2 = this.getPageConfig(pageId);
+      const displayMode2 = (config2 && config2.display) || "contain";
+      const manualHeight = (config2 && config2.manualHeight) || 600;
+
+      html += "<div class=\"canva-canvas-wrap\" id=\"canvaPanelCanvasWrap\" style=\"";
+      if (displayMode2 === "manual") html += "height:" + manualHeight + "px;aspect-ratio:auto;";
+      html += "\">";
+
+      if (asset) {
+        html += "<img class=\"canva-canvas-bg " + (displayMode2 === "cover" ? "cover" : "") + "\" src=\"" + asset.dataUrl + "\" alt=\"background\">";
+      } else {
+        html += "<div style=\"position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:var(--muted);font-size:.82rem;text-align:center;padding:20px\">\u{1F4F7}<br>Pilih background di atas</div>";
+      }
+
+      overlays.forEach((el, idx) => {
+        html += this._renderOverlayElement(el, idx, pageId);
+      });
+      html += "</div>";
+
+      // Add element buttons
+      html += "<div style=\"font-size:.72rem;font-weight:700;color:var(--muted);margin-bottom:6px\">+ Tambah Tombol</div>";
+      html += "<div class=\"canva-add-row\">";
+      OVERLAY_ELEMENT_TYPES.forEach(t => {
+        html += "<button class=\"canva-add-btn\" onclick=\"AT_CANVA._addOverlayElement('" + pageId + "','" + t.id + "');setTimeout(()=>AT_CANVA._renderCanvaPanel(),60)\">" + t.icon + " " + t.label + "</button>";
+      });
+      html += "</div>";
+
+      // ── LAYOUT PRESETS ──
+      html += "<div style=\"margin-top:16px\">";
+      html += "<div style=\"font-size:.72rem;font-weight:700;color:var(--muted);margin-bottom:8px\">\u{1F3AF} Preset Layout (klik = terapkan tombol)</div>";
+      html += "<div class=\"canva-preset-grid\" style=\"grid-template-columns:repeat(auto-fill,minmax(120px,1fr))\">";
+      LAYOUT_PRESETS.forEach(l => {
+        const count = l.overlays.length;
+        html += "<div class=\"canva-preset-card canva-preset-layout\" onclick=\"AT_CANVA_PRESETS.applyLayout('" + pageId + "','" + l.id + "');setTimeout(()=>AT_CANVA._renderCanvaPanel(),60)\" title=\"" + this._esc(l.desc) + "\">"
+          + "<div class=\"canva-preset-icon\">" + l.icon + "</div>"
+          + "<div class=\"canva-preset-info\">" + this._esc(l.name) + "</div>"
+          + "<div class=\"canva-preset-meta\">" + this._esc(l.desc) + " (" + count + ")</div>"
+          + "</div>";
+      });
+      html += "</div></div>";
+
+      // ── COLOR THEME PRESETS ──
+      html += "<div style=\"margin-top:16px\">";
+      html += "<div style=\"font-size:.72rem;font-weight:700;color:var(--muted);margin-bottom:8px\">\u{1F30A} Tema Warna (ubah warna semua tombol)</div>";
+      html += "<div class=\"canva-preset-grid\" style=\"grid-template-columns:repeat(auto-fill,minmax(110px,1fr))\">";
+      COLOR_THEME_PRESETS.forEach(t => {
+        const swatches = t.colors.map(c => "<div style=\"width:14px;height:14px;border-radius:50%;background:" + c + ";border:1px solid rgba(255,255,255,.15)\"></div>").join("");
+        html += "<div class=\"canva-preset-card canva-preset-theme\" onclick=\"AT_CANVA_PRESETS.applyColorTheme('" + pageId + "','" + t.id + "');setTimeout(()=>AT_CANVA._renderCanvaPanel(),60)\" title=\"" + this._esc(t.name) + "\">"
+          + "<div class=\"canva-preset-theme-swatches\">" + swatches + "</div>"
+          + "<div class=\"canva-preset-info\">" + t.icon + " " + this._esc(t.name) + "</div>"
+          + "<div class=\"canva-preset-meta\">" + t.colors.length + " warna</div>"
+          + "</div>";
+      });
+      html += "</div></div>";
+
+      // ── CUSTOMIZATION PANEL (if element selected) ──
+      if (this._selectedOverlay && this._selectedOverlay.pageId === pageId) {
+        const selEl = overlays[this._selectedOverlay.idx];
+        if (selEl) {
+          html += this._renderCustomizationPanel(selEl, this._selectedOverlay.idx, pageId);
+        }
+      }
+
+      html += "</div>";
+
+      container.innerHTML = html;
+
+      // Init drag for the panel canvas
+      this._initOverlayDrag(pageId);
     },
 
     // ───────────────────────────────────────────────────────────
@@ -1293,8 +1568,9 @@ body.has-atp-dock #split-pane { padding-bottom: 72px; }
         + "background:" + (el.color || "#F5C842") + ";"
         + "opacity:" + ((el.opacity != null ? el.opacity : 100) / 100) + ";"
         + "color:" + this._getTextColor(el.color || "#F5C842") + ";"
+        + "gap:5px;"
         + "\">"
-        + (el.icon || "") + " " + this._esc(el.label || "Btn")
+        + "<span>" + (el.icon || "") + "</span> <span>" + this._esc(el.label || "Btn") + "</span>"
         + "</div>";
     },
 
@@ -1528,7 +1804,8 @@ body.has-atp-dock #split-pane { padding-bottom: 72px; }
     // ───────────────────────────────────────────────────────────
 
     _initOverlayDrag(pageId) {
-      const canvas = document.getElementById("canvaCanvasWrap");
+      // Try both canvas IDs (panel canvas and overlay editor canvas)
+      const canvas = document.getElementById("canvaPanelCanvasWrap") || document.getElementById("canvaCanvasWrap");
       if (!canvas) return;
 
       // Remove old listeners by cloning
@@ -1653,8 +1930,11 @@ body.has-atp-dock #split-pane { padding-bottom: 72px; }
         + ".canva-page-bg.cover img{object-fit:cover;}"
         + ".canva-page-bg.manual img{object-fit:contain;}"
         + ".canva-overlay-btn{position:absolute;z-index:10;display:flex;align-items:center;justify-content:center;"
-        + "font-weight:800;cursor:pointer;user-select:none;transition:transform .15s,box-shadow .15s;}"
-        + ".canva-overlay-btn:hover{transform:translate(-50%,-50%) scale(1.08);box-shadow:0 4px 16px rgba(0,0,0,.4);}"
+        + "font-family:'Nunito',sans-serif;font-weight:800;cursor:pointer;user-select:none;"
+        + "transition:transform .15s,box-shadow .15s;"
+        + "border:1px solid rgba(255,255,255,.12);box-shadow:0 2px 8px rgba(0,0,0,.25);"
+        + "backdrop-filter:blur(4px);text-shadow:0 1px 2px rgba(0,0,0,.15);letter-spacing:.01em;}"
+        + ".canva-overlay-btn:hover{transform:translate(-50%,-50%) scale(1.06);box-shadow:0 4px 16px rgba(0,0,0,.4);}"
         + ".canva-overlay-btn:active{transform:translate(-50%,-50%) scale(.96);}"
         + "</style>";
     },

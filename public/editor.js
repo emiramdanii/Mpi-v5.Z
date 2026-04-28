@@ -16,7 +16,8 @@ window.AT_NAV = {
     this.current = id;
     const titles = {
       dashboard: "Dashboard", dokumen: "Dokumen",
-      konten: "Konten Pembelajaran", autogen: "Auto-Generate",
+      konten: "Konten Pembelajaran", canva: "Canva Editor",
+      autogen: "Auto-Generate",
       import: "Import / Export", projects: "Kelola Proyek",
       versions: "Riwayat Versi", preview: "Live Preview",
     };
