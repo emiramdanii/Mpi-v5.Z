@@ -1079,18 +1079,10 @@ document.addEventListener('DOMContentLoaded', () => {
     });
     observer.observe(panel, { attributes: true, attributeFilter: ['class'] });
 
-    // Also listen for direct NAV calls as fallback
-    const origGo = AT_NAV.go.bind(AT_NAV);
-    AT_NAV.go = function(id) {
-      origGo(id);
-      if (id === 'canva' && panel.classList.contains('active')) {
-        _inited = false; // allow re-init on revisit
-        AT_CANVA_MODE.init();
-        _inited = true;
-      }
-    };
-  }
-
   // Map canva panel to AT_NAV._panelToPage
   if (AT_NAV._panelToPage) AT_NAV._panelToPage['canva'] = 'sc';
+
+  // Mark that AT_NAV.go should handle canva init on navigation
+  // (liveview_enhancements.js AT_NAV.go patch will call this)
+  this._needsReinit = true;
 });

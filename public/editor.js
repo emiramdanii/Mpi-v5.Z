@@ -28,6 +28,15 @@ window.AT_NAV = {
       if (!AT_SPLITVIEW.active) AT_SPLITVIEW.toggle();
       return;
     }
+    // Auto-activate live preview when entering Canva editor
+    if (id === "canva" && window.AT_SPLITVIEW && !AT_SPLITVIEW.active) {
+      setTimeout(() => {
+        if (window.AT_SPLITVIEW && !AT_SPLITVIEW.active) {
+          AT_SPLITVIEW._autoOpened = true;  // suppress "auto-opened" toast
+          AT_SPLITVIEW.toggle();
+        }
+      }, 120);
+    }
     if (id === "dashboard") AT_DASH.render();
   }
 };
