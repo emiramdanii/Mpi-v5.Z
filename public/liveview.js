@@ -40,6 +40,7 @@ window.AT_SPLITVIEW = {
   _syncTimer: null,
   _buildCount: 0,
   _errorRetries: 0,
+  _savedPreviewState: null,
 
   /* ── Toggle split view ─────────────────────────────────── */
   toggle() {
@@ -128,14 +129,60 @@ window.AT_SPLITVIEW = {
       this._updateCharCount(html);
 
       const pageId = document.getElementById("splitPageSelect")?.value || "sc";
-      const navScript = `<script>window.addEventListener('message',function(e){if(e.data&&e.data.goPage){var fn=window.go;if(fn)fn(e.data.goPage);}});<\/script>`;
-      frame.srcdoc = html.replace("</body>", navScript + "</body>");
+      const isRefresh = this._buildCount > 0;
+      const antiFlicker = isRefresh
+        ? '<style>.screen.active,.mat-page,.kp.on{animation:none!important;transition:none!important;}@keyframes fi{from{opacity:1;transform:none}to{opacity:1;transform:none}}</style>'
+        : '';
+      const navScript = `<script>(function(){
+  window.addEventListener('message',function(e){
+    if(e.data&&e.data.goPage){var fn=window.go;if(fn)fn(e.data.goPage);}
+    if(e.data&&e.data.restoreState){
+      var rs=e.data.restoreState;
+      setTimeout(function(){
+        if(rs.matPage!=null&&typeof window.goMatP==='function')goMatP(rs.matPage);
+        if(rs.modPage!=null&&typeof window.goModP==='function')goModP(rs.modPage);
+        if(rs.ftTab!=null&&typeof window.swFt==='function')swFt(rs.ftTab);
+        if(rs.scrollTop>0)window.scrollTo(0,rs.scrollTop);
+      },150);
+    }
+  });
+  var _og=window.go;
+  window.go=function(id){if(_og)_og(id);_rs();};
+  var _gm=window.goMatP;if(_gm){window.goMatP=function(i){_gm(i);setTimeout(_rs,80);};}
+  var _mn=window.matNav;if(_mn){window.matNav=function(d){_mn(d);setTimeout(_rs,80);};}
+  var _gmp=window.goModP;if(_gmp){window.goModP=function(i){_gmp(i);setTimeout(_rs,80);};}
+  var _mdn=window.modNav;if(_mdn){window.modNav=function(d){_mdn(d);setTimeout(_rs,80);};}
+  var _sf=window.swFt;if(_sf){window.swFt=function(i){_sf(i);setTimeout(_rs,80);};}
+  function _rs(){
+    var s={};
+    var as=document.querySelector('.screen.active');
+    if(as)s.page=as.id;
+    if(typeof _matP!=='undefined')s.matPage=_matP;
+    if(typeof _modP!=='undefined')s.modPage=_modP;
+    if(typeof curFt!=='undefined')s.ftTab=curFt;
+    s.scrollTop=window.scrollY||document.documentElement.scrollTop;
+    try{window.parent.postMessage({previewState:s},'*');}catch(e){}
+  }
+  window.addEventListener('scroll',function(){
+    try{var st=window.scrollY||document.documentElement.scrollTop;
+    if(st>5)window.parent.postMessage({previewScroll:st},'*');
+    }catch(e){}
+  });
+  setTimeout(_rs,400);
+})();<\/script>`;
+      frame.srcdoc = html.replace("</body>", antiFlicker + navScript + "</body>");
       frame.style.display = "block";
       if (emptyState) emptyState.style.display = "none";
 
       frame.addEventListener("load", () => {
         setTimeout(() => {
           this._navigateFrame();
+          // Restore preview state (materi page, module page, fungsi tab, scroll)
+          if (this._savedPreviewState) {
+            try {
+              frame.contentWindow.postMessage({ restoreState: this._savedPreviewState }, "*");
+            } catch(e) {}
+          }
           this._hideSyncPulse();
           if (loading) loading.style.display = "none";
         }, 80);
@@ -754,6 +801,34 @@ function _patchSwitchKontenTab() {
   window.switchKontenTab = function(tabId, btnEl) {
     origSwitch(tabId, btnEl);
     _recalcAfterRender();
+    // Auto-sync preview to matching screen
+    if (AT_SPLITVIEW.active) {
+      const tabToPage = {
+        'konten-tab-materi': 'smat',
+        'konten-tab-modules': 'smods',
+        'konten-tab-kuis': 'skuis',
+      };
+      const targetPage = tabToPage[tabId];
+      if (targetPage) {
+        const sel = document.getElementById('splitPageSelect');
+        if (sel) sel.value = targetPage;
+        AT_SPLITVIEW._navigateFrame();
+      }
+    }
+    // If split is not active, auto-open it on konten tab switch
+    if (!AT_SPLITVIEW.active && AT_SPLITVIEW._hasEnoughContent()) {
+ AT_SPLITVIEW.toggle();
+      const tabToPage = {
+        'konten-tab-materi': 'smat',
+        'konten-tab-modules': 'smods',
+        'konten-tab-kuis': 'skuis',
+      };
+      const targetPage = tabToPage[tabId];
+      if (targetPage) {
+        const sel = document.getElementById('splitPageSelect');
+        if (sel) sel.value = targetPage;
+      }
+    }
   };
 }
 
@@ -768,10 +843,42 @@ document.addEventListener("DOMContentLoaded", () => {
   AT_UNDO.init();
   _initMutationObserver();
 
-  // Add split-view refresh on panel change
+  // Add split-view refresh + auto-sync on panel change
   const _origNav = AT_NAV.go.bind(AT_NAV);
   AT_NAV.go = function(id) {
     _origNav(id);
+    // Close split view for non-content panels
+    const closePanels = ['projects', 'import', 'versions'];
+    if (closePanels.includes(id) && AT_SPLITVIEW.active) {
+      AT_SPLITVIEW.toggle();
+      return;
+    }
+    // Auto-sync: switch preview to relevant screen
+    if (AT_SPLITVIEW.active) {
+      const panelToPreview = {
+        'dashboard': 'sc',
+        'dokumen': 'scp',
+        'autogen': 'sc',
+      };
+      let targetPage = panelToPreview[id];
+      // For konten panel, read the currently active konten tab
+      if (id === 'konten') {
+        const activeTab = document.querySelector('.konten-tab.active');
+        if (activeTab) {
+          const tabToPage = {
+            'konten-tab-materi': 'smat',
+            'konten-tab-modules': 'smods',
+            'konten-tab-kuis': 'skuis',
+          };
+          targetPage = tabToPage[activeTab.dataset.ktab] || 'smat';
+        }
+      }
+      if (targetPage) {
+        const sel = document.getElementById('splitPageSelect');
+        if (sel) sel.value = targetPage;
+        AT_SPLITVIEW._navigateFrame();
+      }
+    }
     AT_SPLITVIEW.scheduleRefresh();
   };
 
@@ -810,10 +917,18 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   });
 
-  // Listen for retry messages from error iframe
+  // Listen for retry messages & preview state from iframe
   window.addEventListener("message", (e) => {
     if (e.data && e.data.action === "retry") {
       AT_SPLITVIEW.forceRefresh();
+    }
+    // Track preview internal state (page, sub-page, scroll)
+    if (e.data && e.data.previewState) {
+      AT_SPLITVIEW._savedPreviewState = e.data.previewState;
+    }
+    if (e.data && e.data.previewScroll) {
+      AT_SPLITVIEW._savedPreviewState = AT_SPLITVIEW._savedPreviewState || {};
+      AT_SPLITVIEW._savedPreviewState.scrollTop = e.data.previewScroll;
     }
   });
 
@@ -825,5 +940,20 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   }, 2000);
 
-  console.log("liveview.js v4.0 loaded — robust split-view, MutationObserver, accordion recalc");
+  // ── FEATURE 1: Auto-open split view on wide screens (first visit only) ──
+  if (window.innerWidth > 900 && !AT_SPLITVIEW._autoOpened) {
+    setTimeout(() => {
+      if (!AT_SPLITVIEW.active) {
+        // Check if there's enough content (current state or saved data)
+        const hasStateContent = AT_SPLITVIEW._hasEnoughContent();
+        const hasSavedContent = !!(AT_STORAGE && AT_STORAGE.load());
+        if (hasStateContent || hasSavedContent) {
+          AT_SPLITVIEW.toggle();
+          AT_SPLITVIEW._autoOpened = true;
+        }
+      }
+    }, 800);
+  }
+
+  console.log("liveview.js v4.1 loaded — robust split-view, MutationObserver, accordion recalc, auto-open wide");
 });

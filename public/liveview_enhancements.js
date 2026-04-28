@@ -1,19 +1,114 @@
 // ═══════════════════════════════════════════════════════════════
-// LIVEVIEW_ENHANCEMENTS.JS v5.0 — Lean & Efficient
+// LIVEVIEW_ENHANCEMENTS.JS v6.0 — Smart Auto-Sync + UX
 // ═══════════════════════════════════════════════════════════════
 // Berisi:
+//   AT_PAGE_SYNC  — deteksi halaman pintar: editor panel → preview page
 //   AT_LAYOUT     — layout picker dengan injeksi CSS ke student HTML
 //
-// Yang dihapus (v4.0 → v5.0):
-//   - AT_LIVE_SYNC — REDUNDAN, sudah di-handle oleh unified markDirty
-//   - AT_PAGE_SYNC — no-op, tidak diperlukan
-//   - Polling 1.5s — boros & tidak perlu
-//   - markDirty patch ke-3 — sudah di-handle di liveview.js
-//   - Double debounce — hanya 1 debounce 300ms di AT_SPLITVIEW
+// v6.0 Fitur Baru:
+//   - AT_PAGE_SYNC: auto-navigasi preview saat ganti panel/tab editor
+//   - Auto-open split view pada layar lebar (>900px)
+//   - Dashboard tooltip tentang Split View
 //
-// Arsitektur sinkronisasi (sederhana):
-//   Form change → markDirty() → scheduleRefresh() → refresh() [300ms]
+// Arsitektur sinkronisasi:
+//   Form change → markDirty() → scheduleRefresh() → refresh() [200ms]
+//   Panel switch → AT_PAGE_SYNC.sync() → goPage() → refresh()
 // ═══════════════════════════════════════════════════════════════
+
+/* ══════════════════════════════════════════════════════════════
+   AT_PAGE_SYNC — Smart Auto-Sync: Editor ↔ Preview
+   Setiap kali user berganti panel/tab di editor,
+   halaman preview otomatis ikut berpindah.
+   ══════════════════════════════════════════════════════════════ */
+window.AT_PAGE_SYNC = {
+  _userManualOverride: false,  // true jika user manual ganti page select
+  _lastSyncedPanel: null,
+
+  // Mapping: editor panel/konten-tab → preview page ID
+  _MAP: {
+    'dashboard':  'sc',       // Cover
+    'dokumen':    'scp',      // Dokumen
+    'autogen':    'scp',      // Dokumen (auto-generate isi dokumen)
+    'import':     'sc',       // Cover (import tidak punya halaman spesifik)
+    'versions':   'sc',       // Cover
+    'projects':   'sc',       // Cover
+    // Konten sub-tabs:
+    'konten-tab-materi':  'smat',   // Materi
+    'konten-tab-modules': 'smods',  // Modul & Game
+    'konten-tab-kuis':    'skuis',  // Evaluasi/Kuis
+  },
+
+  // Reverse map: pageId → editor tab/panel (untuk highlight indicator)
+  _REVERSE_MAP: {
+    'sc':    'dashboard',
+    'scp':   'dokumen',
+    'smat':  'konten-tab-materi',
+    'smods': 'konten-tab-modules',
+    'skuis': 'konten-tab-kuis',
+    'shas':  'konten-tab-kuis',
+  },
+
+  // Dipanggil saat panel navigasi berubah
+  syncFromPanel(panelId) {
+    if (this._userManualOverride) {
+      // Reset setelah 1 sync — biarkan manual override hanya 1x
+      this._userManualOverride = false;
+      return;
+    }
+    const pageId = this._MAP[panelId];
+    if (!pageId) return;
+    this._lastSyncedPanel = panelId;
+    AT_SPLITVIEW?.goPage(pageId);
+  },
+
+  // Dipanggil saat konten tab berubah (Materi / Modul / Kuis)
+  syncFromTab(tabId) {
+    if (this._userManualOverride) {
+      this._userManualOverride = false;
+      return;
+    }
+    const pageId = this._MAP[tabId];
+    if (!pageId) return;
+    this._lastSyncedPanel = tabId;
+    AT_SPLITVIEW?.goPage(pageId);
+  },
+
+  // Dipanggil saat user manual ganti page select dropdown
+  markManualOverride() {
+    this._userManualOverride = true;
+  },
+
+  // Update visual sync indicator di split header
+  updateSyncIndicator(pageId) {
+    const label = document.getElementById('syncLabel');
+    const dot = document.getElementById('syncDot');
+    if (!label || !dot) return;
+
+    const source = this._REVERSE_MAP[pageId];
+    const sourceNames = {
+      'dashboard': 'Dashboard',
+      'dokumen': 'Dokumen',
+      'konten-tab-materi': 'Materi',
+      'konten-tab-modules': 'Modul & Game',
+      'konten-tab-kuis': 'Evaluasi',
+    };
+
+    if (source && sourceNames[source]) {
+      label.textContent = 'Auto: ' + sourceNames[source];
+      label.style.color = 'var(--y)';
+      dot.style.background = 'var(--y)';
+      dot.style.transform = 'scale(1.3)';
+
+      clearTimeout(this._indicatorTimer);
+      this._indicatorTimer = setTimeout(() => {
+        label.textContent = 'Tersinkron';
+        label.style.color = 'var(--muted)';
+        dot.style.background = 'var(--g)';
+        dot.style.transform = 'scale(1)';
+      }, 2000);
+    }
+  }
+};
 
 /* ══════════════════════════════════════════════════════════════
    AT_LAYOUT — Layout picker + injeksi CSS ke student HTML
@@ -209,21 +304,87 @@ window.AT_LAYOUT = {
 })();
 
 /* ══════════════════════════════════════════════════════════════
-   INIT — Hanya layout, tidak ada sync/polling
+   DASHBOARD TIP — Injeksi tip Split View ke dashboard
+   ══════════════════════════════════════════════════════════════ */
+function _injectSplitViewTip() {
+  const dashStats = document.getElementById('dashStats');
+  if (!dashStats || document.getElementById('splitViewTip')) return;
+
+  const tip = document.createElement('div');
+  tip.id = 'splitViewTip';
+  tip.style.cssText = 'grid-column:1/-1;background:linear-gradient(135deg,rgba(245,200,66,.06),rgba(56,217,217,.06));border:1px solid rgba(245,200,66,.15);border-radius:12px;padding:12px 16px;display:flex;align-items:center;gap:12px;font-size:.78rem;color:var(--muted2);line-height:1.6';
+  tip.innerHTML = `
+    <div style="flex-shrink:0;width:36px;height:36px;border-radius:10px;background:rgba(245,200,66,.12);display:flex;align-items:center;justify-content:center;font-size:1.1rem">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--y)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+    </div>
+    <div style="flex:1">
+      <div style="font-weight:700;color:var(--text);margin-bottom:2px">Split View — Live Preview Real-Time</div>
+      <div>Panel editor dan preview berdampingan. Preview otomatis berpindah mengikuti tab yang sedang Anda edit. Gunakan <kbd style="padding:1px 5px;border-radius:4px;background:rgba(255,255,255,.08);border:1px solid var(--border);font-size:.7rem;font-weight:700">Ctrl+Shift+L</kbd> untuk membuka/menutup.</div>
+    </div>
+  `;
+  dashStats.parentNode.insertBefore(tip, dashStats.nextSibling);
+}
+
+/* ══════════════════════════════════════════════════════════════
+   INIT — Auto-open, Page Sync, Dashboard Tip
    ══════════════════════════════════════════════════════════════ */
 document.addEventListener('DOMContentLoaded', () => {
   // Init layout state dari saved data
   AT_LAYOUT._getState();
 
-  // Auto-open split view pada first load
-  if (!sessionStorage.getItem('splitViewOpened')) {
+  // ── Auto-open split view pada layar lebar (>900px) ──
+  if (window.innerWidth > 900 && !sessionStorage.getItem('splitViewOpened')) {
     setTimeout(() => {
       if (!AT_SPLITVIEW.active) {
         AT_SPLITVIEW.toggle();
       }
       sessionStorage.setItem('splitViewOpened', '1');
-    }, 600);
+    }, 800);
+  }
+  // Jika sudah pernah buka tapi split belum active & layar lebar, buka kembali
+  else if (window.innerWidth > 900 && sessionStorage.getItem('splitViewOpened') && !AT_SPLITVIEW.active) {
+    setTimeout(() => {
+      AT_SPLITVIEW.toggle();
+    }, 400);
   }
 
-  console.log('liveview_enhancements.js v5.0 — lean mode, layout-only');
+  // ── Patch AT_NAV.go untuk auto-sync preview page ──
+  const _origNavGo = AT_NAV.go.bind(AT_NAV);
+  AT_NAV.go = function(id) {
+    _origNavGo(id);
+    // Auto-sync preview page ke editor panel
+    if (AT_SPLITVIEW.active) {
+      AT_PAGE_SYNC.syncFromPanel(id);
+    }
+  };
+
+  // ── Patch switchKontenTab untuk auto-sync preview page ──
+  const _origSwitchTab = window.switchKontenTab;
+  window.switchKontenTab = function(tabId, btnEl) {
+    _origSwitchTab(tabId, btnEl);
+    // Auto-sync preview page ke konten tab
+    if (AT_SPLITVIEW.active) {
+      AT_PAGE_SYNC.syncFromTab(tabId);
+    }
+  };
+
+  // ── Page select manual override detection ──
+  const pageSelect = document.getElementById('splitPageSelect');
+  if (pageSelect) {
+    pageSelect.addEventListener('change', () => {
+      AT_PAGE_SYNC.markManualOverride();
+    });
+  }
+
+  // ── Patch goPage untuk update sync indicator ──
+  const _origGoPage = AT_SPLITVIEW.goPage.bind(AT_SPLITVIEW);
+  AT_SPLITVIEW.goPage = function(pageId) {
+    _origGoPage(pageId);
+    AT_PAGE_SYNC.updateSyncIndicator(pageId);
+  };
+
+  // ── Inject Split View tip di Dashboard ──
+  _injectSplitViewTip();
+
+  console.log('liveview_enhancements.js v6.0 — smart auto-sync, layout, dashboard tips');
 });

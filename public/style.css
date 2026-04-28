@@ -690,10 +690,11 @@ option{ background:#111827; }
   max-width:560px;
   max-height:85vh;
   overflow-y:auto;
-  transform:translateY(20px);
-  transition:transform .25s cubic-bezier(.4,0,.2,1);
+  transform:translateY(20px) scale(.96);
+  transition:transform .3s cubic-bezier(.34,1.56,.64,1), opacity .25s;
+  box-shadow:0 24px 64px rgba(0,0,0,.5), 0 8px 24px rgba(0,0,0,.3), 0 0 0 1px rgba(255,255,255,.05);
 }
-.modal-overlay.show .modal-box{ transform:none; }
+.modal-overlay.show .modal-box{ transform:translateY(0) scale(1); }
 .modal-title{
   font-family:'Fraunces',serif;
   font-style:italic;
@@ -1448,48 +1449,87 @@ option{ background:#111827; }
   transition: opacity .2s;
 }
 
-/* ── Header Split Toggle Button ───────────────────────────── */
+/* ── LIVE PREVIEW TOGGLE BUTTON (Enhanced) ── */
 #btnSplitToggle {
-  padding: 5px 10px;
-  border-radius: 8px;
-  font-size: .72rem;
-  font-weight: 700;
-  cursor: pointer;
-  border: 1px solid var(--border);
-  background: rgba(255,255,255,.04);
-  color: var(--muted2);
-  transition: all .2s;
-  display: flex;
+  display: inline-flex;
   align-items: center;
   gap: 6px;
+  padding: 7px 14px 7px 10px;
+  border-radius: 99px;
+  background: rgba(245, 200, 66, 0.12);
+  border: 1.5px solid rgba(245, 200, 66, 0.3);
+  color: var(--y);
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-size: .78rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all .2s cubic-bezier(.4,0,.2,1);
   white-space: nowrap;
+  position: relative;
+  overflow: hidden;
 }
-.btn-split-icon {
-  display: flex;
-  align-items: center;
-  justify-content: center;
+#btnSplitToggle::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, rgba(245,200,66,.2), rgba(245,200,66,.05));
+  opacity: 0;
+  transition: opacity .2s;
 }
 #btnSplitToggle:hover {
-  background: rgba(245,200,66,.1);
-  color: var(--y);
-  border-color: rgba(245,200,66,.25);
+  background: rgba(245, 200, 66, 0.2);
+  border-color: rgba(245, 200, 66, 0.5);
+  box-shadow: 0 2px 12px rgba(245, 200, 66, 0.25), 0 0 0 3px rgba(245, 200, 66, 0.08);
+  transform: translateY(-1px);
+}
+#btnSplitToggle:hover::before { opacity: 1; }
+#btnSplitToggle:active {
+  transform: translateY(0);
+  box-shadow: 0 1px 4px rgba(245, 200, 66, 0.15);
 }
 #btnSplitToggle.active {
-  background: rgba(245,200,66,.12);
-  color: var(--y);
-  border-color: rgba(245,200,66,.35);
-  box-shadow: 0 0 0 1px rgba(245,200,66,.1);
+  background: var(--y);
+  color: #0a0e18;
+  border-color: var(--y);
+  box-shadow: 0 3px 16px rgba(245, 200, 66, 0.35), 0 0 0 3px rgba(245, 200, 66, 0.1);
+}
+#btnSplitToggle.active:hover {
+  background: #ffd966;
+  box-shadow: 0 4px 20px rgba(245, 200, 66, 0.45), 0 0 0 3px rgba(245, 200, 66, 0.12);
+}
+.btn-split-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 6px;
+  background: rgba(245, 200, 66, 0.15);
+  flex-shrink: 0;
+  position: relative;
+  z-index: 1;
+}
+#btnSplitToggle.active .btn-split-icon {
+  background: rgba(0, 0, 0, 0.15);
+}
+.btn-split-label {
+  position: relative;
+  z-index: 1;
 }
 .btn-split-shortcut {
-  font-size: .55rem;
+  position: relative;
+  z-index: 1;
+  font-size: .6rem;
   opacity: .5;
-  font-family: 'Space Grotesk', monospace;
-  padding: 1px 4px;
-  background: rgba(255,255,255,.05);
-  border-radius: 3px;
-  margin-left: 2px;
+  font-weight: 600;
+  padding: 1px 5px;
+  background: rgba(0,0,0,.08);
+  border-radius: 4px;
 }
-#btnSplitToggle.active .btn-split-shortcut { display: none; }
+#btnSplitToggle.active .btn-split-shortcut {
+  opacity: .7;
+  background: rgba(0,0,0,.12);
+}
 
 /* ── Legacy sync dot (keep for compat) ────────────────────── */
 .sync-dot {
@@ -1717,6 +1757,35 @@ option{ background:#111827; }
   line-height: 1.4;
 }
 
+/* ── ENHANCED FORM INTERACTIONS ── */
+.list-item:hover {
+  border-color: rgba(255,255,255,.16);
+  box-shadow: 0 2px 12px rgba(0,0,0,.15);
+}
+.kuis-item:hover {
+  border-color: rgba(255,255,255,.16);
+  box-shadow: 0 2px 12px rgba(0,0,0,.15);
+}
+.mod-card:hover {
+  border-color: rgba(255,255,255,.16);
+  box-shadow: 0 2px 12px rgba(0,0,0,.15);
+}
+.field-input:hover,
+.field-textarea:hover,
+.field-select:hover {
+  border-color: rgba(255,255,255,.22);
+  background: rgba(255,255,255,.06);
+}
+.acc-section:hover {
+  border-color: rgba(255,255,255,.14);
+}
+.preset-card:hover {
+  box-shadow: 0 4px 16px rgba(0,0,0,.2);
+}
+.at-card:hover {
+  border-color: rgba(255,255,255,.13);
+}
+
 /* ═══════════════════════════════════════════════════════════════
    USER-FRIENDLY ENHANCEMENTS v3.0
    ═══════════════════════════════════════════════════════════════ */
@@ -1791,6 +1860,35 @@ option{ background:#111827; }
 .btn:focus-visible, .nav-item:focus-visible, .preset-card:focus-visible {
   outline: 2px solid var(--c);
   outline-offset: 2px;
+}
+
+/* ── TIPS CARD ── */
+.tip-card {
+  background: linear-gradient(135deg, rgba(245,200,66,.04), rgba(56,217,217,.04));
+  border-color: rgba(245,200,66,.15);
+}
+.tip-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.tip-item {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  font-size: .82rem;
+  line-height: 1.6;
+  color: var(--muted2);
+}
+.tip-icon {
+  font-size: 1rem;
+  flex-shrink: 0;
+  width: 24px;
+  text-align: center;
+  margin-top: 2px;
+}
+.tip-item strong {
+  color: var(--text);
 }
 
 /* ── Responsive: welcome banner ────────────────────────────────── */
