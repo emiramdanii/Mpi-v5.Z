@@ -442,5 +442,29 @@ window.MODULE_TYPES = {
         ]
       };
     }
+  },
+
+  // ── 21. HOTSPOT IMAGE — Gambar interaktif dengan titik klik ─────
+  "hotspot-image": {
+    id:"hotspot-image", icon:"🗺️", label:"Hotspot Image", color:"var(--g)",
+    desc:"Gambar dengan titik-titik interaktif (hotspot). Klik pin untuk menampilkan informasi. Cocok untuk peta, diagram, atau gambar anatomi konsep.",
+    defaultData() {
+      return {
+        type:"hotspot-image", title:"Peta Interaktif",
+        intro:"Klik titik-titik pada gambar untuk mengetahui informasinya.",
+        imageUrl:"",
+        imageHeight:400,
+        mode:"pin", // pin | tooltip | card
+        animasi:"bounce",
+        hotspots:[
+          { x:25, y:30, icon:"1️⃣", judul:"Titik A", warna:"var(--y)",
+            isi:"Deskripsi singkat tentang titik A pada gambar ini." },
+          { x:55, y:50, icon:"2️⃣", judul:"Titik B", warna:"var(--c)",
+            isi:"Deskripsi singkat tentang titik B pada gambar ini." },
+          { x:75, y:25, icon:"3️⃣", judul:"Titik C", warna:"var(--p)",
+            isi:"Deskripsi singkat tentang titik C pada gambar ini." }
+        ]
+      };
+    }
   }
 };

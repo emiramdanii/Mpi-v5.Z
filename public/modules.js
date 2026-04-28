@@ -129,6 +129,7 @@ window.AT_MODULES = {
       case "icon-explore":return `<span>🔍 ${(m.items||[]).length} item eksplorasi${m.items?.length?" · "+tx(m.items[0]?.judul,30):""}</span>`;
       case "comparison":  return `<span>⚖️ ${(m.kolom||[]).length} kolom · ${(m.baris||[]).length} baris</span>`;
       case "card-showcase":return `<span>🎭 ${(m.cards||[]).length} card${m.cards?.length?" · "+tx(m.cards[0]?.judul,30):""}</span>`;
+      case "hotspot-image":return `<span>🗺️ ${(m.hotspots||[]).length} hotspot${m.imageUrl?' · '+shortUrl(m.imageUrl):' · URL belum diisi'}</span>`;
       default:            return `<span style="color:var(--muted)">${m.type}</span>`;
     }
   },
@@ -950,6 +951,51 @@ window.AT_MODULES = {
         <button class="btn btn-ghost btn-sm" style="margin-top:8px" onclick="AT_MODULES._addDeep('cards',{icon:'📌',judul:'',warna:'var(--y)',subtitle:'',isi:'',tag:[]})">＋ Tambah Card</button>`;
       }
 
+      // ── HOTSPOT IMAGE ──
+      case "hotspot-image": {
+        const modeOpts = ["pin","tooltip","card"].map(o=>
+          `<option value="${o}"${m.mode===o?" selected":""}>${o}</option>`).join("");
+        const colorOpts = ["var(--y)","var(--c)","var(--p)","var(--g)","var(--r)","var(--o)"];
+        return `
+        <div class="field-group"><label class="field-label">Judul</label>
+          <input class="field-input" id="me_title" value="${esc(m.title||"")}"></div>
+        <div class="field-group"><label class="field-label">Intro</label>
+          <input class="field-input" id="me_intro" value="${esc(m.intro||"")}"></div>
+        <div class="field-group"><label class="field-label">URL Gambar</label>
+          <input class="field-input" id="me_imageUrl" value="${esc(m.imageUrl||"")}" placeholder="https://example.com/gambar.jpg">
+          <div style="font-size:.71rem;color:var(--muted);margin-top:4px">Paste URL gambar (JPG/PNG/SVG). Gambar akan jadi area hotspot interaktif.</div></div>
+        <div class="field-row">
+          <div class="field-group"><label class="field-label">Tinggi Gambar (px)</label>
+            <input class="field-input" id="me_imageHeight" type="number" value="${m.imageHeight||400}" min="200" max="800" style="width:120px"></div>
+          <div class="field-group"><label class="field-label">Mode Tampilan</label>
+            <select class="field-select" id="me_mode">${modeOpts}</select></div>
+          <div class="field-group">${AT_MODULES.renderAnimPicker(m,'animasi')}</div>
+        </div>
+        <div class="divider"></div>
+        <div class="at-card-title">📍 Daftar Hotspot</div>
+        <div id="me_hsList">${(m.hotspots||[]).map((h,hi)=>`
+          <div class="sub-item" id="me_hs_${hi}">
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;flex-wrap:wrap">
+              ${AT_MODULES.emojiBtn(h.icon||"📍", `AT_MODULES._updateDeep('hotspots',${hi},'icon',v)`)}
+              <input class="field-input" value="${esc(h.judul||"")}" placeholder="Judul hotspot" style="flex:1;min-width:120px" oninput="AT_MODULES._updateDeep('hotspots',${hi},'judul',this.value)">
+              <button class="icon-btn del" onclick="AT_MODULES._removeDeep('hotspots',${hi})">🗑️</button>
+            </div>
+            <div style="display:flex;gap:8px;margin-bottom:5px;flex-wrap:wrap">
+              <div class="field-group" style="flex:0 0 90px"><label class="field-label">Posisi X %</label>
+                <input class="field-input" type="number" min="0" max="100" value="${h.x??50}" oninput="AT_MODULES._updateDeep('hotspots',${hi},'x',+this.value)"></div>
+              <div class="field-group" style="flex:0 0 90px"><label class="field-label">Posisi Y %</label>
+                <input class="field-input" type="number" min="0" max="100" value="${h.y??50}" oninput="AT_MODULES._updateDeep('hotspots',${hi},'y',+this.value)"></div>
+            </div>
+            <textarea class="field-textarea" rows="2" placeholder="Isi informasi hotspot…" oninput="AT_MODULES._updateDeep('hotspots',${hi},'isi',this.value)">${esc(h.isi||"")}</textarea>
+            <div style="display:flex;gap:5px;align-items:center;margin-top:5px">
+              <span style="font-size:.71rem;color:var(--muted)">Warna:</span>
+              ${colorOpts.map(col=>`<div onclick="AT_MODULES._updateDeep('hotspots',${hi},'warna','${col}')" style="width:16px;height:16px;border-radius:50%;background:${col};cursor:pointer;border:2px solid ${(h.warna||"var(--y)")===col?"#fff":"transparent"}"></div>`).join("")}
+            </div>
+          </div>`).join("")}
+        </div>
+        <button class="btn btn-ghost btn-sm" style="margin-top:8px" onclick="AT_MODULES._addDeep('hotspots',{x:50,y:50,icon:'📍',judul:'',warna:'var(--y)',isi:''})">＋ Tambah Hotspot</button>`;
+      }
+
       // ── EMBED / iFRAME ──
       case "embed": return `
         <div class="field-group">
@@ -1100,6 +1146,7 @@ window.AT_MODULES = {
       kolom:      ["me_kolomList",      () => (m.kolom||[]).map((k,ki)=>this._kolomRow(k,ki)).join("")],
       baris:      ["me_barisList",      () => (m.baris||[]).map((b,bi)=>this._barisRow(b,bi)).join("")],
       cards:      ["me_cardsList",      () => (m.cards||[]).map((c,ci)=>this._cardRow(c,ci)).join("")],
+      hotspots:   ["me_hsList",         () => (m.hotspots||[]).map((h,hi)=>this._hsRow(h,hi)).join("")],
     };
     // icon-explore uses 'items' key — reuse existing items handler
     if (key === 'items' && m.type === 'icon-explore') {
@@ -1355,6 +1402,29 @@ window.AT_MODULES = {
     </div>`;
   },
 
+  // ── HOTSPOT IMAGE row builder ──
+  _hsRow(h, hi) {
+    const colorOpts = ["var(--y)","var(--c)","var(--p)","var(--g)","var(--r)","var(--o)"];
+    return `<div class="sub-item" id="me_hs_${hi}">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;flex-wrap:wrap">
+        ${AT_MODULES.emojiBtn(h.icon||"📍", `AT_MODULES._updateDeep('hotspots',${hi},'icon',v)`)}
+        <input class="field-input" value="${esc(h.judul||"")}" placeholder="Judul hotspot" style="flex:1;min-width:120px" oninput="AT_MODULES._updateDeep('hotspots',${hi},'judul',this.value)">
+        <button class="icon-btn del" onclick="AT_MODULES._removeDeep('hotspots',${hi})">🗑️</button>
+      </div>
+      <div style="display:flex;gap:8px;margin-bottom:5px;flex-wrap:wrap">
+        <div class="field-group" style="flex:0 0 90px"><label class="field-label">Posisi X %</label>
+          <input class="field-input" type="number" min="0" max="100" value="${h.x??50}" oninput="AT_MODULES._updateDeep('hotspots',${hi},'x',+this.value)"></div>
+        <div class="field-group" style="flex:0 0 90px"><label class="field-label">Posisi Y %</label>
+          <input class="field-input" type="number" min="0" max="100" value="${h.y??50}" oninput="AT_MODULES._updateDeep('hotspots',${hi},'y',+this.value)"></div>
+      </div>
+      <textarea class="field-textarea" rows="2" placeholder="Isi informasi hotspot…" oninput="AT_MODULES._updateDeep('hotspots',${hi},'isi',this.value)">${esc(h.isi||"")}</textarea>
+      <div style="display:flex;gap:5px;align-items:center;margin-top:5px">
+        <span style="font-size:.71rem;color:var(--muted)">Warna:</span>
+        ${colorOpts.map(col=>`<div onclick="AT_MODULES._updateDeep('hotspots',${hi},'warna','${col}')" style="width:16px;height:16px;border-radius:50%;background:${col};cursor:pointer;border:2px solid ${(h.warna||"var(--y)")===col?"#fff":"transparent"}"></div>`).join("")}
+      </div>
+    </div>`;
+  },
+
   _butirItems(blokIdx, butir) {
     return (butir||[]).map((bt,bti)=>`
       <div style="display:flex;gap:6px;margin-bottom:5px">
@@ -1483,6 +1553,12 @@ window.AT_MODULES = {
 
       case "card-showcase":
         bind("me_layout", "layout");
+        break;
+
+      case "hotspot-image":
+        bind("me_imageUrl", "imageUrl");
+        bind("me_imageHeight", "imageHeight", v => +v || 400);
+        bind("me_mode", "mode");
         break;
 
       case "embed":

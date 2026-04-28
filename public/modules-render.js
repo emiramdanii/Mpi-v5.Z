@@ -35,6 +35,7 @@
       case "icon-explore":return this._htmlIconExplore(m);
       case "comparison":  return this._htmlComparison(m);
       case "card-showcase":return this._htmlCardShowcase(m);
+      case "hotspot-image":return this._htmlHotspotImage(m);
       default: return `<div class="card mt14"><p style="color:var(--muted)">Modul tipe ${m.type} belum ada renderer.</p></div>`;
     }
   };
@@ -778,6 +779,118 @@
     </div>`;
   };
 
-})();
+  // ═══════════════════════════════════════════════════════════════
+  //  HOTSPOT IMAGE — Interactive image with clickable pins
+  // ═══════════════════════════════════════════════════════════════
+  M._htmlHotspotImage = function(m) {
+    const id = "hsi_" + Math.random().toString(36).slice(2,6);
+    const hotspots = m.hotspots || [];
+    const mode = m.mode || "pin";
+    const anim = m.animasi || "bounce";
+    const imgUrl = m.imageUrl || "";
+    const imgH = m.imageHeight || 400;
+    const animCSS = "@keyframes hsiBounce{0%,100%{transform:translate(-50%,-50%) scale(1)}50%{transform:translate(-50%,-50%) scale(1.2)}}@keyframes hsiPulse{0%,100%{box-shadow:0 0 0 0 rgba(255,255,255,.4)}70%{box-shadow:0 0 0 12px rgba(255,255,255,0)}}@keyframes hsiFade{from{opacity:0;transform:translate(-50%,-100%) scale(.9)}to{opacity:1;transform:translate(-50%,-100%) scale(1)}}@keyframes hsiSlide{from{opacity:0;transform:translate(-50%,-100%) translateY(8px)}to{opacity:1;transform:translate(-50%,-100%) translateY(0)}}@keyframes hsiZoom{from{opacity:0;transform:translate(-50%,-50%) scale(.6)}to{opacity:1;transform:translate(-50%,-50%) scale(1)}}";
 
-console.log("✅ modules-render.js loaded — HTML renderers attached");
+    // No image placeholder
+    if (!imgUrl) {
+      return `<div class="card mt14">
+        <div class="h2">🗺️ <span class="hl">${m.title||"Hotspot Image"}</span></div>
+        ${m.intro ? `<p class="sub mt8">${m.intro}</p>` : ""}
+        <div style="padding:60px 20px;text-align:center;background:rgba(255,255,255,.03);border-radius:14px;margin-top:14px;border:2px dashed rgba(255,255,255,.1)">
+          <div style="font-size:3rem;margin-bottom:12px">🖼️</div>
+          <div style="font-weight:700;font-size:.9rem;margin-bottom:6px">URL gambar belum diisi</div>
+          <div style="color:var(--muted);font-size:.8rem">Masukkan URL gambar di editor untuk mengaktifkan hotspot interaktif.</div>
+        </div>
+      </div>`;
+    }
+
+    // Hotspot markers
+    const hotspotMarkers = hotspots.map((h,i) => {
+      const w = h.warna || "var(--y)";
+      const x = Math.max(0, Math.min(100, h.x ?? 50));
+      const y = Math.max(0, Math.min(100, h.y ?? 50));
+      const animName = anim==="bounce" ? "hsiBounce 2s ease-in-out infinite" :
+                       anim==="pulse"  ? "hsiPulse 2s ease-in-out infinite" :
+                       anim==="zoom"   ? "hsiZoom .3s ease" : "";
+
+      return `<div id="${id}_pin${i}" onclick="hsiToggle('${id}',${i})"
+        style="position:absolute;left:${x}%;top:${y}%;transform:translate(-50%,-50%);z-index:${10+i};cursor:pointer;user-select:none;${animName? 'animation:'+animName+';' : ''}"
+        onmouseover="this.style.zIndex=50;this.style.filter='brightness(1.2)'"
+        onmouseout="this.style.z-index=${10+i};this.style.filter='none'">
+        <div style="width:36px;height:36px;border-radius:50%;background:${w};display:flex;align-items:center;justify-content:center;font-size:1.1rem;box-shadow:0 3px 12px rgba(0,0,0,.4);transition:all .2s;border:3px solid rgba(255,255,255,.7)">${h.icon||"📍"}</div>
+      </div>`;
+    }).join("");
+
+    // Popup/tooltip panels
+    const popupHtml = hotspots.map((h,i) => {
+      const w = h.warna || "var(--y)";
+      const x = Math.max(0, Math.min(100, h.x ?? 50));
+      const y = Math.max(0, Math.min(100, h.y ?? 50));
+      // Position tooltip above the pin, adjust if near top
+      const flip = y < 25;
+      const tStyle = flip
+        ? `position:absolute;left:${x}%;top:calc(${y}% + 24px);transform:translateX(-50%);z-index:60;`
+        : `position:absolute;left:${x}%;top:${y}%;transform:translate(-50%,-100%) translateY(-12px);z-index:60;`;
+
+      if (mode === "card") {
+        return `<div id="${id}_pop${i}" style="display:none;${tStyle}width:240px;background:var(--bg);border:2px solid ${w}55;border-radius:14px;padding:14px 16px;box-shadow:0 8px 30px rgba(0,0,0,.5);animation:hsiFade .25s ease">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+            <div style="width:32px;height:32px;border-radius:50%;background:${w}20;border:2px solid ${w}50;display:flex;align-items:center;justify-content:center;font-size:1rem">${h.icon||"📍"}</div>
+            <div style="font-weight:900;font-size:.88rem;color:${w}">${h.judul||"Hotspot "+(i+1)}</div>
+          </div>
+          <div style="font-size:.82rem;line-height:1.65;color:var(--text)">${h.isi||""}</div>
+        </div>`;
+      }
+
+      // pin / tooltip mode
+      return `<div id="${id}_pop${i}" style="display:none;${tStyle}min-width:180px;max-width:260px;background:var(--bg);border:1px solid ${w}40;border-radius:12px;padding:12px 14px;box-shadow:0 6px 24px rgba(0,0,0,.45);animation:hsiFade .2s ease">
+        <div style="font-weight:800;font-size:.84rem;color:${w};margin-bottom:5px;display:flex;align-items:center;gap:6px">
+          <span style="font-size:1rem">${h.icon||"📍"}</span>${h.judul||"Hotspot "+(i+1)}
+        </div>
+        <div style="font-size:.8rem;line-height:1.6;color:var(--muted)">${h.isi||""}</div>
+      </div>`;
+    }).join("");
+
+    return `<div class="card mt14">
+      <style>${animCSS}</style>
+      <div class="h2">🗺️ <span class="hl">${m.title||"Hotspot Image"}</span></div>
+      ${m.intro ? `<p class="sub mt8">${m.intro}</p>` : ""}
+      <div style="margin-top:14px;position:relative;border-radius:14px;overflow:hidden;border:2px solid var(--border);background:#0a0f1a">
+        <img src="${imgUrl}" alt="${m.title||""}" style="width:100%;height:${imgH}px;object-fit:cover;display:block;user-select:none;pointer-events:none" onerror="this.style.display='none'">
+        <div style="position:absolute;inset:0">${hotspotMarkers}</div>
+        ${popupHtml}
+      </div>
+      <div style="display:flex;align-items:center;justify-content:center;gap:6px;margin-top:8px;font-size:.72rem;color:var(--muted)">
+        <span>📍</span> Klik titik pada gambar untuk melihat informasi
+      </div>
+      <script>(function(){
+        var gid='${id}',cur=-1,total=${hotspots.length};
+        window.hsiToggle=function(g,idx){
+          if(g!==gid)return;
+          // Close all popups first
+          for(var i=0;i<total;i++){
+            if(document.getElementById(gid+'_pop'+i))document.getElementById(gid+'_pop'+i).style.display='none';
+          }
+          if(cur===idx){cur=-1;return;}
+          // Show this popup
+          var pop=document.getElementById(gid+'_pop'+idx);
+          if(pop){pop.style.display='block';pop.style.animation='none';pop.offsetHeight;pop.style.animation='';}
+          cur=idx;
+        };
+        // Close popup when clicking outside
+        document.getElementById(gid).addEventListener('click',function(e){
+          if(cur===-1)return;
+          var isPin=false;
+          for(var i=0;i<total;i++){
+            if(e.target.closest&&e.target.closest('#'+gid+'_pin'+i)){isPin=true;break;}
+          }
+          if(!isPin){
+            for(var j=0;j<total;j++){var p=document.getElementById(gid+'_pop'+j);if(p)p.style.display='none';}
+            cur=-1;
+          }
+        });
+      })();<\/script>
+    </div>`;
+  };
+
+})();
