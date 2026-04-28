@@ -26,3 +26,34 @@ Stage Summary:
 - Key improvements over vanilla: reactive state (Zustand), proper TypeScript types, component isolation, no manual DOM manipulation
 - Files created: src/components/canva/ (7 files), src/store/canva-store.ts
 - Files modified: src/app/page.tsx, src/app/globals.css
+
+---
+Task ID: 2
+Agent: Main Agent
+Task: Add keyboard shortcuts, undo/redo, toasts, layer z-order, slideshow export
+
+Work Log:
+- Added undo/redo system with 50-step history to Zustand store
+- Added keyboard shortcuts in CanvaBuilder:
+  - Delete/Backspace: delete selected element
+  - Ctrl+Z / Ctrl+Y: undo/redo
+  - Arrow keys: nudge selected element (1%), Shift+Arrow: nudge 5%
+  - Escape: deselect
+  - V/T: switch tool (select/text)
+  - Ctrl+/-/0: zoom out/in/reset
+- Added Sonner toast notifications for all actions
+- Added element z-order controls (up/down/top/bottom) in Layers panel
+- Added nudgeSelected() action to store
+- Added moveElementZ() action to store
+- Improved export HTML with better kuis/game styling
+- Added exportSlideshowHTML() with navigation buttons + keyboard support
+- Updated Toolbar with undo/redo buttons and keyboard shortcut hints
+- Updated Toaster import from shadcn to sonner
+
+Stage Summary:
+- Undo/redo: 50-step history with snapshot-based approach
+- Keyboard shortcuts: 10+ shortcuts for common actions
+- Toast notifications: feedback for add/delete/export/etc actions
+- Layer z-order: per-element up/down buttons + top/bottom shortcuts
+- Export slideshow: multi-page HTML with Prev/Next navigation
+- Files modified: canva-store.ts, CanvaBuilder.tsx, Toolbar.tsx, LeftPanel.tsx, layout.tsx

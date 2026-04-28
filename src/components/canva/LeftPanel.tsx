@@ -192,7 +192,7 @@ function RatioContent() {
 /* ── Layers Tab ─────────────────────────────────────────────── */
 
 function LayersContent() {
-  const { pages, currentPageIndex, selectedElId, selectElement, toggleElementVisibility } = useCanvaStore();
+  const { pages, currentPageIndex, selectedElId, selectElement, toggleElementVisibility, moveElementZ } = useCanvaStore();
   const page = pages[currentPageIndex];
 
   if (!page) return null;
@@ -218,20 +218,36 @@ function LayersContent() {
             <div
               key={el.id}
               onClick={() => selectElement(el.id)}
-              className={`flex items-center gap-2 px-2 py-1.5 rounded-md cursor-pointer transition-colors ${
+              className={`flex items-center gap-1.5 px-1.5 py-1 rounded-md cursor-pointer transition-colors ${
                 isActive ? 'bg-amber-500/15 text-amber-300' : 'text-zinc-400 hover:bg-zinc-800/60'
               }`}
             >
               <div
-                className="w-2.5 h-2.5 rounded-full flex-shrink-0"
+                className="w-2 h-2 rounded-full flex-shrink-0"
                 style={{ background: colors[el.type] || '#888' }}
               />
               <span className="text-[10px] font-medium flex-1 truncate">
                 {el.icon} {el.label || el.type}
               </span>
+              {/* Z-order buttons */}
+              <button
+                onClick={(e) => { e.stopPropagation(); moveElementZ(el.id, 'up'); }}
+                className="text-[9px] text-zinc-500 hover:text-zinc-200 px-0.5"
+                title="Naik ke atas"
+              >
+                ↑
+              </button>
+              <button
+                onClick={(e) => { e.stopPropagation(); moveElementZ(el.id, 'down'); }}
+                className="text-[9px] text-zinc-500 hover:text-zinc-200 px-0.5"
+                title="Turun ke bawah"
+              >
+                ↓
+              </button>
               <button
                 onClick={(e) => { e.stopPropagation(); toggleElementVisibility(el.id); }}
-                className={`text-[10px] ${el.hidden ? 'text-zinc-600' : 'text-zinc-400 hover:text-zinc-200'}`}
+                className={`text-[9px] ${el.hidden ? 'text-zinc-700' : 'text-zinc-500 hover:text-zinc-200'}`}
+                title={el.hidden ? 'Tampilkan' : 'Sembunyikan'}
               >
                 👁
               </button>
@@ -239,6 +255,22 @@ function LayersContent() {
           );
         })}
       </div>
+      {selectedElId && (
+        <div className="flex gap-1 mt-2 pt-2 border-t border-zinc-700/30">
+          <button
+            onClick={() => moveElementZ(selectedElId, 'top')}
+            className="flex-1 py-1 rounded text-[9px] text-zinc-500 hover:text-zinc-200 hover:bg-zinc-800 transition-colors"
+          >
+            ↑ Ke paling atas
+          </button>
+          <button
+            onClick={() => moveElementZ(selectedElId, 'bottom')}
+            className="flex-1 py-1 rounded text-[9px] text-zinc-500 hover:text-zinc-200 hover:bg-zinc-800 transition-colors"
+          >
+            ↓ Ke paling bawah
+          </button>
+        </div>
+      )}
     </div>
   );
 }

@@ -3,6 +3,7 @@
 // ═══════════════════════════════════════════════════════════════
 
 import { create } from 'zustand';
+import { toast } from 'sonner';
 import {
   type CanvaPage,
   type CanvaElement,
@@ -28,6 +29,15 @@ function createElId(): string {
   return 'el_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6);
 }
 
+// ── Snapshot type for undo/redo ────────────────────────────────
+type Snapshot = {
+  pages: CanvaPage[];
+  currentPageIndex: number;
+  ratioId: string;
+};
+
+const MAX_HISTORY = 50;
+
 interface CanvaState {
   // ── Persisted state ──────────────────────────────────────────
   pages: CanvaPage[];
@@ -39,6 +49,16 @@ interface CanvaState {
   tool: Tool;
   leftTab: LeftTab;
   selectedElId: string | null;
+
+  // ── History (undo/redo) ─────────────────────────────────────
+  _history: Snapshot[];
+  _historyIdx: number;
+  _skipHistory: boolean;
+  undo: () => void;
+  redo: () => void;
+  canUndo: () => boolean;
+  canRedo: () => boolean;
+  _pushHistory: () => void;
 
   // ── Computed helpers ─────────────────────────────────────────
   currentPage: () => CanvaPage | undefined;
@@ -67,6 +87,7 @@ interface CanvaState {
   deleteSelected: () => void;
   toggleElementVisibility: (elId: string) => void;
   saveTextContent: (elId: string, text: string) => void;
+  moveElementZ: (elId: string, direction: 'up' | 'down' | 'top' | 'bottom') => void;
 
   // ── Actions: Tool & UI ───────────────────────────────────────
   setTool: (tool: Tool) => void;
@@ -74,12 +95,14 @@ interface CanvaState {
   setZoom: (zoom: number) => void;
   zoomDelta: (delta: number) => void;
   setRatio: (ratioId: string) => void;
+  nudgeSelected: (dx: number, dy: number) => void;
 
   // ── Actions: Stage ───────────────────────────────────────────
   clearStage: () => void;
 
   // ── Export helpers ───────────────────────────────────────────
   exportPageHTML: (pageIdx?: number) => string;
+  exportSlideshowHTML: () => string;
 }
 
 export const useCanvaStore = create<CanvaState>((set, get) => ({
@@ -91,6 +114,54 @@ export const useCanvaStore = create<CanvaState>((set, get) => ({
   tool: 'select',
   leftTab: 'pages',
   selectedElId: null,
+
+  // ── History ──────────────────────────────────────────────────
+  _history: [],
+  _historyIdx: -1,
+  _skipHistory: false,
+
+  _pushHistory: () => {
+    const { pages, currentPageIndex, ratioId, _history, _historyIdx, _skipHistory } = get();
+    if (_skipHistory) return;
+    const snapshot: Snapshot = { pages: JSON.parse(JSON.stringify(pages)), currentPageIndex, ratioId };
+    const newHistory = _history.slice(0, _historyIdx + 1);
+    newHistory.push(snapshot);
+    if (newHistory.length > MAX_HISTORY) newHistory.shift();
+    set({ _history: newHistory, _historyIdx: newHistory.length - 1 });
+  },
+
+  undo: () => {
+    const { _history, _historyIdx } = get();
+    if (_historyIdx <= 0) return;
+    const prev = _history[_historyIdx - 1];
+    if (!prev) return;
+    set({
+      ...JSON.parse(JSON.stringify(prev)),
+      _historyIdx: _historyIdx - 1,
+      _skipHistory: true,
+      selectedElId: null,
+    });
+    set({ _skipHistory: false });
+    toast.info('Undo');
+  },
+
+  redo: () => {
+    const { _history, _historyIdx } = get();
+    if (_historyIdx >= _history.length - 1) return;
+    const next = _history[_historyIdx + 1];
+    if (!next) return;
+    set({
+      ...JSON.parse(JSON.stringify(next)),
+      _historyIdx: _historyIdx + 1,
+      _skipHistory: true,
+      selectedElId: null,
+    });
+    set({ _skipHistory: false });
+    toast.info('Redo');
+  },
+
+  canUndo: () => get()._historyIdx > 0,
+  canRedo: () => get()._historyIdx < get()._history.length - 1,
 
   // ── Computed ─────────────────────────────────────────────────
   currentPage: () => get().pages[get().currentPageIndex],
@@ -111,7 +182,9 @@ export const useCanvaStore = create<CanvaState>((set, get) => ({
   addPage: () => {
     const pages = get().pages;
     const newPage = createPage('Halaman ' + (pages.length + 1));
+    get()._pushHistory();
     set({ pages: [...pages, newPage], currentPageIndex: pages.length, selectedElId: null });
+    toast.success('Halaman baru ditambahkan');
   },
 
   duplicatePage: () => {
@@ -125,18 +198,22 @@ export const useCanvaStore = create<CanvaState>((set, get) => ({
     });
     const newPages = [...pages];
     newPages.splice(currentPageIndex + 1, 0, clone);
+    get()._pushHistory();
     set({ pages: newPages, currentPageIndex: currentPageIndex + 1, selectedElId: null });
+    toast.success('Halaman diduplikat');
   },
 
   deletePage: () => {
     const { pages, currentPageIndex } = get();
-    if (pages.length <= 1) return;
+    if (pages.length <= 1) { toast.warning('Minimal 1 halaman'); return; }
+    get()._pushHistory();
     const newPages = pages.filter((_, i) => i !== currentPageIndex);
     set({
       pages: newPages,
       currentPageIndex: Math.max(0, currentPageIndex - 1),
       selectedElId: null,
     });
+    toast.success('Halaman dihapus');
   },
 
   setPageLabel: (label) => {
@@ -159,6 +236,7 @@ export const useCanvaStore = create<CanvaState>((set, get) => ({
     const newPages = [...pages];
     newPages[currentPageIndex] = { ...newPages[currentPageIndex], bgDataUrl: dataUrl };
     set({ pages: newPages });
+    toast.success('Background diterapkan');
   },
 
   setOverlay: (val) => {
@@ -192,7 +270,9 @@ export const useCanvaStore = create<CanvaState>((set, get) => ({
       ...page,
       elements: [...page.elements, el],
     };
+    get()._pushHistory();
     set({ pages: newPages, selectedElId: el.id });
+    toast.success(`${typeInfo?.name || type} ditambahkan`);
   },
 
   addKuisElement: (idx) => {
@@ -257,6 +337,7 @@ export const useCanvaStore = create<CanvaState>((set, get) => ({
     const { pages, currentPageIndex, selectedElId } = get();
     const page = pages[currentPageIndex];
     if (!page) return;
+    get()._pushHistory();
     const newPages = [...pages];
     newPages[currentPageIndex] = {
       ...page,
@@ -270,7 +351,31 @@ export const useCanvaStore = create<CanvaState>((set, get) => ({
 
   deleteSelected: () => {
     const { selectedElId, deleteElement } = get();
-    if (selectedElId) deleteElement(selectedElId);
+    if (selectedElId) {
+      deleteElement(selectedElId);
+      toast.success('Elemen dihapus');
+    }
+  },
+
+  moveElementZ: (elId, direction) => {
+    const { pages, currentPageIndex } = get();
+    const page = pages[currentPageIndex];
+    if (!page) return;
+    const idx = page.elements.findIndex(e => e.id === elId);
+    if (idx === -1) return;
+    get()._pushHistory();
+    const els = [...page.elements];
+    const el = els[idx];
+    els.splice(idx, 1);
+    let newIdx = idx;
+    if (direction === 'up') newIdx = Math.min(els.length, idx + 1);
+    else if (direction === 'down') newIdx = Math.max(0, idx - 1);
+    else if (direction === 'top') newIdx = els.length;
+    else if (direction === 'bottom') newIdx = 0;
+    els.splice(newIdx, 0, el);
+    const newPages = [...pages];
+    newPages[currentPageIndex] = { ...page, elements: els };
+    set({ pages: newPages });
   },
 
   toggleElementVisibility: (elId) => {
@@ -294,6 +399,23 @@ export const useCanvaStore = create<CanvaState>((set, get) => ({
   // ── Tool & UI ────────────────────────────────────────────────
   setTool: (tool) => set({ tool }),
   setLeftTab: (tab) => set({ leftTab: tab }),
+
+  nudgeSelected: (dx, dy) => {
+    const { selectedElId, pages, currentPageIndex } = get();
+    if (!selectedElId) return;
+    const page = pages[currentPageIndex];
+    if (!page) return;
+    const el = page.elements.find(e => e.id === selectedElId);
+    if (!el) return;
+    const newX = Math.max(0, Math.min(95, el.x + dx));
+    const newY = Math.max(0, Math.min(95, el.y + dy));
+    const newPages = [...pages];
+    newPages[currentPageIndex] = {
+      ...page,
+      elements: page.elements.map(e => e.id === selectedElId ? { ...e, x: newX, y: newY } : e),
+    };
+    set({ pages: newPages });
+  },
   setZoom: (zoom) => set({ zoom: Math.min(2, Math.max(0.25, zoom)) }),
   zoomDelta: (delta) => {
     const current = get().zoom;
@@ -304,9 +426,12 @@ export const useCanvaStore = create<CanvaState>((set, get) => ({
   // ── Stage ────────────────────────────────────────────────────
   clearStage: () => {
     const { pages, currentPageIndex } = get();
+    if (pages[currentPageIndex].elements.length === 0) return;
+    get()._pushHistory();
     const newPages = [...pages];
     newPages[currentPageIndex] = { ...newPages[currentPageIndex], elements: [] };
     set({ pages: newPages, selectedElId: null });
+    toast.success('Stage dibersihkan');
   },
 
   // ── Export ───────────────────────────────────────────────────
@@ -323,7 +448,7 @@ export const useCanvaStore = create<CanvaState>((set, get) => ({
 
     const elementsHTML = (page.elements || [])
       .filter(el => !el.hidden)
-      .map(el => {
+      .map((el, i) => {
         const style = `position:absolute;left:${el.x}%;top:${el.y}%;width:${el.w}%;height:${el.h}%;opacity:${(el.opacity || 100) / 100}`;
         if (el.type === 'teks') {
           return `<div style="${style}"><div style="font-size:${el.fontSize || 20}px;font-weight:700;color:#fff;text-shadow:0 2px 8px rgba(0,0,0,.5);padding:8px;line-height:1.4">${el.text || ''}</div></div>`;
@@ -331,14 +456,43 @@ export const useCanvaStore = create<CanvaState>((set, get) => ({
         if (el.type === 'shape') {
           return `<div style="${style}"><div style="width:100%;height:100%;background:${el.color || 'rgba(255,255,255,.15)'};border-radius:${el.radius || 8}px"></div></div>`;
         }
+        if (el.type === 'kuis') {
+          return `<div style="${style};background:rgba(245,200,66,.08);border:1px solid rgba(245,200,66,.2);border-radius:8px;padding:12px">
+            <div style="font-size:.9rem;font-weight:700;color:#f5c842;margin-bottom:8px">❓ ${(el.label || 'Kuis')}</div>
+            <div style="font-size:.8rem;color:rgba(255,255,255,.6)">Kuis pilihan ganda interaktif</div>
+          </div>`;
+        }
+        if (el.type === 'game') {
+          return `<div style="${style};background:rgba(56,217,217,.08);border:1px solid rgba(56,217,217,.2);border-radius:8px;display:flex;flex-direction:column;align-items:center;justify-content:center">
+            <span style="font-size:2rem">${el.icon || '🎮'}</span>
+            <span style="font-size:.85rem;font-weight:700;color:#3ecfcf;margin-top:4px">${el.label || 'Game'}</span>
+          </div>`;
+        }
         return `<div style="${style};display:flex;align-items:center;justify-content:center"><div style="font-size:1.5rem">${el.icon || ''}</div></div>`;
       })
-      .join('');
+      .join('\n    ');
 
     return `<!DOCTYPE html>
 <html lang="id"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
 <title>${page.label}</title><style>*{margin:0;padding:0;box-sizing:border-box}body{display:flex;align-items:center;justify-content:center;min-height:100vh;background:#0e0c15}
 .slide{position:relative;width:${ratio.w}px;height:${ratio.h}px;overflow:hidden;${bgStyle}}</style></head>
 <body><div class="slide">${elementsHTML}</div></body></html>`;
+  },
+
+  exportSlideshowHTML: () => {
+    const { pages } = get();
+    const ratio = RATIOS.find(r => r.id === get().ratioId) || RATIOS[0];
+    const slidesHtml = pages.map((p, i) => get().exportPageHTML(i).replace(/.*<body>/s, '').replace(/<\/body>.*/s, '').replace(/<div class="slide">/, `<div class="slide" data-slide="${i}" style="display:${i === 0 ? 'block' : 'none'}">`)).join('\n');
+
+    return `<!DOCTYPE html>
+<html lang="id"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Canva Slideshow</title><style>*{margin:0;padding:0;box-sizing:border-box}body{display:flex;align-items:center;justify-content:center;min-height:100vh;background:#0e0c15}
+.slide{position:relative;width:${ratio.w}px;height:${ratio.h}px;overflow:hidden;${pages[0]?.bgDataUrl ? `background-image:url('${pages[0].bgDataUrl}');background-size:cover` : `background:${pages[0]?.bgColor || '#1a1a2e'}`}}
+.nav{position:fixed;bottom:20px;display:flex;gap:8px;z-index:999}.nav button{padding:8px 20px;border:none;border-radius:8px;background:rgba(255,255,255,.1);color:#fff;cursor:pointer;font-size:14px;backdrop-filter:blur(8px)}.nav button:hover{background:rgba(255,255,255,.2)}.slide-num{position:fixed;top:20px;right:20px;color:rgba(255,255,255,.5);font-size:12px;z-index:999}</style></head>
+<body>
+${slidesHtml}
+<div class="nav"><button onclick="prevSlide()">← Prev</button><button onclick="nextSlide()">Next →</button></div>
+<div class="slide-num" id="slideNum">1/${pages.length}</div>
+<script>let cur=0;const total=${pages.length};const slides=document.querySelectorAll('.slide');function showSlide(n){slides.forEach((s,i)=>s.style.display=i===n?'block':'none');document.getElementById('slideNum').textContent=(n+1)+'/'+total}function nextSlide(){cur=(cur+1)%total;showSlide(cur)}function prevSlide(){cur=(cur-1+total)%total;showSlide(cur)}document.addEventListener('keydown',e=>{if(e.key==='ArrowRight')nextSlide();if(e.key==='ArrowLeft')prevSlide()});<\/script></body></html>`;
   },
 }));

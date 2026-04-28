@@ -1,6 +1,7 @@
 'use client';
 
 import { useCanvaStore } from '@/store/canva-store';
+import { toast } from 'sonner';
 
 export default function Toolbar() {
   const {
@@ -11,8 +12,13 @@ export default function Toolbar() {
     ratioId,
     clearStage,
     exportPageHTML,
+    exportSlideshowHTML,
     currentPageIndex,
     pages,
+    undo,
+    redo,
+    canUndo,
+    canRedo,
   } = useCanvaStore();
 
   const page = pages[currentPageIndex];
@@ -22,6 +28,7 @@ export default function Toolbar() {
     const html = exportPageHTML();
     const win = window.open('', '_blank');
     if (win) { win.document.write(html); win.document.close(); }
+    toast.success('Preview dibuka di tab baru');
   };
 
   const handleExport = () => {
@@ -33,24 +40,45 @@ export default function Toolbar() {
     a.download = `canva-page-${currentPageIndex + 1}.html`;
     a.click();
     URL.revokeObjectURL(url);
+    toast.success('Halaman diekspor sebagai HTML');
   };
 
   const handleExportSlideshow = () => {
-    const allPages = pages.map((p, i) => exportPageHTML(i)).join('');
-    const blob = new Blob([allPages], { type: 'text/html' });
+    const html = exportSlideshowHTML();
+    const blob = new Blob([html], { type: 'text/html' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
     a.download = 'canva-slideshow.html';
     a.click();
     URL.revokeObjectURL(url);
+    toast.success('Slideshow diekspor (' + pages.length + ' halaman)');
   };
 
   return (
-    <div className="flex items-center gap-1.5 px-3 py-1.5 bg-zinc-900/80 border-b border-zinc-700/50 text-xs">
+    <div className="flex items-center gap-1.5 px-3 py-1.5 bg-zinc-900/80 border-b border-zinc-700/50 text-xs select-none">
       {/* Logo + Title */}
       <span className="text-sm">🎨</span>
       <span className="font-bold text-zinc-100 min-w-0 truncate max-w-[140px]">{label}</span>
+      <div className="w-px h-5 bg-zinc-700 mx-1" />
+
+      {/* Undo/Redo */}
+      <button
+        onClick={undo}
+        disabled={!canUndo()}
+        title="Undo (Ctrl+Z)"
+        className={`p-1 rounded transition-colors ${canUndo() ? 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800' : 'text-zinc-700 cursor-not-allowed'}`}
+      >
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M3 7v6h6"/><path d="M21 17a9 9 0 0 0-9-9 9 9 0 0 0-6 2.3L3 13"/></svg>
+      </button>
+      <button
+        onClick={redo}
+        disabled={!canRedo()}
+        title="Redo (Ctrl+Y)"
+        className={`p-1 rounded transition-colors ${canRedo() ? 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800' : 'text-zinc-700 cursor-not-allowed'}`}
+      >
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M21 7v6h-6"/><path d="M3 17a9 9 0 0 1 9-9 9 9 0 0 1 6 2.3L21 13"/></svg>
+      </button>
       <div className="w-px h-5 bg-zinc-700 mx-1" />
 
       {/* Tool buttons */}
@@ -61,6 +89,7 @@ export default function Toolbar() {
             ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30'
             : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800'
         }`}
+        title="Pilih (V)"
       >
         ↖ Pilih
       </button>
@@ -71,6 +100,7 @@ export default function Toolbar() {
             ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30'
             : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800'
         }`}
+        title="Teks (T)"
       >
         T Teks
       </button>
@@ -80,16 +110,29 @@ export default function Toolbar() {
       <button onClick={handlePreview} title="Preview" className="p-1.5 rounded hover:bg-zinc-800 text-zinc-400 hover:text-zinc-200 transition-colors">👁</button>
       <button onClick={handleExport} title="Export HTML" className="p-1.5 rounded hover:bg-zinc-800 text-zinc-400 hover:text-zinc-200 transition-colors">📤</button>
       <button onClick={handleExportSlideshow} title="Export Slideshow" className="p-1.5 rounded hover:bg-zinc-800 text-zinc-400 hover:text-zinc-200 transition-colors">🎞</button>
-      <button onClick={() => { if (confirm('Bersihkan semua elemen di halaman ini?')) clearStage(); }} title="Bersihkan" className="p-1.5 rounded hover:bg-zinc-800 text-red-400 hover:text-red-300 transition-colors">🗑</button>
+      <button
+        onClick={() => { if (confirm('Bersihkan semua elemen di halaman ini?')) clearStage(); }}
+        title="Bersihkan"
+        className="p-1.5 rounded hover:bg-zinc-800 text-red-400 hover:text-red-300 transition-colors"
+      >
+        🗑
+      </button>
 
       {/* Ratio badge */}
       <span className="px-2 py-0.5 rounded bg-zinc-800 text-amber-400 font-bold text-[10px] ml-1">{ratioId}</span>
 
+      {/* Keyboard hints */}
+      <div className="hidden lg:flex items-center gap-2 ml-2 text-[9px] text-zinc-600">
+        <span>Del=hapus</span>
+        <span>Arrow=nudge</span>
+        <span>Ctrl+Z=undo</span>
+      </div>
+
       {/* Zoom controls */}
       <div className="flex items-center gap-1 ml-auto">
-        <button onClick={() => zoomDelta(-0.1)} className="w-6 h-6 flex items-center justify-center rounded bg-zinc-800 hover:bg-zinc-700 text-zinc-300 text-sm transition-colors">−</button>
+        <button onClick={() => zoomDelta(-0.1)} className="w-6 h-6 flex items-center justify-center rounded bg-zinc-800 hover:bg-zinc-700 text-zinc-300 text-sm transition-colors" title="Zoom out">−</button>
         <span className="text-zinc-400 text-[11px] font-mono w-10 text-center">{Math.round(zoom * 100)}%</span>
-        <button onClick={() => zoomDelta(0.1)} className="w-6 h-6 flex items-center justify-center rounded bg-zinc-800 hover:bg-zinc-700 text-zinc-300 text-sm transition-colors">+</button>
+        <button onClick={() => zoomDelta(0.1)} className="w-6 h-6 flex items-center justify-center rounded bg-zinc-800 hover:bg-zinc-700 text-zinc-300 text-sm transition-colors" title="Zoom in">+</button>
       </div>
     </div>
   );
