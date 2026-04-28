@@ -1,0 +1,285 @@
+'use client';
+
+import { useState, useEffect, useCallback } from 'react';
+import dynamic from 'next/dynamic';
+import { useAuthoringStore } from '@/store/authoring-store';
+import type { PanelId } from '@/store/authoring-store';
+
+import Dashboard from './Dashboard';
+import Dokumen from './Dokumen';
+import Konten from './Konten';
+import AutoGenerate from './AutoGenerate';
+import Projects from './Projects';
+import ImportExport from './ImportExport';
+import Riwayat from './Riwayat';
+
+// Lazy-load CanvaBuilder (heavy component, SSR disabled)
+const CanvaBuilder = dynamic(() => import('@/components/canva/CanvaBuilder'), {
+  ssr: false,
+  loading: () => (
+    <div className="h-full w-full flex items-center justify-center bg-zinc-950">
+      <div className="text-center">
+        <div className="text-4xl mb-4 animate-pulse">🎨</div>
+        <div className="text-zinc-400 text-sm">Memuat Canva Editor...</div>
+      </div>
+    </div>
+  ),
+});
+
+// ── Navigation items ─────────────────────────────────────────────
+interface NavItem {
+  id: PanelId;
+  icon: string;
+  label: string;
+}
+
+const NAV_ITEMS: NavItem[] = [
+  { id: 'dashboard', icon: '🏠', label: 'Dashboard' },
+  { id: 'dokumen', icon: '📐', label: 'Dokumen' },
+  { id: 'konten', icon: '📚', label: 'Konten' },
+  { id: 'canva', icon: '🎨', label: 'Canva' },
+  { id: 'autogen', icon: '⚡', label: 'Auto-Generate' },
+];
+
+const NAV_ITEMS_2: NavItem[] = [
+  { id: 'projects', icon: '📁', label: 'Proyek' },
+  { id: 'import', icon: '📥', label: 'Import/Export' },
+  { id: 'versions', icon: '🕐', label: 'Riwayat' },
+];
+
+const PANEL_TITLES: Record<PanelId, string> = {
+  dashboard: 'Dashboard',
+  dokumen: 'Dokumen',
+  konten: 'Konten Pembelajaran',
+  canva: 'Canva Editor',
+  autogen: 'Auto-Generate',
+  projects: 'Kelola Proyek',
+  import: 'Import / Export',
+  versions: 'Riwayat Versi',
+};
+
+// ── Main Component ──────────────────────────────────────────────
+export default function AuthoringTool() {
+  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const activePanel = useAuthoringStore((s) => s.activePanel);
+  const setActivePanel = useAuthoringStore((s) => s.setActivePanel);
+  const dirty = useAuthoringStore((s) => s.dirty);
+  const meta = useAuthoringStore((s) => s.meta);
+  const saveToStorage = useAuthoringStore((s) => s.saveToStorage);
+  const loadFromStorage = useAuthoringStore((s) => s.loadFromStorage);
+
+  // Load from storage on mount
+  useEffect(() => {
+    loadFromStorage();
+  }, [loadFromStorage]);
+
+  // Auto-save every 8s when dirty
+  useEffect(() => {
+    if (!dirty) return;
+    const timer = setTimeout(() => {
+      const s = useAuthoringStore.getState();
+      if (s.dirty) {
+        try {
+          const data = {
+            meta: s.meta, cp: s.cp, tp: s.tp, atp: s.atp, alur: s.alur,
+            skenario: s.skenario, kuis: s.kuis, modules: s.modules,
+            games: s.games, materi: s.materi, guruPw: s.guruPw,
+          };
+          localStorage.setItem('at_state_v1', JSON.stringify(data));
+          useAuthoringStore.setState({ dirty: false });
+        } catch { /* ignore */ }
+      }
+    }, 8000);
+    return () => clearTimeout(timer);
+  }, [dirty]);
+
+  // Keyboard shortcut: Ctrl+S to save
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+        e.preventDefault();
+        saveToStorage();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [saveToStorage]);
+
+  const exportJSON = useCallback(() => {
+    const s = useAuthoringStore.getState();
+    const data = {
+      meta: s.meta, cp: s.cp, tp: s.tp, atp: s.atp, alur: s.alur,
+      skenario: s.skenario, kuis: s.kuis, modules: s.modules,
+      games: s.games, materi: s.materi,
+    };
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `authoring-tool-${Date.now()}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }, []);
+
+  const renderPanel = () => {
+    switch (activePanel) {
+      case 'dashboard': return <Dashboard />;
+      case 'dokumen': return <Dokumen />;
+      case 'konten': return <Konten />;
+      case 'canva': return <CanvaBuilder />;
+      case 'autogen': return <AutoGenerate />;
+      case 'projects': return <Projects />;
+      case 'import': return <ImportExport />;
+      case 'versions': return <Riwayat />;
+      default: return <Dashboard />;
+    }
+  };
+
+  // For Canva panel, render full-bleed (no padding)
+  const isCanva = activePanel === 'canva';
+
+  return (
+    <div className="h-screen w-screen flex bg-zinc-950 text-zinc-200 overflow-hidden">
+      {/* ── Sidebar ─────────────────────────────────────────── */}
+      <aside
+        className={`${
+          sidebarOpen ? 'w-56' : 'w-14'
+        } flex-shrink-0 bg-zinc-900 border-r border-zinc-800 flex flex-col transition-all duration-200`}
+        style={{ minHeight: '100vh' }}
+      >
+        {/* Logo */}
+        <div className="px-4 py-4 border-b border-zinc-800">
+          {sidebarOpen ? (
+            <div>
+              <div className="text-sm font-bold text-zinc-100">Authoring Tool</div>
+              <div className="text-[0.65rem] text-zinc-500 mt-0.5">Media Pembelajaran Interaktif</div>
+              <span className="inline-block mt-1 text-[0.6rem] font-semibold bg-amber-500/15 text-amber-400 px-1.5 py-0.5 rounded">
+                v3.0
+              </span>
+            </div>
+          ) : (
+            <div className="text-center text-lg">📝</div>
+          )}
+        </div>
+
+        {/* Navigation */}
+        <nav className="flex-1 py-2 px-2 space-y-0.5 overflow-y-auto">
+          {NAV_ITEMS.map((item) => (
+            <button
+              key={item.id}
+              onClick={() => setActivePanel(item.id)}
+              className={`w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-sm transition-colors ${
+                activePanel === item.id
+                  ? 'bg-amber-500/15 text-amber-400 font-semibold'
+                  : 'text-zinc-400 hover:bg-zinc-800 hover:text-zinc-200'
+              }`}
+              title={item.label}
+            >
+              <span className="text-base flex-shrink-0">{item.icon}</span>
+              {sidebarOpen && <span>{item.label}</span>}
+            </button>
+          ))}
+
+          {/* Divider */}
+          <div className="my-2 border-t border-zinc-800" />
+
+          {NAV_ITEMS_2.map((item) => (
+            <button
+              key={item.id}
+              onClick={() => setActivePanel(item.id)}
+              className={`w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-sm transition-colors ${
+                activePanel === item.id
+                  ? 'bg-amber-500/15 text-amber-400 font-semibold'
+                  : 'text-zinc-400 hover:bg-zinc-800 hover:text-zinc-200'
+              }`}
+              title={item.label}
+            >
+              <span className="text-base flex-shrink-0">{item.icon}</span>
+              {sidebarOpen && <span>{item.label}</span>}
+            </button>
+          ))}
+        </nav>
+
+        {/* Bottom Actions */}
+        {sidebarOpen && (
+          <div className="px-3 py-3 border-t border-zinc-800 space-y-1.5">
+            <button
+              onClick={saveToStorage}
+              className="w-full px-3 py-2 bg-zinc-800 hover:bg-zinc-700 text-zinc-200 text-xs font-medium rounded-lg transition-colors flex items-center gap-2"
+            >
+              💾 Simpan Semua
+            </button>
+            <button
+              onClick={exportJSON}
+              className="w-full px-3 py-2 bg-zinc-800 hover:bg-zinc-700 text-zinc-200 text-xs font-medium rounded-lg transition-colors flex items-center gap-2"
+            >
+              📤 Export JSON
+            </button>
+          </div>
+        )}
+      </aside>
+
+      {/* ── Main Area ───────────────────────────────────────── */}
+      <div className="flex-1 flex flex-col min-w-0">
+        {/* ── Header ───────────────────────────────────────── */}
+        {!isCanva && (
+          <header className="h-12 flex-shrink-0 bg-zinc-900 border-b border-zinc-800 flex items-center gap-3 px-4">
+            <button
+              onClick={() => setSidebarOpen(!sidebarOpen)}
+              className="text-zinc-400 hover:text-zinc-200 transition-colors text-lg w-7 h-7 flex items-center justify-center rounded hover:bg-zinc-800"
+            >
+              {sidebarOpen ? '☰' : '▶'}
+            </button>
+
+            <div className="text-sm font-medium text-zinc-200">
+              {PANEL_TITLES[activePanel]}
+              <span className="text-zinc-500 font-normal"> / {meta.judulPertemuan || 'Proyek Baru'}</span>
+            </div>
+
+            {/* Dirty indicator */}
+            <div
+              className={`w-2 h-2 rounded-full flex-shrink-0 transition-opacity duration-300 ${
+                dirty ? 'bg-amber-400 opacity-100' : 'opacity-0'
+              }`}
+              title="Perubahan belum disimpan"
+            />
+
+            <div className="ml-auto flex items-center gap-2">
+              <button
+                onClick={() => setActivePanel('canva')}
+                className="px-3 py-1.5 bg-zinc-800 hover:bg-zinc-700 text-zinc-200 text-xs rounded-lg transition-colors flex items-center gap-1.5"
+              >
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+                  <circle cx="12" cy="12" r="3" />
+                </svg>
+                Live Preview
+              </button>
+              <button
+                onClick={() => setActivePanel('import')}
+                className="px-3 py-1.5 bg-zinc-800 hover:bg-zinc-700 text-zinc-200 text-xs rounded-lg transition-colors"
+              >
+                📥 Import
+              </button>
+              <button
+                onClick={saveToStorage}
+                className="px-3 py-1.5 bg-amber-500 hover:bg-amber-400 text-black text-xs font-semibold rounded-lg transition-colors"
+              >
+                💾 Simpan
+              </button>
+            </div>
+          </header>
+        )}
+
+        {/* ── Content ──────────────────────────────────────── */}
+        <main
+          className={`flex-1 overflow-y-auto ${
+            isCanva ? '' : 'bg-zinc-950'
+          }`}
+        >
+          {renderPanel()}
+        </main>
+      </div>
+    </div>
+  );
+}

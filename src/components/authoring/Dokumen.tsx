@@ -1,0 +1,518 @@
+'use client';
+
+import { useState } from 'react';
+import { useAuthoringStore, VERB_OPTIONS, COLOR_OPTIONS } from '@/store/authoring-store';
+import type { PanelId } from '@/store/authoring-store';
+
+// ── Accordion Item ───────────────────────────────────────────────
+function AccordionSection({
+  icon,
+  title,
+  defaultOpen,
+  children,
+}: {
+  icon: string;
+  title: string;
+  defaultOpen?: boolean;
+  children: React.ReactNode;
+}) {
+  const [open, setOpen] = useState(defaultOpen ?? false);
+
+  return (
+    <div className="border border-zinc-800 rounded-lg overflow-hidden">
+      <button
+        onClick={() => setOpen(!open)}
+        className="w-full flex items-center justify-between px-4 py-3 bg-zinc-900 hover:bg-zinc-800/80 transition-colors"
+      >
+        <div className="flex items-center gap-2.5">
+          <span>{icon}</span>
+          <span className="text-sm font-semibold text-zinc-200">{title}</span>
+        </div>
+        <span className={`text-zinc-500 text-xs transition-transform duration-200 ${open ? 'rotate-180' : ''}`}>
+          ▾
+        </span>
+      </button>
+      {open && (
+        <div className="p-4 bg-zinc-950/50 space-y-4 border-t border-zinc-800">
+          {children}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Shared field styles ──────────────────────────────────────────
+const fieldLabel = 'block text-xs font-medium text-zinc-400 mb-1.5';
+const fieldInput = 'w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-sm text-zinc-200 placeholder:text-zinc-600 focus:outline-none focus:ring-2 focus:ring-amber-500/50 focus:border-amber-500/50 transition-colors';
+const fieldTextarea = 'w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-sm text-zinc-200 placeholder:text-zinc-600 focus:outline-none focus:ring-2 focus:ring-amber-500/50 focus:border-amber-500/50 transition-colors resize-none';
+
+// ── Identitas Media ─────────────────────────────────────────────
+function MetaSection() {
+  const meta = useAuthoringStore((s) => s.meta);
+  const updateMeta = useAuthoringStore((s) => s.updateMeta);
+
+  const fields: { key: keyof typeof meta; label: string; placeholder: string; type?: string; maxLength?: number }[] = [
+    { key: 'judulPertemuan', label: 'Judul Pertemuan', placeholder: 'Pertemuan 1 – Hakikat Norma' },
+    { key: 'subjudul', label: 'Subjudul / Pertanyaan Pemantik', placeholder: 'Mengapa manusia membutuhkan norma?' },
+    { key: 'ikon', label: 'Ikon Cover (emoji)', placeholder: '🧑‍🤝‍🧑', maxLength: 8 },
+    { key: 'durasi', label: 'Durasi', placeholder: '2 × 40 menit' },
+    { key: 'mapel', label: 'Mata Pelajaran', placeholder: 'PPKn' },
+    { key: 'kelas', label: 'Kelas', placeholder: 'VII' },
+    { key: 'kurikulum', label: 'Kurikulum', placeholder: 'Kurikulum Merdeka' },
+    { key: 'namaBab', label: 'Nama Bab (navbar)', placeholder: 'Hakikat Norma' },
+  ];
+
+  return (
+    <div className="space-y-3">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+        {fields.map((f) => (
+          <div key={f.key}>
+            <label className={fieldLabel}>{f.label}</label>
+            <input
+              type={f.type || 'text'}
+              className={fieldInput}
+              placeholder={f.placeholder}
+              maxLength={f.maxLength}
+              value={meta[f.key]}
+              onChange={(e) => updateMeta(f.key, e.target.value)}
+            />
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ── Capaian Pembelajaran ─────────────────────────────────────────
+function CpSection() {
+  const cp = useAuthoringStore((s) => s.cp);
+  const updateCp = useAuthoringStore((s) => s.updateCp);
+  const addProfil = useAuthoringStore((s) => s.addProfil);
+  const removeProfil = useAuthoringStore((s) => s.removeProfil);
+  const [profilInput, setProfilInput] = useState('');
+
+  const handleProfilKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' || e.key === ',') {
+      e.preventDefault();
+      const val = profilInput.trim();
+      if (!val) return;
+      addProfil(val);
+      setProfilInput('');
+    }
+  };
+
+  return (
+    <div className="space-y-3">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+        <div>
+          <label className={fieldLabel}>Elemen</label>
+          <input
+            className={fieldInput}
+            placeholder="Pancasila"
+            value={cp.elemen}
+            onChange={(e) => updateCp('elemen', e.target.value)}
+          />
+        </div>
+        <div>
+          <label className={fieldLabel}>Sub-Elemen</label>
+          <input
+            className={fieldInput}
+            placeholder="Pemahaman norma dan nilai"
+            value={cp.subElemen}
+            onChange={(e) => updateCp('subElemen', e.target.value)}
+          />
+        </div>
+      </div>
+      <div>
+        <label className={fieldLabel}>Capaian Fase (narasi lengkap)</label>
+        <textarea
+          className={fieldTextarea}
+          rows={4}
+          placeholder="Peserta didik mampu…"
+          value={cp.capaianFase}
+          onChange={(e) => updateCp('capaianFase', e.target.value)}
+        />
+      </div>
+      <div>
+        <label className={fieldLabel}>
+          Profil Pelajar Pancasila{' '}
+          <span className="text-zinc-600 font-normal">(ketik + Enter)</span>
+        </label>
+        <div className="flex flex-wrap gap-2 p-2 bg-zinc-800 border border-zinc-700 rounded-lg min-h-[42px]">
+          {cp.profil.map((p, i) => (
+            <span
+              key={i}
+              className="inline-flex items-center gap-1 bg-zinc-700 text-zinc-200 text-xs px-2.5 py-1 rounded-md"
+            >
+              {p}
+              <button
+                onClick={() => removeProfil(i)}
+                className="text-zinc-400 hover:text-red-400 ml-0.5"
+              >
+                ×
+              </button>
+            </span>
+          ))}
+          <input
+            className="bg-transparent text-sm text-zinc-200 placeholder:text-zinc-600 outline-none flex-1 min-w-[120px]"
+            placeholder="Tambah profil…"
+            value={profilInput}
+            onChange={(e) => setProfilInput(e.target.value)}
+            onKeyDown={handleProfilKeyDown}
+          />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── Tujuan Pembelajaran ─────────────────────────────────────────
+function TpSection() {
+  const tp = useAuthoringStore((s) => s.tp);
+  const addTp = useAuthoringStore((s) => s.addTp);
+  const deleteTp = useAuthoringStore((s) => s.deleteTp);
+  const updateTp = useAuthoringStore((s) => s.updateTp);
+
+  if (!tp.length) {
+    return (
+      <div className="text-center py-8">
+        <div className="text-3xl mb-2">🎯</div>
+        <p className="text-sm text-zinc-500">Belum ada Tujuan Pembelajaran.</p>
+        <button
+          onClick={addTp}
+          className="mt-3 px-4 py-2 bg-amber-500 hover:bg-amber-400 text-black font-semibold text-sm rounded-lg transition-colors"
+        >
+          ＋ Tambah TP
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+      {tp.map((item, i) => (
+        <div key={i} className="bg-zinc-800/50 border border-zinc-700/50 rounded-lg p-4 space-y-3">
+          {/* Header */}
+          <div className="flex items-center gap-2">
+            <div
+              className="w-7 h-7 rounded-md flex items-center justify-center text-xs font-bold flex-shrink-0"
+              style={{ background: `${item.color}22`, color: item.color }}
+            >
+              {i + 1}
+            </div>
+            <span className="text-sm font-medium text-zinc-200">Tujuan Pembelajaran {i + 1}</span>
+            <button
+              onClick={() => deleteTp(i)}
+              className="ml-auto text-zinc-500 hover:text-red-400 transition-colors text-sm"
+            >
+              🗑️
+            </button>
+          </div>
+
+          {/* Verb & Pertemuan */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div>
+              <label className={fieldLabel}>Kata Kerja Operasional</label>
+              <select
+                className={fieldInput}
+                value={item.verb}
+                onChange={(e) => updateTp(i, 'verb', e.target.value)}
+              >
+                {VERB_OPTIONS.map((v) => (
+                  <option key={v} value={v}>{v}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className={fieldLabel}>Pertemuan ke-</label>
+              <input
+                type="number"
+                min={1}
+                max={10}
+                className={fieldInput}
+                value={item.pertemuan}
+                onChange={(e) => updateTp(i, 'pertemuan', parseInt(e.target.value) || 1)}
+              />
+            </div>
+          </div>
+
+          {/* Deskripsi */}
+          <div>
+            <label className={fieldLabel}>Deskripsi</label>
+            <textarea
+              className={fieldTextarea}
+              rows={2}
+              placeholder="jelaskan tujuan pembelajaran…"
+              value={item.desc}
+              onChange={(e) => updateTp(i, 'desc', e.target.value)}
+            />
+          </div>
+
+          {/* Color Picker */}
+          <div>
+            <label className={fieldLabel}>Warna Aksen</label>
+            <div className="flex gap-2 flex-wrap">
+              {COLOR_OPTIONS.map((c) => (
+                <button
+                  key={c}
+                  onClick={() => updateTp(i, 'color', c)}
+                  className="w-6 h-6 rounded-full transition-all hover:scale-110"
+                  style={{
+                    background: c,
+                    border: item.color === c ? '2px solid #fff' : '2px solid transparent',
+                  }}
+                />
+              ))}
+            </div>
+          </div>
+        </div>
+      ))}
+
+      <button
+        onClick={addTp}
+        className="px-4 py-2 bg-amber-500 hover:bg-amber-400 text-black font-semibold text-sm rounded-lg transition-colors"
+      >
+        ＋ Tambah TP
+      </button>
+    </div>
+  );
+}
+
+// ── Alur Tujuan Pembelajaran ────────────────────────────────────
+function AtpSection() {
+  const atp = useAuthoringStore((s) => s.atp);
+  const updateAtpNamaBab = useAuthoringStore((s) => s.updateAtpNamaBab);
+  const addAtpPertemuan = useAuthoringStore((s) => s.addAtpPertemuan);
+  const deleteAtpPertemuan = useAuthoringStore((s) => s.deleteAtpPertemuan);
+  const updateAtpPertemuan = useAuthoringStore((s) => s.updateAtpPertemuan);
+
+  return (
+    <div className="space-y-3">
+      <div>
+        <label className={fieldLabel}>Nama Bab / Unit</label>
+        <input
+          className={fieldInput}
+          placeholder="Bab 3 — Patuh terhadap Norma"
+          value={atp.namaBab}
+          onChange={(e) => updateAtpNamaBab(e.target.value)}
+        />
+      </div>
+
+      {!atp.pertemuan.length ? (
+        <div className="text-center py-6">
+          <div className="text-3xl mb-2">📅</div>
+          <p className="text-sm text-zinc-500">Belum ada pertemuan.</p>
+        </div>
+      ) : (
+        <div className="space-y-3">
+          {atp.pertemuan.map((p, i) => (
+            <div key={i} className="bg-zinc-800/50 border border-zinc-700/50 rounded-lg p-4 space-y-3">
+              <div className="flex items-center gap-2">
+                <div className="w-7 h-7 rounded-md bg-amber-500/15 text-amber-400 flex items-center justify-center text-xs font-bold flex-shrink-0">
+                  P{i + 1}
+                </div>
+                <span className="text-sm font-medium text-zinc-200">Pertemuan {i + 1}</span>
+                <button
+                  onClick={() => deleteAtpPertemuan(i)}
+                  className="ml-auto text-zinc-500 hover:text-red-400 transition-colors text-sm"
+                >
+                  🗑️
+                </button>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div>
+                  <label className={fieldLabel}>Judul Pertemuan</label>
+                  <input
+                    className={fieldInput}
+                    placeholder="Hakikat Norma"
+                    value={p.judul}
+                    onChange={(e) => updateAtpPertemuan(i, 'judul', e.target.value)}
+                  />
+                </div>
+                <div>
+                  <label className={fieldLabel}>Durasi</label>
+                  <input
+                    className={fieldInput}
+                    placeholder="2×40 menit"
+                    value={p.durasi}
+                    onChange={(e) => updateAtpPertemuan(i, 'durasi', e.target.value)}
+                  />
+                </div>
+              </div>
+              <div>
+                <label className={fieldLabel}>TP yang Dicapai</label>
+                <input
+                  className={fieldInput}
+                  placeholder="TP 1 — Menjelaskan pengertian norma"
+                  value={p.tp}
+                  onChange={(e) => updateAtpPertemuan(i, 'tp', e.target.value)}
+                />
+              </div>
+              <div>
+                <label className={fieldLabel}>Kegiatan Pembelajaran</label>
+                <textarea
+                  className={fieldTextarea}
+                  rows={2}
+                  placeholder="Apersepsi → Materi → Diskusi…"
+                  value={p.kegiatan}
+                  onChange={(e) => updateAtpPertemuan(i, 'kegiatan', e.target.value)}
+                />
+              </div>
+              <div>
+                <label className={fieldLabel}>Penilaian</label>
+                <input
+                  className={fieldInput}
+                  placeholder="Observasi + Pemantik"
+                  value={p.penilaian}
+                  onChange={(e) => updateAtpPertemuan(i, 'penilaian', e.target.value)}
+                />
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      <button
+        onClick={addAtpPertemuan}
+        className="px-4 py-2 bg-amber-500 hover:bg-amber-400 text-black font-semibold text-sm rounded-lg transition-colors"
+      >
+        ＋ Tambah Pertemuan
+      </button>
+    </div>
+  );
+}
+
+// ── Alur Kegiatan ───────────────────────────────────────────────
+function AlurSection() {
+  const alur = useAuthoringStore((s) => s.alur);
+  const addAlur = useAuthoringStore((s) => s.addAlur);
+  const deleteAlur = useAuthoringStore((s) => s.deleteAlur);
+  const updateAlur = useAuthoringStore((s) => s.updateAlur);
+
+  const faseColors: Record<string, string> = {
+    Pendahuluan: '#f9c82e',
+    Inti: '#3ecfcf',
+    Penutup: '#34d399',
+  };
+
+  return (
+    <div className="space-y-4">
+      {!alur.length ? (
+        <div className="text-center py-6">
+          <div className="text-3xl mb-2">📋</div>
+          <p className="text-sm text-zinc-500">Belum ada langkah.</p>
+        </div>
+      ) : (
+        alur.map((step, i) => {
+          const col = faseColors[step.fase] || '#a78bfa';
+          return (
+            <div key={i} className="bg-zinc-800/50 border border-zinc-700/50 rounded-lg p-4 space-y-3">
+              <div className="flex items-center gap-2">
+                <div
+                  className="w-7 h-7 rounded-md flex items-center justify-center text-xs font-bold flex-shrink-0"
+                  style={{ background: `${col}22`, color: col }}
+                >
+                  {i + 1}
+                </div>
+                <span className="text-sm font-medium text-zinc-200">{step.judul || `Langkah ${i + 1}`}</span>
+                <button
+                  onClick={() => deleteAlur(i)}
+                  className="ml-auto text-zinc-500 hover:text-red-400 transition-colors text-sm"
+                >
+                  🗑️
+                </button>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                <div>
+                  <label className={fieldLabel}>Fase</label>
+                  <select
+                    className={fieldInput}
+                    value={step.fase}
+                    onChange={(e) => updateAlur(i, 'fase', e.target.value)}
+                  >
+                    {['Pendahuluan', 'Inti', 'Penutup'].map((f) => (
+                      <option key={f} value={f}>{f}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className={fieldLabel}>Durasi</label>
+                  <input
+                    className={fieldInput}
+                    placeholder="10 menit"
+                    value={step.durasi}
+                    onChange={(e) => updateAlur(i, 'durasi', e.target.value)}
+                  />
+                </div>
+                <div>
+                  <label className={fieldLabel}>Nama Kegiatan</label>
+                  <input
+                    className={fieldInput}
+                    placeholder="Apersepsi"
+                    value={step.judul}
+                    onChange={(e) => updateAlur(i, 'judul', e.target.value)}
+                  />
+                </div>
+              </div>
+              <div>
+                <label className={fieldLabel}>Deskripsi Kegiatan</label>
+                <textarea
+                  className={fieldTextarea}
+                  rows={2}
+                  placeholder="Detail kegiatan…"
+                  value={step.deskripsi}
+                  onChange={(e) => updateAlur(i, 'deskripsi', e.target.value)}
+                />
+              </div>
+            </div>
+          );
+        })
+      )}
+
+      <button
+        onClick={addAlur}
+        className="px-4 py-2 bg-amber-500 hover:bg-amber-400 text-black font-semibold text-sm rounded-lg transition-colors"
+      >
+        ＋ Tambah Langkah
+      </button>
+    </div>
+  );
+}
+
+// ── Main Dokumen Panel ──────────────────────────────────────────
+export default function Dokumen() {
+  return (
+    <div className="p-6 space-y-5 max-w-4xl">
+      <div>
+        <h2 className="text-xl font-bold text-zinc-100 flex items-center gap-2">
+          <span>📐</span> Dokumen Pembelajaran
+        </h2>
+        <p className="text-sm text-zinc-400 mt-1">
+          Lengkapi semua dokumen perencanaan pembelajaran dalam satu halaman.
+        </p>
+      </div>
+
+      <div className="space-y-3">
+        <AccordionSection icon="🏷️" title="Identitas Media" defaultOpen>
+          <MetaSection />
+        </AccordionSection>
+
+        <AccordionSection icon="📋" title="Capaian Pembelajaran">
+          <CpSection />
+        </AccordionSection>
+
+        <AccordionSection icon="🎯" title="Tujuan Pembelajaran">
+          <TpSection />
+        </AccordionSection>
+
+        <AccordionSection icon="📅" title="Alur Tujuan Pembelajaran">
+          <AtpSection />
+        </AccordionSection>
+
+        <AccordionSection icon="🗺️" title="Alur Kegiatan">
+          <AlurSection />
+        </AccordionSection>
+      </div>
+    </div>
+  );
+}
