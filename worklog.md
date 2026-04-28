@@ -50,3 +50,21 @@ Stage Summary:
 - Files modified: index.html, style.css, liveview.js, liveview_enhancements.js
 - Key improvements: resizable panel, keyboard shortcuts, loading states, better device controls, sync indicators, first-use tooltip, error recovery
 - Preview is running and accessible
+
+---
+Task ID: 1
+Agent: Main Agent
+Task: Restrukturisasi kode live view agar lebih efisien
+
+Work Log:
+- Menganalisis seluruh arsitektur sinkronisasi live view
+- Identifikasi 3 masalah utama: triple markDirty patch, AT_LIVE_SYNC polling 1.5s, double debounce
+- Restrukturisasi liveview.js: hapus top-level markDirty patch, hapus markDirty patch dari AT_UNDO.init(), buat unified markDirty hook di DOMContentLoaded
+- Restrukturisasi liveview_enhancements.js: hapus AT_LIVE_SYNC seluruhnya, hapus AT_PAGE_SYNC, hapus polling, hapus markDirty patch ke-3, pertahankan AT_LAYOUT saja
+- Copy semua file yang diperbaiki ke /home/z/my-project/public/
+
+Stage Summary:
+- Arsitektur baru: Form change → markDirty() → [dirty + undo + scheduleRefresh] (1 debounce 300ms)
+- Dihapus: AT_LIVE_SYNC (objek + event listener + polling), AT_PAGE_SYNC, 2 dari 3 markDirty patch, double debounce
+- Dipertahankan: AT_SPLITVIEW, AT_UNDO, AT_LAYOUT, AT_SK_EDITOR, AT_FUNGSI_EDITOR, AT_JSON_IO
+- File diubah: liveview.js, liveview_enhancements.js

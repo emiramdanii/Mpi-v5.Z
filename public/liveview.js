@@ -1,17 +1,20 @@
 // ═══════════════════════════════════════════════════════════════
-// LIVEVIEW.JS — Split-View Live Preview + Missing Editors v1.3
+// LIVEVIEW.JS — Split-View Live Preview v2.1 (Restructured)
 // Berisi:
 //   AT_SPLITVIEW  — live preview berdampingan dengan editor
+//   AT_UNDO       — undo/redo history (Ctrl+Z / Ctrl+Y)
 //   AT_SK_EDITOR  — skenario detail editor (dialog + choices)
 //   AT_FUNGSI_EDITOR — edit tab fungsi norma
-//   AT_UNDO       — undo/redo history (Ctrl+Z / Ctrl+Y)
 //   AT_JSON_IO    — import/export JSON state
+//
+// Arsitektur sinkronisasi:
+//   Form change → markDirty() → [dirty state + undo + scheduleRefresh]
+//   Tidak ada polling, tidak ada event listener ganda.
 // ═══════════════════════════════════════════════════════════════
 
-/* ═══════════════════════════════════════════════════════════════
-   AT_SPLITVIEW — Live preview di sebelah editor  v2.0
-   Improvements: resizable, keyboard shortcuts, loading/empty state,
-   better sync indicator, desktop device, smooth transitions
+/* ══════════════════════════════════════════════════════════════
+   AT_SPLITVIEW — Live preview di sebelah editor  v2.1
+   Single entry point: scheduleRefresh() → debounced refresh()
    ══════════════════════════════════════════════════════════════ */
 window.AT_SPLITVIEW = {
   active: false,
@@ -25,8 +28,8 @@ window.AT_SPLITVIEW = {
   _isResizing: false,
   _resizeStartX: 0,
   _resizeStartWidth: 0,
-  _tooltipShown: false,
 
+  /* ── Toggle split view ─────────────────────────────────── */
   toggle() {
     this.active = !this.active;
     const app  = document.getElementById("app");
@@ -39,20 +42,12 @@ window.AT_SPLITVIEW = {
       app.style.setProperty('--split-width', this._splitWidth + 'px');
       if (pane) pane.style.display = "flex";
       if (btn)  btn.classList.add("active");
-      // Show tooltip on first use
-      if (!this._tooltipShown) {
-        this._tooltipShown = true;
-        const tip = document.getElementById("splitTooltip");
-        if (tip) { tip.style.display = "flex"; setTimeout(() => tip.style.display = "none", 6000); }
-      }
-      this.refresh();
-      // Init resize handle
       this._initResizeHandle();
+      this.refresh();
     } else {
       app.classList.remove("split-active", "resizing");
       if (pane) pane.style.display = "none";
       if (btn)  btn.classList.remove("active");
-      // Hide loading & empty state when closing
       const loading = document.getElementById("splitLoading");
       if (loading) loading.style.display = "none";
     }
@@ -60,38 +55,33 @@ window.AT_SPLITVIEW = {
 
   setDevice(d) {
     this._device = d;
-    // Update new device buttons
     document.querySelectorAll(".split-device-btn").forEach(b => {
       b.classList.toggle("active", b.dataset.device === d);
     });
     this.refresh();
   },
 
-  // Called on any state change — debounced 300ms
+  /* ── Single entry point: dipanggil dari unified markDirty ── */
   scheduleRefresh() {
     if (!this.active) return;
-    // Clear cache so next refresh always rebuilds
-    this._lastHTML = "";
+    this._lastHTML = ""; // Force rebuild
     clearTimeout(this._debounceTimer);
-    this._debounceTimer = setTimeout(() => {
-      this.refresh();
-    }, 300);
+    this._debounceTimer = setTimeout(() => this.refresh(), 300);
   },
 
+  /* ── Build & render preview ke iframe ───────────────────── */
   refresh() {
-    if (!this.active) return;
+    if (!this.active || !window.AT_PREVIEW) return;
     const frame = document.getElementById("split-frame");
     const loading = document.getElementById("splitLoading");
     const emptyState = document.getElementById("splitEmptyState");
     if (!frame) return;
 
-    // Show loading
     if (loading) loading.style.display = "flex";
 
     try {
       const html = AT_PREVIEW.buildStudentHTML(AT_STATE);
       if (html === this._lastHTML && this._hasContent) {
-        // Same HTML, just navigate
         this._navigateFrame();
         if (loading) loading.style.display = "none";
         return;
@@ -99,15 +89,11 @@ window.AT_SPLITVIEW = {
       this._lastHTML = html;
       this._hasContent = true;
       const pageId = document.getElementById("splitPageSelect")?.value || "sc";
-      // Inject auto-nav script into html before setting srcdoc
       const navScript = `<script>window.addEventListener('message',function(e){if(e.data&&e.data.goPage){var fn=window.go;if(fn)fn(e.data.goPage);}});<\/script>`;
       frame.srcdoc = html.replace("</body>", navScript + "</body>");
-
-      // Show frame, hide empty state
-      if (frame) frame.style.display = "block";
+      frame.style.display = "block";
       if (emptyState) emptyState.style.display = "none";
 
-      // After load, navigate to selected page & hide loading
       frame.addEventListener("load", () => {
         setTimeout(() => {
           this._navigateFrame();
@@ -115,7 +101,6 @@ window.AT_SPLITVIEW = {
         }, 80);
       }, { once: true });
 
-      // Fallback: hide loading after 2s regardless
       setTimeout(() => { if (loading) loading.style.display = "none"; }, 2000);
     } catch(e) {
       frame.srcdoc = `
@@ -132,7 +117,7 @@ window.AT_SPLITVIEW = {
           </div>
         </body>`;
       if (loading) loading.style.display = "none";
-      if (frame) frame.style.display = "block";
+      frame.style.display = "block";
       if (emptyState) emptyState.style.display = "none";
     }
   },
@@ -156,7 +141,6 @@ window.AT_SPLITVIEW = {
     const handle = document.getElementById("split-resize-handle");
     if (!handle || handle._bound) return;
     handle._bound = true;
-
     handle.addEventListener("mousedown", (e) => this._startResize(e));
     handle.addEventListener("touchstart", (e) => this._startResize(e), { passive: false });
   },
@@ -166,12 +150,10 @@ window.AT_SPLITVIEW = {
     this._isResizing = true;
     this._resizeStartX = e.touches ? e.touches[0].clientX : e.clientX;
     this._resizeStartWidth = this._splitWidth;
-
     const app = document.getElementById("app");
     const handle = document.getElementById("split-resize-handle");
     if (app) app.classList.add("resizing");
     if (handle) handle.classList.add("active");
-
     document.addEventListener("mousemove", this._onResizeMove);
     document.addEventListener("touchmove", this._onResizeMove, { passive: false });
     document.addEventListener("mouseup", this._onResizeEnd);
@@ -183,10 +165,9 @@ window.AT_SPLITVIEW = {
     if (!sv._isResizing) return;
     e.preventDefault();
     const clientX = e.touches ? e.touches[0].clientX : e.clientX;
-    const diff = sv._resizeStartX - clientX; // moving left = wider
+    const diff = sv._resizeStartX - clientX;
     const newWidth = Math.min(sv._maxWidth, Math.max(sv._minWidth, sv._resizeStartWidth + diff));
     sv._splitWidth = Math.round(newWidth);
-
     const app = document.getElementById("app");
     if (app) app.style.setProperty('--split-width', sv._splitWidth + 'px');
   },
@@ -199,19 +180,11 @@ window.AT_SPLITVIEW = {
     const handle = document.getElementById("split-resize-handle");
     if (app) app.classList.remove("resizing");
     if (handle) handle.classList.remove("active");
-
     document.removeEventListener("mousemove", sv._onResizeMove);
     document.removeEventListener("touchmove", sv._onResizeMove);
     document.removeEventListener("mouseup", sv._onResizeEnd);
     document.removeEventListener("touchend", sv._onResizeEnd);
   }
-};
-
-// Hook into AT_EDITOR.markDirty to trigger live refresh
-const _origMarkDirty = AT_EDITOR.markDirty.bind(AT_EDITOR);
-AT_EDITOR.markDirty = function() {
-  _origMarkDirty();
-  AT_SPLITVIEW.scheduleRefresh();
 };
 
 /* ══════════════════════════════════════════════════════════════
@@ -223,11 +196,9 @@ window.AT_UNDO = {
   _max: 30,
   _paused: false,
 
-  // Snapshot current state
   push() {
     if (this._paused) return;
     const snap = JSON.stringify(AT_STATE);
-    // Prune future if we branched
     if (this._pos < this._stack.length - 1) {
       this._stack = this._stack.slice(0, this._pos + 1);
     }
@@ -238,17 +209,17 @@ window.AT_UNDO = {
   },
 
   undo() {
-    if (this._pos <= 0) { AT_UTIL.toast("⚠️ Tidak ada yang bisa di-undo", "err"); return; }
+    if (this._pos <= 0) { AT_UTIL.toast("Tidak ada yang bisa di-undo", "err"); return; }
     this._pos--;
     this._restore(this._stack[this._pos]);
-    AT_UTIL.toast("↩ Undo berhasil");
+    AT_UTIL.toast("Undo berhasil");
   },
 
   redo() {
-    if (this._pos >= this._stack.length - 1) { AT_UTIL.toast("⚠️ Tidak ada yang bisa di-redo", "err"); return; }
+    if (this._pos >= this._stack.length - 1) { AT_UTIL.toast("Tidak ada yang bisa di-redo", "err"); return; }
     this._pos++;
     this._restore(this._stack[this._pos]);
-    AT_UTIL.toast("↪ Redo berhasil");
+    AT_UTIL.toast("Redo berhasil");
   },
 
   _restore(snap) {
@@ -275,19 +246,11 @@ window.AT_UNDO = {
   },
 
   init() {
-    // Hook markDirty to auto-snapshot
-    const _orig = AT_EDITOR.markDirty.bind(AT_EDITOR);
-    AT_EDITOR.markDirty = function() {
-      _orig();
-      AT_UNDO.push();
-    };
-    // Keyboard
     document.addEventListener("keydown", e => {
       const mod = e.ctrlKey || e.metaKey;
       if (mod && e.key === "z" && !e.shiftKey) { e.preventDefault(); AT_UNDO.undo(); }
       if (mod && (e.key === "y" || (e.key === "z" && e.shiftKey))) { e.preventDefault(); AT_UNDO.redo(); }
     });
-    // Initial snapshot
     this.push();
     this._updateUI();
   }
@@ -298,29 +261,24 @@ window.AT_UNDO = {
    ══════════════════════════════════════════════════════════════ */
 window.AT_SK_EDITOR = {
   _idx: null,
-
-  _modIdx: null, _chIdx: null,
+  _modIdx: null,
+  _chIdx: null,
 
   open(i, chIdx) {
-    // Can be called two ways:
-    // 1. open(i) → skenario panel (AT_STATE.skenario[i])
-    // 2. open(modIdx, chIdx) → module chapter (AT_STATE.modules[modIdx].chapters[chIdx])
     this._idx = i;
     this._chIdx = (chIdx !== undefined) ? chIdx : null;
 
     let sk;
     if (this._chIdx !== null) {
-      // Module chapter mode
       const m = AT_STATE.modules[i];
       sk = m?.chapters?.[chIdx];
     } else {
-      // Legacy skenario panel mode
       sk = AT_STATE.skenario[i];
     }
     if (!sk) return;
 
     const modal = document.getElementById("skDetailModal");
-    document.getElementById("skDetailTitle").textContent = "🎭 Edit: " + (sk.title || "Chapter " + ((chIdx??i)+1));
+    document.getElementById("skDetailTitle").textContent = "Edit: " + (sk.title || "Chapter " + ((chIdx??i)+1));
     document.getElementById("skDetailBody").innerHTML = this._buildForm(sk);
     modal?.classList.add("show");
   },
@@ -339,7 +297,7 @@ window.AT_SK_EDITOR = {
   save() {
     this.close();
     AT_EDITOR.markDirty();
-    AT_UTIL.toast("✅ Skenario disimpan");
+    AT_UTIL.toast("Skenario disimpan");
   },
 
   _e(s) { return String(s||"").replace(/"/g,"&quot;").replace(/</g,"&lt;").replace(/>/g,"&gt;"); },
@@ -350,7 +308,6 @@ window.AT_SK_EDITOR = {
       `<option value="${b}" ${sk.bg===b?"selected":""}>${b.replace("sbg-","")}</option>`
     ).join("");
 
-    // Setup rows
     const setupHtml = (sk.setup||[]).map((s, si) => `
       <div class="sub-item" id="skd_s${si}">
         <div class="field-row">
@@ -365,11 +322,10 @@ window.AT_SK_EDITOR = {
               oninput="AT_SK_EDITOR._upSk('setup',${si},'text',this.value)">${e(s.text)}</textarea>
           </div>
           <button class="icon-btn del" style="align-self:flex-end;margin-bottom:2px"
-            onclick="AT_SK_EDITOR._rem('setup',${si})">🗑️</button>
+            onclick="AT_SK_EDITOR._rem('setup',${si})">x</button>
         </div>
       </div>`).join("");
 
-    // Choice rows (collapsed - expand on click)
     const choicesHtml = (sk.choices||[]).map((c, ci) => `
       <div class="sub-item" id="skd_c${ci}">
         <div class="field-row">
@@ -380,15 +336,15 @@ window.AT_SK_EDITOR = {
           </div>
           <div class="field-group">
             <label class="field-label">Label Pilihan</label>
-            <input class="field-input" value="${e(c.label)}" placeholder="Teks pilihan…"
+            <input class="field-input" value="${e(c.label)}" placeholder="Teks pilihan..."
               oninput="AT_SK_EDITOR._upCh(${ci},'label',this.value)">
           </div>
           <div class="field-group" style="flex:0 0 80px">
             <label class="field-label">Level</label>
             <select class="field-select" onchange="AT_SK_EDITOR._upCh(${ci},'level',this.value)">
-              <option value="good" ${c.level==="good"?"selected":""}>✅ Baik</option>
-              <option value="mid"  ${c.level==="mid" ?"selected":""}>🤔 Sedang</option>
-              <option value="bad"  ${c.level==="bad" ?"selected":""}>⚠️ Buruk</option>
+              <option value="good" ${c.level==="good"?"selected":""}>Baik</option>
+              <option value="mid"  ${c.level==="mid" ?"selected":""}>Sedang</option>
+              <option value="bad"  ${c.level==="bad" ?"selected":""}>Buruk</option>
             </select>
           </div>
           <div class="field-group" style="flex:0 0 60px">
@@ -397,36 +353,36 @@ window.AT_SK_EDITOR = {
               oninput="AT_SK_EDITOR._upCh(${ci},'pts',+this.value)">
           </div>
           <button class="icon-btn del" style="align-self:flex-end;margin-bottom:2px"
-            onclick="AT_SK_EDITOR._rem('choices',${ci})">🗑️</button>
+            onclick="AT_SK_EDITOR._rem('choices',${ci})">x</button>
         </div>
-        <input class="field-input" value="${e(c.detail)}" placeholder="Deskripsi detail…" style="margin-top:5px"
+        <input class="field-input" value="${e(c.detail)}" placeholder="Deskripsi detail..." style="margin-top:5px"
           oninput="AT_SK_EDITOR._upCh(${ci},'detail',this.value)">
         <div class="field-row" style="margin-top:6px">
           <div class="field-group">
             <label class="field-label">Judul Hasil</label>
-            <input class="field-input" value="${e(c.resultTitle)}" placeholder="Pilihan Terbaik! 🌟"
+            <input class="field-input" value="${e(c.resultTitle)}" placeholder="Pilihan Terbaik!"
               oninput="AT_SK_EDITOR._upCh(${ci},'resultTitle',this.value)">
           </div>
           <div class="field-group">
             <label class="field-label">Kaitan Norma</label>
-            <input class="field-input" value="${e(c.norma)}" placeholder="Fungsi norma terkait…"
+            <input class="field-input" value="${e(c.norma)}" placeholder="Fungsi norma terkait..."
               oninput="AT_SK_EDITOR._upCh(${ci},'norma',this.value)">
           </div>
         </div>
-        <textarea class="field-textarea" rows="2" style="margin-top:5px" placeholder="Penjelasan hasil…"
+        <textarea class="field-textarea" rows="2" style="margin-top:5px" placeholder="Penjelasan hasil..."
           oninput="AT_SK_EDITOR._upCh(${ci},'resultBody',this.value)">${e(c.resultBody)}</textarea>
         <div style="margin-top:8px">
-          <div class="at-card-title" style="font-size:.68rem;margin-bottom:6px">📋 Konsekuensi</div>
+          <div class="at-card-title" style="font-size:.68rem;margin-bottom:6px">Konsekuensi</div>
           ${(c.consequences||[]).map((k,ki) => `
             <div style="display:flex;gap:6px;margin-bottom:5px;align-items:center">
               <input class="field-input" value="${e(k.icon)}" maxlength="4" style="width:44px;flex-shrink:0"
                 oninput="AT_SK_EDITOR._upCons(${ci},${ki},'icon',this.value)">
-              <input class="field-input" value="${e(k.text)}" placeholder="Teks konsekuensi…" style="flex:1"
+              <input class="field-input" value="${e(k.text)}" placeholder="Teks konsekuensi..." style="flex:1"
                 oninput="AT_SK_EDITOR._upCons(${ci},${ki},'text',this.value)">
-              <button class="icon-btn del" onclick="AT_SK_EDITOR._remCons(${ci},${ki})">×</button>
+              <button class="icon-btn del" onclick="AT_SK_EDITOR._remCons(${ci},${ki})">x</button>
             </div>`).join("")}
           <button class="btn btn-ghost btn-xs" style="margin-top:4px"
-            onclick="AT_SK_EDITOR._addCons(${ci})">＋ Konsekuensi</button>
+            onclick="AT_SK_EDITOR._addCons(${ci})">+ Konsekuensi</button>
         </div>
       </div>`).join("");
 
@@ -443,7 +399,7 @@ window.AT_SK_EDITOR = {
         </div>
         <div class="field-group" style="flex:0 0 70px">
           <label class="field-label">Karakter</label>
-          <input class="field-input" value="${e(sk.charEmoji||"😊")}" maxlength="4"
+          <input class="field-input" value="${e(sk.charEmoji||"")}" maxlength="4"
             oninput="AT_SK_EDITOR._upSkTop('charEmoji',this.value)">
         </div>
       </div>
@@ -454,16 +410,16 @@ window.AT_SK_EDITOR = {
       </div>
 
       <div class="divider"></div>
-      <div class="at-card-title">💬 Dialog Setup</div>
+      <div class="at-card-title">Dialog Setup</div>
       <div id="skd_setup">${setupHtml}</div>
       <button class="btn btn-ghost btn-sm" style="margin-top:8px"
-        onclick="AT_SK_EDITOR._addSetup()">＋ Tambah Dialog</button>
+        onclick="AT_SK_EDITOR._addSetup()">+ Tambah Dialog</button>
 
       <div class="divider"></div>
-      <div class="at-card-title">🎯 Pilihan Jawaban</div>
+      <div class="at-card-title">Pilihan Jawaban</div>
       <div id="skd_choices">${choicesHtml}</div>
       <button class="btn btn-ghost btn-sm" style="margin-top:8px"
-        onclick="AT_SK_EDITOR._addChoice()">＋ Tambah Pilihan</button>
+        onclick="AT_SK_EDITOR._addChoice()">+ Tambah Pilihan</button>
     `;
   },
 
@@ -473,53 +429,15 @@ window.AT_SK_EDITOR = {
     }
     return AT_STATE.skenario[this._idx];
   },
-
-  _upSkTop(key, val) {
-    const sk = this._sk(); if (!sk) return;
-    sk[key] = val; AT_EDITOR.markDirty();
-  },
-  _upSk(arr, idx, key, val) {
-    const sk = this._sk(); if (!sk || !sk[arr]) return;
-    sk[arr][idx][key] = val; AT_EDITOR.markDirty();
-  },
-  _upCh(ci, key, val) {
-    const sk = this._sk(); if (!sk?.choices?.[ci]) return;
-    sk.choices[ci][key] = val; AT_EDITOR.markDirty();
-  },
-  _upCons(ci, ki, key, val) {
-    const sk = this._sk();
-    if (!sk?.choices?.[ci]?.consequences?.[ki]) return;
-    sk.choices[ci].consequences[ki][key] = val; AT_EDITOR.markDirty();
-  },
-  _addCons(ci) {
-    const sk = this._sk(); if (!sk?.choices?.[ci]) return;
-    if (!sk.choices[ci].consequences) sk.choices[ci].consequences = [];
-    sk.choices[ci].consequences.push({icon:"💡",text:""});
-    AT_EDITOR.markDirty();
-    this.open(this._idx);
-  },
-  _remCons(ci, ki) {
-    const sk = this._sk();
-    sk?.choices?.[ci]?.consequences?.splice(ki,1);
-    AT_EDITOR.markDirty(); this.open(this._idx);
-  },
-  _rem(arr, idx) {
-    const sk = this._sk(); if (!sk || !sk[arr]) return;
-    sk[arr].splice(idx,1); AT_EDITOR.markDirty(); this.open(this._idx);
-  },
-  _addSetup() {
-    const sk = this._sk(); if (!sk) return;
-    if (!sk.setup) sk.setup = [];
-    sk.setup.push({speaker:"NARRATOR",text:""});
-    AT_EDITOR.markDirty(); this.open(this._idx);
-  },
-  _addChoice() {
-    const sk = this._sk(); if (!sk) return;
-    if (!sk.choices) sk.choices = [];
-    sk.choices.push({icon:"💡",label:"",detail:"",good:false,pts:10,level:"mid",
-      norma:"",resultTitle:"",resultBody:"",consequences:[{icon:"💡",text:""}]});
-    AT_EDITOR.markDirty(); this.open(this._idx);
-  }
+  _upSkTop(key, val) { const sk = this._sk(); if (!sk) return; sk[key] = val; AT_EDITOR.markDirty(); },
+  _upSk(arr, idx, key, val) { const sk = this._sk(); if (!sk || !sk[arr]) return; sk[arr][idx][key] = val; AT_EDITOR.markDirty(); },
+  _upCh(ci, key, val) { const sk = this._sk(); if (!sk?.choices?.[ci]) return; sk.choices[ci][key] = val; AT_EDITOR.markDirty(); },
+  _upCons(ci, ki, key, val) { const sk = this._sk(); if (!sk?.choices?.[ci]?.consequences?.[ki]) return; sk.choices[ci].consequences[ki][key] = val; AT_EDITOR.markDirty(); },
+  _addCons(ci) { const sk = this._sk(); if (!sk?.choices?.[ci]) return; if (!sk.choices[ci].consequences) sk.choices[ci].consequences = []; sk.choices[ci].consequences.push({icon:"",text:""}); AT_EDITOR.markDirty(); this.open(this._idx); },
+  _remCons(ci, ki) { const sk = this._sk(); sk?.choices?.[ci]?.consequences?.splice(ki,1); AT_EDITOR.markDirty(); this.open(this._idx); },
+  _rem(arr, idx) { const sk = this._sk(); if (!sk || !sk[arr]) return; sk[arr].splice(idx,1); AT_EDITOR.markDirty(); this.open(this._idx); },
+  _addSetup() { const sk = this._sk(); if (!sk) return; if (!sk.setup) sk.setup = []; sk.setup.push({speaker:"NARRATOR",text:""}); AT_EDITOR.markDirty(); this.open(this._idx); },
+  _addChoice() { const sk = this._sk(); if (!sk) return; if (!sk.choices) sk.choices = []; sk.choices.push({icon:"",label:"",detail:"",good:false,pts:10,level:"mid",norma:"",resultTitle:"",resultBody:"",consequences:[{icon:"",text:""}]}); AT_EDITOR.markDirty(); this.open(this._idx); }
 };
 
 // Patch AT_SKENARIO.openDetail to use AT_SK_EDITOR
@@ -529,7 +447,6 @@ AT_SKENARIO.openDetail = function(i) { AT_SK_EDITOR.open(i); };
    AT_FUNGSI_EDITOR — Edit tab Fungsi Norma
    ══════════════════════════════════════════════════════════════ */
 window.AT_FUNGSI_EDITOR = {
-  // Fungsi data lives in AT_STATE.fungsi (override PRESETS.fungsi)
   _getData() {
     if (!AT_STATE.fungsi) AT_STATE.fungsi = AT_UTIL.deepClone(PRESETS.fungsi);
     return AT_STATE.fungsi;
@@ -544,11 +461,10 @@ window.AT_FUNGSI_EDITOR = {
   },
 
   save() {
-    // Already bound via oninput — just close
     document.getElementById("fungsiModal")?.classList.remove("show");
     AT_EDITOR.markDirty();
     AT_SPLITVIEW.scheduleRefresh();
-    AT_UTIL.toast("✅ Fungsi Norma disimpan");
+    AT_UTIL.toast("Fungsi Norma disimpan");
   },
 
   _e(s) { return String(s||"").replace(/"/g,"&quot;").replace(/</g,"&lt;").replace(/>/g,"&gt;"); },
@@ -556,7 +472,6 @@ window.AT_FUNGSI_EDITOR = {
   _buildForm(data) {
     const e = this._e.bind(this);
     const colorOpts = ["var(--y)","var(--c)","var(--r)","var(--g)","var(--p)","var(--o)"];
-
     return data.map((f, fi) => `
       <div class="sub-item" id="fn_${fi}">
         <div class="field-row">
@@ -580,7 +495,7 @@ window.AT_FUNGSI_EDITOR = {
             </div>
           </div>
           <button class="icon-btn del" style="align-self:flex-end;margin-bottom:2px"
-            onclick="AT_FUNGSI_EDITOR._rem(${fi})">🗑️</button>
+            onclick="AT_FUNGSI_EDITOR._rem(${fi})">x</button>
         </div>
         <div class="field-group" style="margin-top:6px">
           <label class="field-label">Deskripsi</label>
@@ -599,44 +514,20 @@ window.AT_FUNGSI_EDITOR = {
         </div>
       </div>`).join("") +
       `<button class="btn btn-ghost btn-sm" style="margin-top:10px"
-        onclick="AT_FUNGSI_EDITOR._add()">＋ Tambah Fungsi</button>`;
+        onclick="AT_FUNGSI_EDITOR._add()">+ Tambah Fungsi</button>`;
   },
 
-  _up(fi, key, val) {
-    const data = this._getData();
-    if (!data[fi]) return;
-    data[fi][key] = val;
-    AT_EDITOR.markDirty();
-  },
-  _upContoh(fi, val) {
-    const data = this._getData();
-    if (!data[fi]) return;
-    data[fi].contoh = val.split("\n").map(s => s.trim()).filter(Boolean);
-    AT_EDITOR.markDirty();
-  },
-  _rem(fi) {
-    const data = this._getData();
-    data.splice(fi, 1);
-    AT_EDITOR.markDirty(); this.open();
-  },
-  _add() {
-    const data = this._getData();
-    data.push({icon:"⭐",label:"Fungsi Baru",color:"var(--y)",
-      bg:"rgba(249,193,46,.06)",bc:"rgba(249,193,46,.25)",
-      desc:"Deskripsi fungsi norma ini.",
-      contoh:["Contoh pertama","Contoh kedua"],
-      tanya:"Pertanyaan diskusi untuk siswa?"});
-    AT_EDITOR.markDirty(); this.open();
-  }
+  _up(fi, key, val) { const data = this._getData(); if (!data[fi]) return; data[fi][key] = val; AT_EDITOR.markDirty(); },
+  _upContoh(fi, val) { const data = this._getData(); if (!data[fi]) return; data[fi].contoh = val.split("\n").map(s => s.trim()).filter(Boolean); AT_EDITOR.markDirty(); },
+  _rem(fi) { const data = this._getData(); data.splice(fi, 1); AT_EDITOR.markDirty(); this.open(); },
+  _add() { const data = this._getData(); data.push({icon:"",label:"Fungsi Baru",color:"var(--y)",bg:"rgba(249,193,46,.06)",bc:"rgba(249,193,46,.25)",desc:"Deskripsi fungsi norma ini.",contoh:["Contoh pertama","Contoh kedua"],tanya:"Pertanyaan diskusi untuk siswa?"}); AT_EDITOR.markDirty(); this.open(); }
 };
 
 /* ══════════════════════════════════════════════════════════════
    AT_JSON_IO — Import / Export state JSON
    ══════════════════════════════════════════════════════════════ */
 window.AT_JSON_IO = {
-  importClick() {
-    document.getElementById("jsonImportInput")?.click();
-  },
+  importClick() { document.getElementById("jsonImportInput")?.click(); },
 
   handleFile(file) {
     if (!file) return;
@@ -644,7 +535,7 @@ window.AT_JSON_IO = {
     reader.onload = (e) => {
       try {
         const data = JSON.parse(e.target.result);
-        if (!data.meta) throw new Error("Format tidak valid — file bukan state authoring tool");
+        if (!data.meta) throw new Error("Format tidak valid");
         Object.assign(AT_STATE, data);
         AT_META.bind(); AT_CP.bind(); AT_TP.render();
         AT_ATP.bind(); AT_ALUR.render(); AT_KUIS.render();
@@ -654,9 +545,9 @@ window.AT_JSON_IO = {
         AT_DASH.render();
         AT_UNDO.push();
         AT_SPLITVIEW.scheduleRefresh();
-        AT_UTIL.toast("✅ State JSON berhasil dimuat: " + file.name);
+        AT_UTIL.toast("State JSON berhasil dimuat: " + file.name);
       } catch(err) {
-        AT_UTIL.toast("❌ Gagal: " + err.message, "err");
+        AT_UTIL.toast("Gagal: " + err.message, "err");
       }
     };
     reader.readAsText(file);
@@ -668,10 +559,8 @@ window.AT_JSON_IO = {
    ══════════════════════════════════════════════════════════════ */
 const _origBuild = AT_PREVIEW.buildStudentHTML.bind(AT_PREVIEW);
 AT_PREVIEW.buildStudentHTML = function(S) {
-  // Inject fungsi override into S before building
   const patchedS = Object.assign({}, S);
   if (S.fungsi && S.fungsi.length) {
-    // preview.js reads from PRESETS.fungsi — override it temporarily
     const origFungsi = PRESETS.fungsi;
     PRESETS.fungsi = S.fungsi;
     const html = _origBuild(patchedS);
@@ -682,23 +571,22 @@ AT_PREVIEW.buildStudentHTML = function(S) {
 };
 
 /* ══════════════════════════════════════════════════════════════
-   UNDO/REDO BUTTONS in sidebar bottom
+   HELPER: Undo/Redo buttons di sidebar
    ══════════════════════════════════════════════════════════════ */
 function _injectUndoButtons() {
   const sb = document.querySelector(".sidebar-bottom");
   if (!sb || document.getElementById("undoBtn")) return;
-
   const row = document.createElement("div");
   row.style.cssText = "display:flex;gap:6px;margin-bottom:6px";
   row.innerHTML = [
-    `<button id="undoBtn" class="sidebar-bottom-btn" style="flex:1;opacity:.5" disabled onclick="AT_UNDO.undo()" title="Ctrl+Z">↩ Undo</button>`,
-    `<button id="redoBtn" class="sidebar-bottom-btn" style="flex:1;opacity:.5" disabled onclick="AT_UNDO.redo()" title="Ctrl+Y">↪ Redo</button>`
+    `<button id="undoBtn" class="sidebar-bottom-btn" style="flex:1;opacity:.5" disabled onclick="AT_UNDO.undo()" title="Ctrl+Z">Undo</button>`,
+    `<button id="redoBtn" class="sidebar-bottom-btn" style="flex:1;opacity:.5" disabled onclick="AT_UNDO.redo()" title="Ctrl+Y">Redo</button>`
   ].join("");
   sb.insertBefore(row, sb.firstChild);
 }
 
 /* ══════════════════════════════════════════════════════════════
-   CLOSE MODALS on overlay click
+   HELPER: Close modals on overlay click
    ══════════════════════════════════════════════════════════════ */
 function _initModalClose() {
   ["skDetailModal","fungsiModal"].forEach(id => {
@@ -714,7 +602,7 @@ function _initModalClose() {
 }
 
 /* ══════════════════════════════════════════════════════════════
-   INIT
+   INIT — Semua inisialisasi di satu tempat
    ══════════════════════════════════════════════════════════════ */
 document.addEventListener("DOMContentLoaded", () => {
   _injectUndoButtons();
@@ -729,11 +617,20 @@ document.addEventListener("DOMContentLoaded", () => {
   };
 
   // Add fungsi to AT_STATE if missing
-  if (!AT_STATE.fungsi) AT_STATE.fungsi = null; // null = use PRESETS.fungsi
+  if (!AT_STATE.fungsi) AT_STATE.fungsi = null;
 
-  // Undo buttons style
-  const udBtns = document.querySelectorAll("#undoBtn,#redoBtn");
-  udBtns.forEach(b => {
+  // ── UNIFIED markDirty hook ──────────────────────────────────
+  // Satu patch saja: dirty state + undo + scheduleRefresh
+  // Tidak ada polling, tidak ada event listener ganda
+  const _baseMarkDirty = AT_EDITOR.markDirty.bind(AT_EDITOR);
+  AT_EDITOR.markDirty = function() {
+    _baseMarkDirty();            // Original: sets dirty + dirtyDot
+    AT_UNDO.push();               // Undo snapshot
+    AT_SPLITVIEW.scheduleRefresh(); // Preview refresh (debounced 300ms)
+  };
+
+  // Undo buttons hover effect
+  document.querySelectorAll("#undoBtn,#redoBtn").forEach(b => {
     b.addEventListener("mouseenter", () => b.style.opacity = b.disabled ? ".5" : "1");
     b.addEventListener("mouseleave", () => b.style.opacity = b.disabled ? ".5" : "1");
   });
@@ -741,16 +638,14 @@ document.addEventListener("DOMContentLoaded", () => {
   // ── Keyboard Shortcuts ──
   document.addEventListener("keydown", (e) => {
     const mod = e.ctrlKey || e.metaKey;
-    // Ctrl+Shift+L — Toggle Live Preview
     if (mod && e.shiftKey && (e.key === 'l' || e.key === 'L')) {
       e.preventDefault();
       AT_SPLITVIEW.toggle();
     }
-    // Ctrl+Shift+R — Force Refresh Preview
     if (mod && e.shiftKey && (e.key === 'r' || e.key === 'R')) {
       e.preventDefault();
       if (AT_SPLITVIEW.active) {
-        AT_SPLITVIEW._lastHTML = ""; // Force rebuild
+        AT_SPLITVIEW._lastHTML = "";
         AT_SPLITVIEW.refresh();
         AT_UTIL.toast("Preview di-refresh", "ok");
       }
@@ -765,5 +660,5 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   });
 
-  console.log("✅ liveview.js loaded — split-view v2.0, undo/redo, sk-editor, fungsi-editor, json-io ready");
+  console.log("liveview.js loaded — split-view v2.1, unified markDirty, undo/redo, editors ready");
 });
