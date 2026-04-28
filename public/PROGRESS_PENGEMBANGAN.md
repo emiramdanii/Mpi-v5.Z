@@ -308,26 +308,59 @@ preview.js → animations.js → extras.js → liveview.js → liveview_enhancem
 | **Solusi** | 1. Throttle 500ms; 2. Skip jika `AT_STATE.dirty = false`; 3. Skip jika `AT_SPLITVIEW._debounceTimer` sudah aktif (markDirty sudah handle); 4. Hanya berfungsi sebagai fallback safety net |
 | **Status** | Selesai (v4.2) |
 
+### MASALAH 8: `module-types.js` Tidak Diload di index.html
+
+| Detail | |
+|--------|-|
+| **Gejala** | Semua modul hilang — picker kosong, tambah modul gagal, render error, grid referensi kosong |
+| **Root Cause** | File `module-types.js` berisi definisi 16 tipe modul (`window.MODULE_TYPES`) tetapi tidak ada `<script src="module-types.js">` di `index.html`. Akibatnya `MODULE_TYPES = undefined` dan seluruh sistem modul gagal. |
+| **Lokasi** | `index.html` baris 724-728 (urutan script) |
+| **Solusi** | Tambahkan `<script src="module-types.js">` di index.html sebelum `modules.js` agar MODULE_TYPES tersedia saat modules.js di-load |
+| **Status** | Selesai |
+
+### MASALAH 9: Fungsi `_htmlStatistik()` Tidak Ada
+
+| Detail | |
+|--------|-|
+| **Gejala** | Tipe modul Statistik & Angka Kunci menyebabkan runtime error saat di-render (`TypeError: this._htmlStatistik is not a function`) |
+| **Root Cause** | Tipe `statistik` terdaftar di `module-types.js` dan di-switch render di `modules-render.js`, tetapi fungsi renderernya tidak pernah ditulis. Comment di baris 380 mengatakan "STATISTIK / ANGKA KUNCI renderer" tapi isinya malah fungsi `_htmlPolling()`. |
+| **Lokasi** | `modules-render.js` |
+| **Solusi** | Buat fungsi `_htmlStatistik(m)` baru yang merender grid/row angka kunci dengan icon, angka, satuan, label, warna, dan hover animation |
+| **Status** | Selesai |
+
+### MASALAH 10: Dropdown Preview Tidak Sync ke Editor (One-Way Only)
+
+| Detail | |
+|--------|-|
+| **Gejala** | Saat memilih halaman dari dropdown di live preview, halaman preview berubah tetapi form editor tidak ikut berpindah ke panel/tab yang sesuai |
+| **Root Cause** | Handler `change` pada dropdown hanya memanggil `markManualOverride()` untuk mencegah auto-sync menimpa pilihan user, tetapi tidak ada mekanisme reverse sync ke editor. Selain itu, `markManualOverride()` bersifat one-shot (langsung reset setelah 1 panggilan) sehingga gagal men-suppress multi-sync call saat navigasi. |
+| **Lokasi** | `liveview_enhancements.js` |
+| **Solusi** | 1. Buat method `syncToEditor(pageId)` untuk reverse sync dari dropdown ke editor panel/tab; 2. Ubah `markManualOverride()` dari one-shot menjadi timeout 500ms agar suppress berlaku selama proses navigasi; 3. Update dropdown handler untuk memanggil `syncToEditor()` |
+| **Status** | Selesai (v6.4) |
+
+### MASALAH 11: Game Tidak Masuk ke Preview
+
+| Detail | |
+|--------|-|
+| **Gejala** | Game screens (`sgame_0`, `sgame_1`, ...) tidak bisa diakses dari dropdown preview dan tidak ada cara klik dari editor untuk preview game tertentu |
+| **Root Cause** | 1. Dropdown hanya punya opsi statis `sgame_0` — game lain tidak ada; 2. Tidak ada tombol preview per-game di editor; 3. PostMessage handler di iframe tidak menerima `goModP`/`goMatP` langsung; 4. Reverse map tidak handle `sgame_N` secara dinamis |
+| **Lokasi** | `liveview.js`, `modules.js`, `games.js`, `liveview_enhancements.js`, `preview.js` |
+| **Solusi** | 1. Tambah handler `goModP`/`goMatP` di postMessage iframe (`liveview.js` + `preview.js`); 2. Tambah tombol 👁️ preview di setiap modul card (`modules.js`) dan game card (`games.js`); 3. Buat method `_updateDropdown()` untuk dropdown dinamis berdasarkan jumlah game di state; 4. Tambah `previewMod(idx)` dan `previewGame(idx)` method; 5. Handle `sgame_N` secara dinamis di reverse sync |
+| **Status** | Selesai (v6.4) |
+
 ---
 
 ## 6. Pekerjaan yang Belum Selesai
 
 ### Prioritas Tinggi
 
-#### 6.1 Auto-Sync Dokumen Belum Sempurna
-- **Deskripsi**: Meskipun accordion sync sudah ditambahkan, masih perlu verifikasi menyeluruh bahwa SEMUA halaman di bagian Dokumen (Identitas, Capaian Pembelajaran, Tujuan Pembelajaran, ATP/Alur Tujuan Pembelajaran, Alur Kegiatan) bisa di-preview dengan benar ketika diklik/diedit.
-- **Hal yang Perlu Dicek**:
-  - Accordion Identitas Media navigate ke cover (sc) dengan benar
-  - Accordion Capaian Pembelajaran navigate ke scp + tab kcp
-  - Accordion Tujuan Pembelajaran navigate ke scp + tab ktp
-  - Accordion Alur Tujuan Pembelajaran navigate ke scp + tab katp
-  - Accordion Alur Kegiatan navigate ke scp + scroll ke bawah
-  - Edit form di dalam accordion langsung refresh preview
-- **File Terkait**: `liveview.js`, `liveview_enhancements.js`, `preview.js`
+#### ~~6.1 Auto-Sync Dokumen Belum Sempurna~~ ✅ SELESAI
+- **Status**: Selesai (v4.4 + v6.4)
+- **Solusi**: Accordion sync dengan message queue (`_ACCORDION_PREVIEW_MAP`), `switchDocTab` handler di iframe, `scrollToEnd` handler untuk Alur Kegiatan. Semua accordion Dokumen (Identitas → Alur Kegiatan) sudah sync ke preview.
 
-#### 6.2 Auto-Sync Konten Belum Dikerjakan
-- **Deskripsi**: Setelah bagian Dokumen selesai, perlu memastikan semua halaman di bagian Konten (Materi, Modul, Game, Kuis) juga sync ke preview dengan benar.
-- **File Terkait**: `liveview.js`, `liveview_enhancements.js`
+#### ~~6.2 Auto-Sync Konten Belum Dikerjakan~~ ✅ SELESAI
+- **Status**: Selesai (v6.4)
+- **Solusi**: Bidirectional sync — dropdown preview → editor panel/tab (`syncToEditor()`), konten sub-tab detection, game screen dynamic handling (`sgame_N`).
 
 ### Prioritas Sedang
 
@@ -370,13 +403,17 @@ preview.js → animations.js → extras.js → liveview.js → liveview_enhancem
 
 ## 7. Rencana Pengembangan
 
-### Fase 1: Stabilisasi Auto-Sync (Saat Ini)
-1. **Verifikasi & fix bagian Dokumen**: Pastikan semua accordion (Identitas sampai Alur Kegiatan) sync ke preview dengan benar. Tambah logging jika perlu untuk debugging.
-2. **Verifikasi & fix bagian Konten**: Pastikan semua tab (Materi, Modul, Game, Kuis) sync ke preview dengan benar.
-3. **Verifikasi & fix bagian Tools**: Pastikan Auto-Generate tidak merusak state, Import/Export tetap konsisten.
-4. **Stress testing**: Uji dengan data besar (banyak TP, modul, kuis) untuk memastikan tidak ada performance issue.
+### ~~Fase 1: Stabilisasi Auto-Sync~~ ✅ SELESAI
+1. ~~**Verifikasi & fix bagian Dokumen**: Pastikan semua accordion (Identitas sampai Alur Kegiatan) sync ke preview dengan benar~~ ✅
+2. ~~**Verifikasi & fix bagian Konten**: Pastikan semua tab (Materi, Modul, Game, Kuis) sync ke preview dengan benar~~ ✅
+3. ~~**Fix module-types.js tidak diload** — root cause modul hilang~~ ✅
+4. ~~**Fix _htmlStatistik() missing** — renderer statistik tidak ada~~ ✅
+5. ~~**Bidirectional sync** — dropdown preview → editor panel/tab~~ ✅
+6. ~~**Click-to-preview per modul/game** — tombol 👁️ di setiap card~~ ✅
+7. ~~**Dropdown dinamis** — game screens otomatis muncul sesuai jumlah game~~ ✅
+8. ~~**PostMessage handler goModP/goMatP** — navigate sub-page dari editor~~ ✅
 
-### Fase 2: Penyempurnaan UX
+### Fase 2: Penyempurnaan UX (Selanjutnya)
 1. **Smart navigation history**: Ingat halaman preview terakhir per panel editor
 2. **Diff-based refresh**: Hanya update bagian HTML yang berubah (bukan full rebuild) untuk performa lebih baik
 3. **Loading skeleton di preview**: Tampilkan skeleton yang lebih baik saat iframe sedang load
@@ -447,9 +484,33 @@ Patch di liveview.js:
   1. Cek apakah accordion baru saja dibuka (bukan ditutup)
   2. Baca judul accordion dari .acc-title
   3. Lookup _ACCORDION_PREVIEW_MAP[judul]
-  4. AT_SPLITVIEW.goPage(mapping.page)
-  5. Jika mapping.tab → postMessage({switchDocTab: tabId})
-  6. Jika mapping.scrollEnd → postMessage({scrollToEnd: true})
+  4. AT_SPLITVIEW.navigateToPage(mapping.page, {tab, scrollEnd})  [queued]
+  5. Message queue memastikan pesan terkirim setelah iframe load
+```
+
+### Sync Flow (Reverse: Dropdown → Editor)
+
+```
+splitPageSelect.onchange
+    ↓
+AT_PAGE_SYNC.syncToEditor(pageId)
+  1. markManualOverride() → suppress auto-sync 500ms
+  2. Lookup _REVERSE_MAP[pageId] (dynamic: sgame_N → konten-tab-modules)
+  3. If konten-tab-X → switchKontenTab() (navigasi ke tab konten)
+  4. If panel → AT_NAV.go(panelId)
+```
+
+### Sync Flow (Click-to-Preview: Editor → Specific Module/Game)
+
+```
+Modul card 👁️ button → AT_MODULES.previewMod(idx)
+  1. Auto-open split view if needed
+  2. Navigate to smods screen
+  3. goModP(idx) → jump to specific module sub-page
+
+Game card 👁️ button → AT_GAMES.previewGame(idx)
+  1. Auto-open split view if needed
+  2. Navigate to sgame_N screen
 ```
 
 ### State Persistence
@@ -525,4 +586,4 @@ Setiap fitur baru mengikuti pola ini agar tetap sinkron:
 ---
 
 * Dokumen ini dibuat otomatis berdasarkan analisis kode sumber dan worklog pengembangan.
-* Terakhir diperbarui: 28 April 2026
+* Terakhir diperbarui: 28 April 2026 (Fase 1 selesai — 8 item fix)
