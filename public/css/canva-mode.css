@@ -398,8 +398,8 @@ body.canva-mode-active #content,
 
 /* ═══ CANVAS AREA ═══════════════════════════════════════════════ */
 #cm-canvas-area {
-  flex: 1;
-  min-width: 0;
+  flex: 1 1 0%;
+  min-width: 200px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -618,7 +618,9 @@ body.canva-mode-active #content,
 #cm-right-panel {
   width: 180px;
   min-width: 150px;
+  max-width: 180px;
   flex-shrink: 0;
+  flex-grow: 0;
   display: flex;
   flex-direction: column;
   gap: 8px;

@@ -72,14 +72,31 @@ window.AT_CANVA_MODE = {
     this._ratio = st.ratio || '16:9';
     this._currentPage = 0;
 
-    this._applyRatioToStage();
     this._renderLeftPanel();
     this._renderStage();
     this._renderLayerList();
     this._setupStageDnD();
     this._setupMouseEvents();
     this._updateStatusBar();
+
+    // Defer ratio sizing until canvas area has real dimensions
+    this._setupResizeObserver();
     console.log('✅ AT_CANVA_MODE init done');
+  },
+
+  _resizeObserver: null,
+
+  _setupResizeObserver() {
+    const area = document.getElementById('cm-canvas-area');
+    if (!area) return;
+    // Clean up previous observer
+    if (this._resizeObserver) this._resizeObserver.disconnect();
+    this._resizeObserver = new ResizeObserver(() => {
+      this._applyRatioToStage();
+    });
+    this._resizeObserver.observe(area);
+    // Also apply once after layout settles
+    requestAnimationFrame(() => this._applyRatioToStage());
   },
 
   /* ── Ratio ───────────────────────────────────────────────────── */
@@ -99,8 +116,8 @@ window.AT_CANVA_MODE = {
 
     // Scale to fit canvas area with padding
     const area = document.getElementById('cm-canvas-area');
-    const aW = (area?.clientWidth  || 800) - 80;
-    const aH = (area?.clientHeight || 600) - 80;
+    const aW = (area?.clientWidth  || 800) - 60;
+    const aH = (area?.clientHeight || 500) - 60;
     const scaleW = aW / r.w;
     const scaleH = aH / r.h;
     this._baseScale = Math.min(scaleW, scaleH, 1);
