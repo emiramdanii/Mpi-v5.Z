@@ -3,6 +3,8 @@
 import { useRef, useState, useCallback, useEffect } from 'react';
 import { useCanvaStore } from '@/store/canva-store';
 import type { CanvaElement, ResizeDir } from './types';
+import QuizWidget from './QuizWidget';
+import GameWidget from './GameWidget';
 
 export default function Stage({ onMouseMove }: { onMouseMove: (x: number, y: number) => void }) {
   const {
@@ -259,10 +261,22 @@ function StageElement({
 }) {
   const { updateElement, deleteElement, saveTextContent } = useCanvaStore();
   const textRef = useRef<HTMLDivElement>(null);
+  const isInteractive = element.type === 'kuis' || element.type === 'game';
 
   const handleMouseDown = (e: React.MouseEvent) => {
     e.stopPropagation();
     onSelect();
+    // For interactive elements (kuis/game), don't start drag when already selected
+    // so the user can interact with the quiz/game content
+    if (!isInteractive || !isSelected) {
+      onStartDrag(e.clientX, e.clientY);
+    }
+  };
+
+  const handleBarMouseDown = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    e.preventDefault();
+    if (!isSelected) onSelect();
     onStartDrag(e.clientX, e.clientY);
   };
 
@@ -290,32 +304,33 @@ function StageElement({
       }}
       onMouseDown={handleMouseDown}
     >
-      {/* Handle bar */}
-      {isSelected && (
-        <div className="absolute -top-5 left-0 right-0 flex items-center justify-between px-1 bg-amber-500/90 rounded-t text-[9px] font-bold text-amber-950 z-20">
-          <span className="truncate">{element.icon} {element.label || element.type}</span>
+      {/* Handle bar — always draggable */}
+      <div
+        className={`absolute left-0 right-0 flex items-center justify-between px-1 rounded-t text-[9px] font-bold z-20 transition-all ${
+          isSelected
+            ? '-top-5 bg-amber-500/90 text-amber-950'
+            : '-top-4 bg-black/60 text-white/80 opacity-0 group-hover:opacity-100'
+        }`}
+        onMouseDown={handleBarMouseDown}
+      >
+        <span className="truncate cursor-grab">{element.icon} {element.label || element.type}</span>
+        {isSelected && (
           <button
             onClick={e => { e.stopPropagation(); deleteElement(element.id); }}
             className="ml-1 hover:text-red-700 transition-colors"
           >
             ✕
           </button>
-        </div>
-      )}
+        )}
+      </div>
 
       {/* Body */}
       <div className="w-full h-full overflow-hidden rounded-sm">
         {element.type === 'kuis' && (
-          <div className="p-2 h-full bg-amber-500/10 rounded border border-amber-500/20">
-            <div className="text-[10px] font-bold text-amber-300">❓ Kuis</div>
-            <div className="text-[9px] text-amber-200/60 mt-1">Soal pilihan ganda</div>
-          </div>
+          <QuizWidget dataIdx={element.dataIdx} compact />
         )}
         {element.type === 'game' && (
-          <div className="flex flex-col items-center justify-center h-full bg-cyan-500/10 rounded border border-cyan-500/20 p-2">
-            <span className="text-2xl">🎮</span>
-            <span className="text-[10px] font-bold text-cyan-300 mt-1">Game Interaktif</span>
-          </div>
+          <GameWidget dataIdx={element.dataIdx} compact />
         )}
         {element.type === 'materi' && (
           <div className="p-2 h-full bg-purple-500/10 rounded border border-purple-500/20">

@@ -13,6 +13,7 @@ import {
   RATIOS,
   ELEM_TYPES,
 } from '@/components/canva/types';
+import { useAuthoringStore } from '@/store/authoring-store';
 
 function createPage(label: string): CanvaPage {
   return {
@@ -265,6 +266,25 @@ export const useCanvaStore = create<CanvaState>((set, get) => ({
     };
     if (type === 'teks') { el.text = 'Judul Halaman'; el.fontSize = 24; el.h = 15; }
     if (type === 'shape') { el.color = 'rgba(255,255,255,.1)'; el.radius = 8; el.h = 20; }
+    // Kuis: no dataIdx = shows ALL quiz questions as interactive widget
+    if (type === 'kuis') {
+      el.w = 55; el.h = 65;
+      el.icon = '❓'; el.label = 'Kuis Interaktif';
+    }
+    // Game: auto-link to first game-type module if available
+    if (type === 'game') {
+      el.w = 45; el.h = 60;
+      el.icon = '🎮';
+      const GAME_TYPES = ['truefalse','memory','matching','roda','sorting','spinwheel','teambuzzer','wordsearch','flashcard'];
+      const modules = useAuthoringStore.getState().modules;
+      const gameIdx = modules.findIndex((m: Record<string, unknown>) => GAME_TYPES.includes(m.type as string));
+      if (gameIdx >= 0) {
+        el.dataIdx = gameIdx;
+        el.label = 'Game: ' + (modules[gameIdx].title as string || modules[gameIdx].type as string);
+      } else {
+        el.label = 'Game Interaktif';
+      }
+    }
     const newPages = [...pages];
     newPages[currentPageIndex] = {
       ...page,
@@ -446,6 +466,12 @@ export const useCanvaStore = create<CanvaState>((set, get) => ({
       ? `background-image:url('${page.bgDataUrl}');background-size:cover;background-position:center`
       : `background:${page.bgColor || '#1a1a2e'}`;
 
+    // Get quiz data from authoring store for interactive export
+    const allKuis = useAuthoringStore.getState().kuis.filter(k => k.q.trim());
+    const allModules = useAuthoringStore.getState().modules;
+    const kuisJSON = JSON.stringify(allKuis).replace(/</g, '\\u003c').replace(/>/g, '\\u003e');
+    const modulesJSON = JSON.stringify(allModules).replace(/</g, '\\u003c').replace(/>/g, '\\u003e');
+
     const elementsHTML = (page.elements || [])
       .filter(el => !el.hidden)
       .map((el, i) => {
@@ -457,16 +483,13 @@ export const useCanvaStore = create<CanvaState>((set, get) => ({
           return `<div style="${style}"><div style="width:100%;height:100%;background:${el.color || 'rgba(255,255,255,.15)'};border-radius:${el.radius || 8}px"></div></div>`;
         }
         if (el.type === 'kuis') {
-          return `<div style="${style};background:rgba(245,200,66,.08);border:1px solid rgba(245,200,66,.2);border-radius:8px;padding:12px">
-            <div style="font-size:.9rem;font-weight:700;color:#f5c842;margin-bottom:8px">❓ ${(el.label || 'Kuis')}</div>
-            <div style="font-size:.8rem;color:rgba(255,255,255,.6)">Kuis pilihan ganda interaktif</div>
-          </div>`;
+          const elId = 'quiz_' + i;
+          return `<div id="${elId}" style="${style};background:rgba(245,200,66,.08);border:1px solid rgba(245,200,66,.2);border-radius:8px;padding:10px;overflow:hidden;display:flex;flex-direction:column"></div>`;
         }
         if (el.type === 'game') {
-          return `<div style="${style};background:rgba(56,217,217,.08);border:1px solid rgba(56,217,217,.2);border-radius:8px;display:flex;flex-direction:column;align-items:center;justify-content:center">
-            <span style="font-size:2rem">${el.icon || '🎮'}</span>
-            <span style="font-size:.85rem;font-weight:700;color:#3ecfcf;margin-top:4px">${el.label || 'Game'}</span>
-          </div>`;
+          const elId = 'game_' + i;
+          const gameIdx = el.dataIdx;
+          return `<div id="${elId}" data-game-idx="${gameIdx}" style="${style};background:rgba(56,217,217,.08);border:1px solid rgba(56,217,217,.2);border-radius:8px;overflow:hidden;display:flex;flex-direction:column"></div>`;
         }
         return `<div style="${style};display:flex;align-items:center;justify-content:center"><div style="font-size:1.5rem">${el.icon || ''}</div></div>`;
       })
@@ -474,9 +497,95 @@ export const useCanvaStore = create<CanvaState>((set, get) => ({
 
     return `<!DOCTYPE html>
 <html lang="id"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
-<title>${page.label}</title><style>*{margin:0;padding:0;box-sizing:border-box}body{display:flex;align-items:center;justify-content:center;min-height:100vh;background:#0e0c15}
-.slide{position:relative;width:${ratio.w}px;height:${ratio.h}px;overflow:hidden;${bgStyle}}</style></head>
-<body><div class="slide">${elementsHTML}</div></body></html>`;
+<title>${page.label}</title>
+<style>*{margin:0;padding:0;box-sizing:border-box}body{display:flex;align-items:center;justify-content:center;min-height:100vh;background:#0e0c15}
+.slide{position:relative;width:${ratio.w}px;height:${ratio.h}px;overflow:hidden;${bgStyle}}
+.qbar{height:3px;background:rgba(245,200,66,.2);border-radius:2px;overflow:hidden;margin-bottom:6px}.qbar-fill{height:100%;background:#f5c842;transition:width .4s ease}
+.qhead{display:flex;justify-content:space-between;font-size:10px;color:#f5c842;margin-bottom:4px}
+.qq{font-size:13px;font-weight:700;color:#f5c842;margin-bottom:6px;line-height:1.3}
+.qopt{display:block;width:100%;text-align:left;padding:6px 8px;margin:2px 0;border-radius:6px;border:1px solid rgba(255,255,255,.1);background:rgba(255,255,255,.05);color:rgba(245,200,66,.9);font-size:11px;cursor:pointer;transition:all .2s}
+.qopt:hover{background:rgba(255,255,255,.1)}.qopt.correct{background:rgba(52,211,153,.2);border-color:rgba(52,211,153,.4);color:#6ee7b7}
+.qopt.wrong{background:rgba(239,68,68,.2);border-color:rgba(239,68,68,.4);color:#fca5a5}.qopt.disabled{opacity:.3;cursor:default}
+.qex{font-size:10px;color:#60a5fa;background:rgba(59,130,246,.1);border:1px solid rgba(59,130,246,.2);border-radius:6px;padding:4px 8px;margin-top:4px}
+.qresult{text-align:center;padding:12px}.qresult .score{font-size:28px;font-weight:900}.qresult .level{font-size:11px;margin-top:2px}
+.qresult button{margin-top:8px;padding:6px 16px;border:1px solid rgba(245,200,66,.3);border-radius:8px;background:rgba(245,200,66,.2);color:#f5c842;font-size:11px;font-weight:700;cursor:pointer}
+.qresult button:hover{background:rgba(245,200,66,.4)}
+</style></head>
+<body><div class="slide">${elementsHTML}</div>
+<script>
+const KUIS_DATA=${kuisJSON};
+const MODULES_DATA=${modulesJSON};
+function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}
+document.querySelectorAll('[id^=quiz_]').forEach(function(el){
+  var soal=KUIS_DATA.filter(function(k){return k.q.trim()});
+  if(!soal.length){el.innerHTML='<div style="display:flex;align-items:center;justify-content:center;height:100%;color:rgba(245,200,66,.5);font-size:12px">❓ Belum ada soal</div>';return}
+  var cur=0,score=0,answered=false,selected=-1;
+  var letters=['A','B','C','D'];
+  function render(){
+    if(cur>=soal.length){
+      var pct=Math.round(score/soal.length*100);
+      var lvl=pct>=85?'Sangat Baik':pct>=70?'Baik':'Perlu Latihan';
+      var col=pct>=85?'#34d399':pct>=70?'#f5c842':'#f87171';
+      el.innerHTML='<div class="qresult"><div class="score" style="color:'+col+'">'+pct+'%</div><div class="level" style="color:'+col+'">'+lvl+'</div><div style="font-size:10px;color:rgba(255,255,255,.4);margin-top:2px">Skor: '+score+' dari '+soal.length+'</div><button onclick="this.parentNode.parentNode.__restart()">Ulangi Kuis</button></div>';
+      return;
+    }
+    var q=soal[cur];
+    var h='<div class="qbar"><div class="qbar-fill" style="width:'+((cur+1)/soal.length*100)+'%"></div></div>';
+    h+='<div class="qhead"><span style="font-weight:700">Soal '+(cur+1)+'/'+soal.length+'</span><span>Skor: '+score+'</span></div>';
+    h+='<div class="qq">'+esc(q.q)+'</div>';
+    q.opts.forEach(function(o,oi){
+      if(!o.trim())return;
+      var cls='qopt';
+      if(answered){
+        if(oi===q.ans)cls+=' correct';
+        else if(oi===selected)cls+=' wrong';
+        else cls+=' disabled';
+      }
+      h+='<button class="'+cls+'" '+(answered?'disabled':'')+' data-oi="'+oi+'"><b style="color:rgba(245,200,66,.8);margin-right:4px">'+letters[oi]+'.</b>'+esc(o)+(answered&&oi===q.ans?' ✅':'')+(answered&&oi===selected&&oi!==q.ans?' ❌':'')+'</button>';
+    });
+    if(answered&&q.ex)h+='<div class="qex">💡 '+esc(q.ex)+'</div>';
+    el.innerHTML=h;
+    el.querySelectorAll('.qopt:not(.disabled)').forEach(function(btn){
+      btn.addEventListener('click',function(){
+        if(answered)return;
+        selected=parseInt(this.getAttribute('data-oi'));
+        answered=true;
+        if(selected===q.ans)score++;
+        render();
+        setTimeout(function(){cur++;answered=false;selected=-1;render()},1500);
+      });
+    });
+  }
+  el.__restart=function(){cur=0;score=0;answered=false;selected=-1;render()};
+  render();
+});
+document.querySelectorAll('[id^=game_]').forEach(function(el){
+  var gi=parseInt(el.getAttribute('data-game-idx'));
+  var mod=(!isNaN(gi)&&gi>=0&&gi<MODULES_DATA.length)?MODULES_DATA[gi]:null;
+  if(!mod){el.innerHTML='<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;color:rgba(56,217,217,.5);font-size:12px"><span style="font-size:28px">🎮</span><span style="margin-top:4px">Belum ada game</span></div>';return}
+  var t=mod.type;
+  var title=mod.title||t;
+  if(t==='truefalse'){
+    var soal=(mod.soal||[]).filter(function(s){return s.teks});
+    var ci=0,sc=0,ans=false,sel=null;
+    function render(){
+      if(ci>=soal.length){var p=Math.round(sc/soal.length*100);el.innerHTML='<div class="qresult"><div class="score" style="color:#3ecfcf">'+p+'%</div><div class="level" style="color:#3ecfcf">'+sc+'/'+soal.length+' benar</div><button onclick="this.parentNode.parentNode.__rs()">Ulangi</button></div>';return}
+      var q=soal[ci];var h='<div class="qhead"><span style="font-weight:700;color:#3ecfcf">Soal '+(ci+1)+'/'+soal.length+'</span><span style="color:#3ecfcf">Skor: '+sc+'</span></div>';
+      h+='<div class="qq" style="color:#e0f2fe">'+esc(q.teks)+'</div>';
+      h+='<div style="display:flex;gap:8px;margin-top:8px">';
+      h+='<button style="flex:1;padding:10px;border-radius:8px;border:1px solid rgba(52,211,153,.3);background:rgba(52,211,153,.15);color:#6ee7b7;font-size:13px;font-weight:700;cursor:pointer;'+(ans?(q.benar?'':'opacity:.3'):'')+'" '+(ans?'disabled':'')+' data-v="true">✅ Benar</button>';
+      h+='<button style="flex:1;padding:10px;border-radius:8px;border:1px solid rgba(239,68,68,.3);background:rgba(239,68,68,.15);color:#fca5a5;font-size:13px;font-weight:700;cursor:pointer;'+(ans?(!q.benar?'':'opacity:.3'):'')+'" '+(ans?'disabled':'')+' data-v="false">❌ Salah</button></div>';
+      el.innerHTML=h;
+      el.querySelectorAll('button[data-v]').forEach(function(b){b.addEventListener('click',function(){if(ans)return;sel=this.getAttribute('data-v')==='true';ans=true;if(sel===(q.benar===true))sc++;render();setTimeout(function(){ci++;ans=false;sel=null;render()},1200)})});
+    }
+    el.__rs=function(){ci=0;sc=0;ans=false;sel=null;render()};render();
+  } else {
+    var icons={roda:'🎡',memory:'🧠',matching:'🔀',sorting:'🔢',spinwheel:'🎡',teambuzzer:'🏆',wordsearch:'🔍',flashcard:'🃏'};
+    var labels={roda:'Roda Putar',memory:'Memory Match',matching:'Pasangkan',sorting:'Klasifikasi',spinwheel:'Roda Pertanyaan',teambuzzer:'Kuis Tim',wordsearch:'Teka-Teki Kata',flashcard:'Flashcard'};
+    el.innerHTML='<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%"><span style="font-size:28px">'+(icons[t]||'🎮')+'</span><div style="font-size:13px;font-weight:700;color:#3ecfcf;margin-top:4px">'+(labels[t]||title)+'</div><div style="font-size:10px;color:rgba(56,217,217,.5);margin-top:2px">'+(title||'Game Interaktif')+'</div></div>';
+  }
+});
+<\/script></body></html>`;
   },
 
   exportSlideshowHTML: () => {
