@@ -4,8 +4,9 @@ import { useCanvaStore } from '@/store/canva-store';
 import type { LeftTab } from './types';
 
 const RAIL_ITEMS: { id: LeftTab; icon: string; title: string; divider?: boolean }[] = [
-  { id: 'pages', icon: '📄', title: 'Halaman' },
-  { id: 'elems', icon: '🧩', title: 'Elemen' },
+  { id: 'templates', icon: '🧩', title: 'Template' },
+  { id: 'pages', icon: '📄', title: 'Halaman', divider: true },
+  { id: 'elems', icon: '📦', title: 'Elemen' },
   { id: 'ratio', icon: '📐', title: 'Rasio' },
   { id: 'layers', icon: '🔲', title: 'Layer', divider: true },
 ];

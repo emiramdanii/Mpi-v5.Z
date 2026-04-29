@@ -19,6 +19,8 @@ export default function Toolbar() {
     redo,
     canUndo,
     canRedo,
+    rightPanelOpen,
+    toggleRightPanel,
   } = useCanvaStore();
 
   const page = pages[currentPageIndex];
@@ -144,6 +146,14 @@ export default function Toolbar() {
 
       {/* Zoom controls */}
       <div className="flex items-center gap-1 ml-auto">
+        {/* Right Panel toggle */}
+        <button
+          onClick={toggleRightPanel}
+          title={rightPanelOpen ? 'Sembunyikan Panel Kanan' : 'Tampilkan Panel Kanan'}
+          className={`p-1.5 rounded transition-colors ${rightPanelOpen ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20' : 'hover:bg-zinc-800 text-zinc-500 hover:text-zinc-200'}`}
+        >
+          ☰
+        </button>
         <button onClick={() => zoomDelta(-0.1)} className="w-6 h-6 flex items-center justify-center rounded bg-zinc-800 hover:bg-zinc-700 text-zinc-300 text-sm transition-colors" title="Zoom out">−</button>
         <span className="text-zinc-400 text-[11px] font-mono w-10 text-center">{Math.round(zoom * 100)}%</span>
         <button onClick={() => zoomDelta(0.1)} className="w-6 h-6 flex items-center justify-center rounded bg-zinc-800 hover:bg-zinc-700 text-zinc-300 text-sm transition-colors" title="Zoom in">+</button>

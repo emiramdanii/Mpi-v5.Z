@@ -12,6 +12,19 @@ import RightPanel from './RightPanel';
 export default function CanvaBuilder() {
   const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
 
+  // ── Load state from localStorage on mount ────────────────────
+  useEffect(() => {
+    useCanvaStore.getState().loadFromStorage();
+  }, []);
+
+  // ── Auto-save to localStorage on changes ─────────────────────
+  useEffect(() => {
+    const unsub = useCanvaStore.subscribe(() => {
+      useCanvaStore.getState().saveToStorage();
+    });
+    return unsub;
+  }, []);
+
   const handleMouseMove = useCallback((x: number, y: number) => {
     setMousePos({ x, y });
   }, []);

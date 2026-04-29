@@ -5,6 +5,7 @@ import { useCanvaStore } from '@/store/canva-store';
 import type { CanvaElement, ResizeDir } from './types';
 import QuizWidget from './QuizWidget';
 import GameWidget from './GameWidget';
+import PageTemplate from './PageTemplate';
 
 export default function Stage({ onMouseMove }: { onMouseMove: (x: number, y: number) => void }) {
   const {
@@ -17,6 +18,7 @@ export default function Stage({ onMouseMove }: { onMouseMove: (x: number, y: num
     selectElement,
     addElement,
     updateElement,
+    updateTemplateData,
   } = useCanvaStore();
 
   const page = pages[currentPageIndex];
@@ -147,7 +149,13 @@ export default function Stage({ onMouseMove }: { onMouseMove: (x: number, y: num
     selectElement(null);
   };
 
+  // Handle template field edit
+  const handleTemplateEdit = useCallback((key: string, value: string) => {
+    updateTemplateData(key, value);
+  }, [updateTemplateData]);
+
   const scale = baseScale * zoom;
+  const isTemplateMode = page && page.templateType && page.templateType !== 'custom';
 
   if (!page) return null;
 
@@ -197,45 +205,64 @@ export default function Stage({ onMouseMove }: { onMouseMove: (x: number, y: num
             style={{ background: `rgba(14,28,47,${(page.overlay || 20) / 100})` }}
           />
 
-          {/* Elements container */}
-          <div className="absolute inset-0">
-            {page.elements.map(el => (
-              <StageElement
-                key={el.id}
-                element={el}
-                isSelected={el.id === selectedElId}
-                onSelect={() => selectElement(el.id)}
-                onStartDrag={(startX, startY) => {
-                  dragState.current = {
-                    type: 'move',
-                    elId: el.id,
-                    startX,
-                    startY,
-                    origX: el.x,
-                    origY: el.y,
-                  };
-                }}
-                onStartResize={(dir, startX, startY) => {
-                  dragState.current = {
-                    type: 'resize',
-                    elId: el.id,
-                    startX,
-                    startY,
-                    origX: el.x,
-                    origY: el.y,
-                    origW: el.w,
-                    origH: el.h,
-                    dir,
-                  };
-                }}
-              />
-            ))}
-          </div>
+          {/* Template Mode: Render full-page template */}
+          {isTemplateMode && (
+            <PageTemplate
+              page={page}
+              isSelected={true}
+              onEditField={handleTemplateEdit}
+            />
+          )}
 
-          {/* Drop hint (visible when no elements) */}
-          {page.elements.length === 0 && (
-            <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-              <div className="text-zinc-600 text-sm">⬇ Seret elemen ke sini</div>
+          {/* Custom Mode: Render individual elements */}
+          {!isTemplateMode && (
+            <div className="absolute inset-0">
+              {page.elements.map(el => (
+                <StageElement
+                  key={el.id}
+                  element={el}
+                  isSelected={el.id === selectedElId}
+                  onSelect={() => selectElement(el.id)}
+                  onStartDrag={(startX, startY) => {
+                    dragState.current = {
+                      type: 'move',
+                      elId: el.id,
+                      startX,
+                      startY,
+                      origX: el.x,
+                      origY: el.y,
+                    };
+                  }}
+                  onStartResize={(dir, startX, startY) => {
+                    dragState.current = {
+                      type: 'resize',
+                      elId: el.id,
+                      startX,
+                      startY,
+                      origX: el.x,
+                      origY: el.y,
+                      origW: el.w,
+                      origH: el.h,
+                      dir,
+                    };
+                  }}
+                />
+              ))}
+            </div>
+          )}
+
+          {/* Drop hint (visible when no elements and custom mode) */}
+          {!isTemplateMode && page.elements.length === 0 && (
+            <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+              <div className="text-zinc-600 text-sm mb-2">⬇ Seret elemen ke sini</div>
+              <div className="text-zinc-700 text-xs">atau pilih Template dari panel kiri</div>
+            </div>
+          )}
+
+          {/* Template mode badge */}
+          {isTemplateMode && (
+            <div className="absolute top-2 right-2 px-2 py-0.5 rounded-full text-[8px] font-bold bg-amber-500/20 text-amber-400 border border-amber-500/30 pointer-events-none">
+              Template: {page.templateType}
             </div>
           )}
         </div>
@@ -244,7 +271,7 @@ export default function Stage({ onMouseMove }: { onMouseMove: (x: number, y: num
   );
 }
 
-/* ── Stage Element ──────────────────────────────────────────── */
+/* ── Stage Element (Custom Mode) ────────────────────────────── */
 
 function StageElement({
   element,
@@ -266,8 +293,6 @@ function StageElement({
   const handleMouseDown = (e: React.MouseEvent) => {
     e.stopPropagation();
     onSelect();
-    // For interactive elements (kuis/game), don't start drag when already selected
-    // so the user can interact with the quiz/game content
     if (!isInteractive || !isSelected) {
       onStartDrag(e.clientX, e.clientY);
     }
@@ -291,6 +316,18 @@ function StageElement({
       saveTextContent(element.id, textRef.current.textContent || '');
     }
   };
+
+  // 8-direction resize handles
+  const resizeHandles: { dir: ResizeDir; style: React.CSSProperties; cursor: string }[] = [
+    { dir: 'tl', style: { top: -5, left: -5 }, cursor: 'nwse-resize' },
+    { dir: 'tr', style: { top: -5, right: -5 }, cursor: 'nesw-resize' },
+    { dir: 'bl', style: { bottom: -5, left: -5 }, cursor: 'nesw-resize' },
+    { dir: 'br', style: { bottom: -5, right: -5 }, cursor: 'nwse-resize' },
+    { dir: 'tm', style: { top: -5, left: '50%', transform: 'translateX(-50%)' }, cursor: 'ns-resize' },
+    { dir: 'bm', style: { bottom: -5, left: '50%', transform: 'translateX(-50%)' }, cursor: 'ns-resize' },
+    { dir: 'l', style: { top: '50%', left: -5, transform: 'translateY(-50%)' }, cursor: 'ew-resize' },
+    { dir: 'r', style: { top: '50%', right: -5, transform: 'translateY(-50%)' }, cursor: 'ew-resize' },
+  ];
 
   return (
     <div
@@ -350,10 +387,11 @@ function StageElement({
             contentEditable
             suppressContentEditableWarning
             onBlur={handleTextBlur}
-            className="w-full h-full outline-none text-white text-shadow-lg"
+            className="w-full h-full outline-none text-shadow-lg"
             style={{
               fontSize: `${element.fontSize || 20}px`,
               fontWeight: 700,
+              color: element.textColor || '#ffffff',
               textShadow: '0 2px 8px rgba(0,0,0,.5)',
               lineHeight: 1.4,
               padding: 8,
@@ -373,22 +411,15 @@ function StageElement({
         )}
       </div>
 
-      {/* Resize handles */}
+      {/* Resize handles (8-direction) */}
       {isSelected && (
         <>
-          {(['tl', 'tr', 'bl', 'br'] as ResizeDir[]).map(dir => (
+          {resizeHandles.map(h => (
             <div
-              key={dir}
-              onMouseDown={e => handleResizeMouseDown(e, dir)}
-              className={`absolute w-3 h-3 bg-amber-400 border border-amber-600 rounded-sm z-30 cursor-${
-                dir === 'tl' || dir === 'br' ? 'nwse-resize' : 'nesw-resize'
-              }`}
-              style={{
-                top: dir.includes('t') ? -5 : 'auto',
-                bottom: dir.includes('b') ? -5 : 'auto',
-                left: dir.includes('l') ? -5 : 'auto',
-                right: dir.includes('r') ? -5 : 'auto',
-              }}
+              key={h.dir}
+              onMouseDown={e => handleResizeMouseDown(e, h.dir)}
+              className={`absolute w-2.5 h-2.5 bg-amber-400 border border-amber-600 rounded-sm z-30 cursor-${h.cursor}`}
+              style={h.style}
             />
           ))}
         </>
