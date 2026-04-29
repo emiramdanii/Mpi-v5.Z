@@ -160,7 +160,16 @@ function CpSection() {
             value={profilInput}
             onChange={(e) => setProfilInput(e.target.value)}
             onKeyDown={handleProfilKeyDown}
+            list="cp-profil-suggest"
           />
+          <datalist id="cp-profil-suggest">
+            <option value="Beriman, Bertakwa kepada Tuhan YME" />
+            <option value="Berkebinekaan Global" />
+            <option value="Bergotong Royong" />
+            <option value="Bernalar Kritis" />
+            <option value="Mandiri" />
+            <option value="Kreatif" />
+          </datalist>
         </div>
       </div>
     </div>

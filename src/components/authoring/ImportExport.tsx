@@ -123,6 +123,18 @@ export default function ImportExport() {
   // ── Existing: Export Student HTML ──────────────────────────────
   const exportStudentHtml = useCallback(() => {
     const s = useAuthoringStore.getState();
+
+    // ── Pre-export validation warnings ─────────────────────────
+    if (!s.meta.judulPertemuan?.trim()) {
+      toast.warning('⚠️ Judul pertemuan kosong. Isi terlebih dahulu di panel Dokumen.');
+    }
+    if (s.kuis.length === 0) {
+      toast.warning('⚠️ Belum ada soal kuis.');
+    }
+    if (s.materi.blok.length === 0) {
+      toast.warning('⚠️ Materi kosong.');
+    }
+
     try {
       const html = generateExportHtml({
         meta: s.meta, cp: s.cp, tp: s.tp, atp: s.atp, alur: s.alur,

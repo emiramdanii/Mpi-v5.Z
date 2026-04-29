@@ -61,9 +61,21 @@ const PANEL_TITLES: Record<PanelId, string> = {
   versions: 'Riwayat Versi',
 };
 
+// ── Guided Tour Config ──────────────────────────────────────────
+const TOUR_STEPS = [
+  { title: 'Sidebar', desc: 'Gunakan sidebar untuk berpindah antar panel editor.' },
+  { title: 'Dashboard', desc: 'Dashboard menampilkan kelengkapan dan quick actions.' },
+  { title: 'Dokumen', desc: 'Isi Meta, CP, TP, ATP, dan Alur di panel Dokumen.' },
+  { title: 'Import', desc: 'Import data dari Excel atau JSON di panel Import.' },
+  { title: 'Auto-Generate', desc: 'Gunakan AI untuk generate konten otomatis.' },
+  { title: 'Preview', desc: 'Preview media pembelajaran sebelum export.' },
+];
+
 // ── Main Component ──────────────────────────────────────────────
 export default function AuthoringTool() {
   const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [showTour, setShowTour] = useState(() => localStorage.getItem('at_tour_done') === null);
+  const [tourStep, setTourStep] = useState(0);
   const activePanel = useAuthoringStore((s) => s.activePanel);
   const setActivePanel = useAuthoringStore((s) => s.setActivePanel);
   const dirty = useAuthoringStore((s) => s.dirty);
@@ -143,6 +155,20 @@ export default function AuthoringTool() {
   const isCanva = activePanel === 'canva';
   // For Preview panel, render full-bleed (no header)
   const isPreview = activePanel === 'preview';
+
+  // ── Tour: dismiss / advance ────────────────────────────────
+  const dismissTour = useCallback(() => {
+    setShowTour(false);
+    localStorage.setItem('at_tour_done', '1');
+  }, []);
+
+  const nextTourStep = useCallback(() => {
+    if (tourStep < TOUR_STEPS.length - 1) {
+      setTourStep((s) => s + 1);
+    } else {
+      dismissTour();
+    }
+  }, [tourStep, dismissTour]);
 
   return (
     <div className="h-screen w-screen flex bg-zinc-950 text-zinc-200 overflow-hidden">
@@ -292,6 +318,73 @@ export default function AuthoringTool() {
           {renderPanel()}
         </main>
       </div>
+
+      {/* ── Guided Tour Overlay ────────────────────────────── */}
+      {showTour && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center">
+          {/* Backdrop */}
+          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
+
+          {/* Tooltip Card */}
+          <div className="relative z-10 w-full max-w-sm mx-4">
+            <div className="bg-zinc-900 border border-zinc-700 rounded-xl shadow-2xl overflow-hidden">
+              {/* Step icon + badge */}
+              <div className="bg-amber-500/10 px-5 pt-5 pb-3">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-lg bg-amber-500/20 flex items-center justify-center text-lg">
+                    📍
+                  </div>
+                  <div>
+                    <div className="text-xs font-medium text-amber-400/70">
+                      Langkah {tourStep + 1} dari {TOUR_STEPS.length}
+                    </div>
+                    <h3 className="text-base font-bold text-zinc-100">
+                      {TOUR_STEPS[tourStep].title}
+                    </h3>
+                  </div>
+                </div>
+              </div>
+
+              {/* Description */}
+              <div className="px-5 py-4">
+                <p className="text-sm text-zinc-300 leading-relaxed">
+                  {TOUR_STEPS[tourStep].desc}
+                </p>
+              </div>
+
+              {/* Step dots */}
+              <div className="px-5 pb-2 flex justify-center gap-1.5">
+                {TOUR_STEPS.map((_, i) => (
+                  <span
+                    key={i}
+                    className={`block h-1.5 rounded-full transition-all duration-300 ${
+                      i === tourStep
+                        ? 'w-5 bg-amber-500'
+                        : 'w-1.5 bg-zinc-600'
+                    }`}
+                  />
+                ))}
+              </div>
+
+              {/* Actions */}
+              <div className="px-5 pb-5 pt-3 flex items-center gap-3">
+                <button
+                  onClick={dismissTour}
+                  className="px-4 py-2 text-xs font-medium text-zinc-400 hover:text-zinc-200 bg-zinc-800 hover:bg-zinc-700 rounded-lg transition-colors"
+                >
+                  Lewati
+                </button>
+                <button
+                  onClick={nextTourStep}
+                  className="flex-1 px-4 py-2 text-xs font-semibold text-black bg-amber-500 hover:bg-amber-400 rounded-lg transition-colors"
+                >
+                  {tourStep < TOUR_STEPS.length - 1 ? 'Berikutnya →' : 'Mulai ✨'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
-}
+};
