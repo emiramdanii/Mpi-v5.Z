@@ -144,14 +144,14 @@ export default function Dashboard() {
         <h3 className="text-sm font-bold text-zinc-200 mb-3">💡 Tips Penting</h3>
         <div className="space-y-2">
           {[
-            { icon: '📱', text: '<strong>Preview Aplikasi</strong> — Menampilkan tampilan siswa secara lengkap (cover, materi, kuis, skor). Navigasi bebas tanpa reset.' },
-            { icon: '🎨', text: '<strong>Preview Desain Canva</strong> — Menampilkan desain slide visual saja. Berbeda dari Preview Aplikasi.' },
-            { icon: '⚡', text: '<strong>Preset vs Proyek</strong> — Preset adalah template data contoh. Setelah mengedit, simpan sebagai proyek agar data terpisah.' },
-            { icon: '🔄', text: '<strong>Auto-Save</strong> — Data otomatis tersimpan ke browser setiap 8 detik saat ada perubahan.' },
+            { icon: '📱', label: 'Preview Aplikasi', desc: 'Menampilkan tampilan siswa secara lengkap (cover, materi, kuis, skor). Navigasi bebas tanpa reset.' },
+            { icon: '🎨', label: 'Preview Desain Canva', desc: 'Menampilkan desain slide visual saja. Berbeda dari Preview Aplikasi.' },
+            { icon: '⚡', label: 'Preset vs Proyek', desc: 'Preset adalah template data contoh. Setelah mengedit, simpan sebagai proyek agar data terpisah.' },
+            { icon: '🔄', label: 'Auto-Save', desc: 'Data otomatis tersimpan ke browser setiap 8 detik saat ada perubahan.' },
           ].map((tip, i) => (
             <div key={i} className="flex items-start gap-2 text-xs text-zinc-300">
               <span className="flex-shrink-0">{tip.icon}</span>
-              <span dangerouslySetInnerHTML={{ __html: tip.text }} />
+              <span><strong>{tip.label}</strong> — {tip.desc}</span>
             </div>
           ))}
         </div>

@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useAuthoringStore } from '@/store/authoring-store';
+import { toast } from 'sonner';
 
 interface Project {
   id: string;
@@ -38,7 +39,7 @@ export default function Projects() {
     };
     const newProjects = [project, ...projects];
     setProjects(newProjects);
-    try { localStorage.setItem('at_projects_v1', JSON.stringify(newProjects)); } catch { /* ignore */ }
+    try { localStorage.setItem('at_projects_v1', JSON.stringify(newProjects)); } catch { toast.error('Gagal menyimpan proyek ke browser'); }
   };
 
   const handleLoad = (project: Project) => {
@@ -59,13 +60,14 @@ export default function Projects() {
         dirty: false,
       });
       store.setActivePanel('dashboard');
-    } catch { /* ignore */ }
+      toast.success(`Proyek "${project.name}" berhasil dimuat`);
+    } catch { toast.error('Gagal memuat proyek — data rusak'); }
   };
 
   const handleDelete = (id: string) => {
     const newProjects = projects.filter((p) => p.id !== id);
     setProjects(newProjects);
-    try { localStorage.setItem('at_projects_v1', JSON.stringify(newProjects)); } catch { /* ignore */ }
+    try { localStorage.setItem('at_projects_v1', JSON.stringify(newProjects)); } catch { toast.error('Gagal menghapus proyek dari browser'); }
   };
 
   const formatDate = (ts: number) => {
