@@ -96,6 +96,7 @@ export default function QuizWidget({ dataIdx, compact = false }: QuizWidgetProps
   return (
     <div
       className="h-full flex flex-col bg-amber-500/10 rounded border border-amber-500/20 overflow-hidden"
+      aria-label={`Soal ${currentQ + 1}`}
       onClick={(e) => e.stopPropagation()}
     >
       {/* Progress bar */}
@@ -126,7 +127,7 @@ export default function QuizWidget({ dataIdx, compact = false }: QuizWidgetProps
       </div>
 
       {/* Options */}
-      <div className="px-1.5 pb-1.5 space-y-1">
+      <div className="px-1.5 pb-1.5 space-y-1" role="radiogroup">
         {q.opts.map((opt, idx) => {
           if (!opt.trim()) return null;
           let bg = 'bg-white/5 hover:bg-white/10 border-white/10';
@@ -153,6 +154,9 @@ export default function QuizWidget({ dataIdx, compact = false }: QuizWidgetProps
               key={idx}
               onClick={() => handleAnswer(idx)}
               disabled={answered}
+              role="radio"
+              aria-checked={selectedOpt === idx}
+              aria-label={`Opsi ${LETTERS[idx]}: ${opt}`}
               className={`w-full text-left px-2 py-1.5 rounded-md border transition-all duration-300 ${compact ? 'text-[8px] py-1 px-1.5' : 'text-[10px]'} ${bg} ${textCol} ${!answered ? 'cursor-pointer' : 'cursor-default'}`}
             >
               <span className="font-bold text-amber-400/80 mr-1">{LETTERS[idx]}.</span>

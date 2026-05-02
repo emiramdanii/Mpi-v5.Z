@@ -32,9 +32,23 @@ export default function GameWidget({ dataIdx, compact = false }: GameWidgetProps
     );
   }
 
+  const gameTypeLabels: Record<string, string> = {
+    truefalse: 'Benar Salah',
+    memory: 'Memory Match',
+    matching: 'Pasangkan',
+    roda: 'Roda Putar',
+    sorting: 'Klasifikasi',
+    spinwheel: 'Roda Pertanyaan',
+    teambuzzer: 'Kuis Tim',
+    wordsearch: 'Teka-Teki Kata',
+    flashcard: 'Flashcard',
+  };
+
   return (
     <div
       className="h-full overflow-hidden rounded border border-cyan-500/20"
+      role="application"
+      aria-label={gameTypeLabels[gameType] || gameType}
       onClick={(e) => e.stopPropagation()}
     >
       {gameType === 'truefalse' && <TrueFalseGame data={mod} compact={compact} />}
@@ -112,6 +126,7 @@ function TrueFalseGame({ data, compact }: { data: Record<string, unknown>; compa
       </p>
       <div className="flex gap-2 mt-2">
         <button onClick={() => handleAnswer(true)} disabled={answered}
+          aria-label="Pilih Benar"
           className={`flex-1 py-2 rounded-lg font-bold text-[11px] transition-all ${
             answered
               ? (correct === true ? 'bg-emerald-500/30 border-emerald-400/40 text-emerald-300' : 'bg-white/5 text-white/30')
@@ -120,6 +135,7 @@ function TrueFalseGame({ data, compact }: { data: Record<string, unknown>; compa
           ✅ Benar
         </button>
         <button onClick={() => handleAnswer(false)} disabled={answered}
+          aria-label="Pilih Salah"
           className={`flex-1 py-2 rounded-lg font-bold text-[11px] transition-all ${
             answered
               ? (correct === false ? 'bg-red-500/30 border-red-400/40 text-red-300' : 'bg-white/5 text-white/30')
@@ -214,6 +230,7 @@ function MemoryGame({ data, compact }: { data: Record<string, unknown>; compact:
             <button
               key={card.id}
               onClick={() => handleFlip(card.id)}
+              aria-label={isMatched ? `Kartu cocok: ${card.text}` : isFlipped ? `Kartu: ${card.text}` : `Kartu tertutup, posisi ${cards.indexOf(card) + 1}`}
               className={`rounded-lg border text-center flex items-center justify-center p-1 transition-all duration-300 ${
                 isMatched ? 'bg-emerald-500/20 border-emerald-400/40 scale-95' :
                 isFlipped ? 'bg-cyan-500/30 border-cyan-400/40' :
@@ -293,6 +310,8 @@ function MatchingGame({ data, compact }: { data: Record<string, unknown>; compac
         <div className="flex-1 flex flex-col gap-1 overflow-y-auto">
           {validPairs.map((p, i) => (
             <button key={i} onClick={() => handleLeftClick(i)}
+              aria-label={`Pilih: ${p.kiri}`}
+              aria-pressed={selectedLeft === i}
               className={`px-1.5 py-1.5 rounded border text-[9px] text-left transition-all ${
                 matchedLeft.has(i) ? 'bg-emerald-500/20 border-emerald-400/40 text-emerald-300 line-through opacity-60' :
                 selectedLeft === i ? 'bg-cyan-500/30 border-cyan-400/50 text-cyan-200' :
@@ -306,6 +325,7 @@ function MatchingGame({ data, compact }: { data: Record<string, unknown>; compac
         <div className="flex-1 flex flex-col gap-1 overflow-y-auto">
           {shuffledRight.map(r => (
             <button key={r.idx} onClick={() => handleRightClick(r.idx)}
+              aria-label={`Cocokkan dengan: ${r.text}`}
               className={`px-1.5 py-1.5 rounded border text-[9px] text-left transition-all ${
                 matchedRight.has(r.idx) ? 'bg-emerald-500/20 border-emerald-400/40 text-emerald-300 line-through opacity-60' :
                 wrong === `${selectedLeft}-${r.idx}` ? 'bg-red-500/30 border-red-400/40 text-red-300' :
@@ -376,11 +396,11 @@ function RodaGame({ data, compact }: { data: Record<string, unknown>; compact: b
         <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1 text-lg">▼</div>
       </div>
       {result && (
-        <div className="mt-2 text-center">
+        <div className="mt-2 text-center" aria-live="polite">
           <div className={`${compact ? 'text-[10px]' : 'text-[12px]'} font-bold text-amber-300`}>{result}</div>
         </div>
       )}
-      <button onClick={spin} disabled={spinning}
+      <button onClick={spin} disabled={spinning} aria-label="Putar roda"
         className="mt-2 px-4 py-1.5 bg-cyan-500/30 hover:bg-cyan-500/50 disabled:opacity-50 rounded-lg text-[10px] font-bold text-cyan-200 transition-colors border border-cyan-500/30 cursor-pointer">
         {spinning ? 'Berputar...' : 'Putar!'}
       </button>
@@ -465,6 +485,7 @@ function SortingGame({ data, compact }: { data: Record<string, unknown>; compact
               <div className="flex flex-wrap gap-0.5 mt-0.5">
                 {unsorted.map((item, j) => (
                   <button key={j} onClick={() => handleDrop(item.teks as string, catId)}
+                    aria-label={`Masukkan ${item.teks} ke ${cat.label}`}
                     className="text-[7px] px-1 py-0.5 rounded bg-white/5 border border-dashed border-white/15 text-white/40 hover:bg-white/10 hover:text-white/60 cursor-pointer transition-colors">
                     + {item.teks as string}
                   </button>
@@ -543,12 +564,12 @@ function SpinWheelGame({ data, compact }: { data: Record<string, unknown>; compa
         <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1 text-lg">▼</div>
       </div>
       {result && (
-        <div className="mt-2 text-center px-2 max-w-full">
+        <div className="mt-2 text-center px-2 max-w-full" aria-live="polite">
           <div className="text-[9px] text-cyan-400/60 mb-0.5">{result.kategori as string || 'Soal'}</div>
           <div className={`${compact ? 'text-[9px]' : 'text-[11px]'} font-bold text-amber-300`}>{result.teks as string}</div>
         </div>
       )}
-      <button onClick={spin} disabled={spinning}
+      <button onClick={spin} disabled={spinning} aria-label="Putar roda pertanyaan"
         className="mt-2 px-4 py-1.5 bg-cyan-500/30 hover:bg-cyan-500/50 disabled:opacity-50 rounded-lg text-[10px] font-bold text-cyan-200 transition-colors border border-cyan-500/30 cursor-pointer">
         {spinning ? 'Berputar...' : 'Putar!'}
       </button>
@@ -622,7 +643,7 @@ function TeamBuzzerGame({ data, compact }: { data: Record<string, unknown>; comp
         {q.teks as string}
       </p>
       <div className="flex gap-2 mb-1">
-        <button onClick={() => handleBuzz('A')} disabled={!!buzzed}
+        <button onClick={() => handleBuzz('A')} disabled={!!buzzed} aria-label={`Buzz ${timA}`}
           className={`flex-1 py-2 rounded-lg font-bold text-[11px] transition-all border ${
             correct === 'A' ? 'bg-emerald-500/30 border-emerald-400/40 text-emerald-300' :
             buzzed === 'A' ? 'bg-blue-500/30 border-blue-400/40 text-blue-300' :
@@ -630,7 +651,7 @@ function TeamBuzzerGame({ data, compact }: { data: Record<string, unknown>; comp
           }`}>
           {timA} ({scoreA})
         </button>
-        <button onClick={() => handleBuzz('B')} disabled={!!buzzed}
+        <button onClick={() => handleBuzz('B')} disabled={!!buzzed} aria-label={`Buzz ${timB}`}
           className={`flex-1 py-2 rounded-lg font-bold text-[11px] transition-all border ${
             correct === 'B' ? 'bg-emerald-500/30 border-emerald-400/40 text-emerald-300' :
             buzzed === 'B' ? 'bg-orange-500/30 border-orange-400/40 text-orange-300' :
@@ -641,11 +662,11 @@ function TeamBuzzerGame({ data, compact }: { data: Record<string, unknown>; comp
       </div>
       {buzzed && !correct && (
         <div className="flex gap-2">
-          <button onClick={() => handleCorrect(buzzed)}
+          <button onClick={() => handleCorrect(buzzed)} aria-label={`Benar untuk ${buzzed === 'A' ? timA : timB}`}
             className="flex-1 py-1 bg-emerald-500/20 hover:bg-emerald-500/40 rounded text-[9px] font-bold text-emerald-300 border border-emerald-400/30 cursor-pointer">
             Benar ({buzzed})
           </button>
-          <button onClick={() => { const other = buzzed === 'A' ? 'B' : 'A'; setBuzzed(null); setTimeout(() => handleCorrect(other), 100); }}
+          <button onClick={() => { const other = buzzed === 'A' ? 'B' : 'A'; setBuzzed(null); setTimeout(() => handleCorrect(other), 100); }} aria-label={`Salah untuk ${buzzed === 'A' ? timA : timB}`}
             className="flex-1 py-1 bg-red-500/20 hover:bg-red-500/40 rounded text-[9px] font-bold text-red-300 border border-red-400/30 cursor-pointer">
             Salah ({buzzed})
           </button>
@@ -790,6 +811,7 @@ function WordSearchGame({ data, compact }: { data: Record<string, unknown>; comp
         <div className="flex-shrink-0" style={{ display: 'grid', gridTemplateColumns: `repeat(${ukuran}, ${cellSize}px)`, gap: 1 }}>
           {grid.map((row, r) => row.map((letter, c) => (
             <button key={`${r}-${c}`} onClick={() => handleCellClick(r, c)}
+              aria-label={`Kolom ${c+1}, Baris ${r+1}: ${letter}`}
               className={`${fontSize} w-full aspect-square rounded flex items-center justify-center font-bold transition-colors ${
                 selectedCells.some(([sr, sc]) => sr === r && sc === c) ? 'bg-amber-500/40 text-amber-200' :
                 found.has(letter) ? 'bg-emerald-500/30 text-emerald-300' :
@@ -830,6 +852,7 @@ function FlashcardGame({ data, compact }: { data: Record<string, unknown>; compa
       <div className="text-[9px] font-bold text-cyan-400 mb-1">🃏 Flashcard {currentIdx + 1}/{validCards.length}</div>
       <button
         onClick={() => setFlipped(!flipped)}
+        aria-label={flipped ? `Bagian belakang: ${card.belakang}` : `Bagian depan: ${card.depan}`}
         className="w-full flex-1 min-h-0 rounded-xl border border-white/10 flex items-center justify-center p-3 transition-all cursor-pointer hover:border-cyan-400/30"
         style={{
           background: flipped ? 'rgba(56,217,217,0.15)' : 'rgba(255,255,255,0.05)',
@@ -843,12 +866,14 @@ function FlashcardGame({ data, compact }: { data: Record<string, unknown>; compa
       <div className="flex gap-1 mt-1 w-full">
         {currentIdx > 0 && (
           <button onClick={() => { setCurrentIdx(i => i - 1); setFlipped(false); }}
+            aria-label="Kartu sebelumnya"
             className="flex-1 py-1 bg-white/5 hover:bg-white/10 rounded text-[9px] text-cyan-300 border border-white/10 cursor-pointer">
             ← Sebelumnya
           </button>
         )}
         {currentIdx < validCards.length - 1 && (
           <button onClick={() => { setCurrentIdx(i => i + 1); setFlipped(false); }}
+            aria-label="Kartu selanjutnya"
             className="flex-1 py-1 bg-cyan-500/20 hover:bg-cyan-500/30 rounded text-[9px] text-cyan-300 border border-cyan-400/20 cursor-pointer">
             Selanjutnya →
           </button>

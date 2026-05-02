@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import dynamic from 'next/dynamic';
 import { useAuthoringStore } from '@/store/authoring-store';
 import type { PanelId } from '@/store/authoring-store';
+import { PanelErrorBoundary } from './PanelErrorBoundary';
 
 import Dashboard from './Dashboard';
 import Dokumen from './Dokumen';
@@ -82,6 +83,10 @@ export default function AuthoringTool() {
   const meta = useAuthoringStore((s) => s.meta);
   const saveToStorage = useAuthoringStore((s) => s.saveToStorage);
   const loadFromStorage = useAuthoringStore((s) => s.loadFromStorage);
+  const undo = useAuthoringStore((s) => s.undo);
+  const redo = useAuthoringStore((s) => s.redo);
+  const canUndo = useAuthoringStore((s) => s.canUndo);
+  const canRedo = useAuthoringStore((s) => s.canRedo);
 
   // Load from storage on mount
   useEffect(() => {
@@ -108,17 +113,39 @@ export default function AuthoringTool() {
     return () => clearTimeout(timer);
   }, [dirty]);
 
-  // Keyboard shortcut: Ctrl+S to save
+  // Keyboard shortcut: Ctrl+S to save, Ctrl+Z to undo, Ctrl+Y to redo
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if ((e.ctrlKey || e.metaKey) && e.key === 's') {
         e.preventDefault();
         saveToStorage();
       }
+      if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey) {
+        e.preventDefault();
+        if (canUndo()) undo();
+      }
+      if ((e.ctrlKey || e.metaKey) && (e.key === 'y' || (e.key === 'z' && e.shiftKey))) {
+        e.preventDefault();
+        if (canRedo()) redo();
+      }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [saveToStorage]);
+  }, [saveToStorage, undo, redo, canUndo, canRedo]);
+
+  // ── beforeunload guard: cegah kehilangan data ──────────────
+  useEffect(() => {
+    const handler = (e: BeforeUnloadEvent) => {
+      if (dirty) {
+        e.preventDefault();
+        // Modern browsers ignore custom messages, but setting returnValue is required
+        e.returnValue = 'Perubahan belum disimpan. Yakin ingin keluar?';
+        return e.returnValue;
+      }
+    };
+    window.addEventListener('beforeunload', handler);
+    return () => window.removeEventListener('beforeunload', handler);
+  }, [dirty]);
 
   const exportJSON = useCallback(() => {
     const s = useAuthoringStore.getState();
@@ -138,16 +165,16 @@ export default function AuthoringTool() {
 
   const renderPanel = () => {
     switch (activePanel) {
-      case 'dashboard': return <Dashboard />;
-      case 'dokumen': return <Dokumen />;
-      case 'konten': return <Konten />;
-      case 'canva': return <CanvaBuilder />;
-      case 'autogen': return <AutoGenerate />;
-      case 'projects': return <Projects />;
-      case 'import': return <ImportExport />;
-      case 'preview': return <LivePreview />;
-      case 'versions': return <Riwayat />;
-      default: return <Dashboard />;
+      case 'dashboard': return <PanelErrorBoundary panelName="Dashboard"><Dashboard /></PanelErrorBoundary>;
+      case 'dokumen': return <PanelErrorBoundary panelName="Dokumen"><Dokumen /></PanelErrorBoundary>;
+      case 'konten': return <PanelErrorBoundary panelName="Konten"><Konten /></PanelErrorBoundary>;
+      case 'canva': return <PanelErrorBoundary panelName="Canva"><CanvaBuilder /></PanelErrorBoundary>;
+      case 'autogen': return <PanelErrorBoundary panelName="Auto-Generate"><AutoGenerate /></PanelErrorBoundary>;
+      case 'projects': return <PanelErrorBoundary panelName="Projects"><Projects /></PanelErrorBoundary>;
+      case 'import': return <PanelErrorBoundary panelName="Import/Export"><ImportExport /></PanelErrorBoundary>;
+      case 'preview': return <PanelErrorBoundary panelName="Preview"><LivePreview /></PanelErrorBoundary>;
+      case 'versions': return <PanelErrorBoundary panelName="Riwayat"><Riwayat /></PanelErrorBoundary>;
+      default: return <PanelErrorBoundary panelName="Dashboard"><Dashboard /></PanelErrorBoundary>;
     }
   };
 
@@ -276,6 +303,34 @@ export default function AuthoringTool() {
               title="Perubahan belum disimpan"
             />
 
+            {/* Undo/Redo buttons */}
+            <div className="flex items-center gap-0.5 mr-2">
+              <button
+                onClick={undo}
+                disabled={!canUndo()}
+                className={`w-7 h-7 flex items-center justify-center rounded text-sm transition-colors ${
+                  canUndo()
+                    ? 'text-zinc-300 hover:bg-zinc-800 hover:text-zinc-100'
+                    : 'text-zinc-600 cursor-not-allowed'
+                }`}
+                title="Undo (Ctrl+Z)"
+              >
+                ⮌
+              </button>
+              <button
+                onClick={redo}
+                disabled={!canRedo()}
+                className={`w-7 h-7 flex items-center justify-center rounded text-sm transition-colors ${
+                  canRedo()
+                    ? 'text-zinc-300 hover:bg-zinc-800 hover:text-zinc-100'
+                    : 'text-zinc-600 cursor-not-allowed'
+                }`}
+                title="Redo (Ctrl+Y)"
+              >
+                ⮎
+              </button>
+            </div>
+
             <div className="ml-auto flex items-center gap-2">
               <button
                 onClick={() => setActivePanel('preview')}
@@ -319,11 +374,22 @@ export default function AuthoringTool() {
         </main>
       </div>
 
+      {/* ── Sidebar Toggle (visible in Canva/Preview mode) ── */}
+      {(isCanva || isPreview) && (
+        <button
+          onClick={() => setSidebarOpen(!sidebarOpen)}
+          className="fixed top-3 left-3 z-40 w-8 h-8 flex items-center justify-center rounded-lg bg-zinc-800/80 text-zinc-400 hover:text-zinc-200 hover:bg-zinc-700 backdrop-blur-sm border border-zinc-700/50 transition-colors"
+          title="Toggle Sidebar"
+        >
+          ☰
+        </button>
+      )}
+
       {/* ── Guided Tour Overlay ────────────────────────────── */}
       {showTour && (
         <div className="fixed inset-0 z-50 flex items-center justify-center">
-          {/* Backdrop */}
-          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
+          {/* Backdrop — click to dismiss */}
+          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={dismissTour} />
 
           {/* Tooltip Card */}
           <div className="relative z-10 w-full max-w-sm mx-4">

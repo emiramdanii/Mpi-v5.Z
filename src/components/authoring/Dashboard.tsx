@@ -1,13 +1,23 @@
 'use client';
 
-import { useAuthoringStore } from '@/store/authoring-store';
+import { useAuthoringStore, type SfxTheme } from '@/store/authoring-store';
+
+const SFX_THEMES: { id: SfxTheme; label: string; icon: string; desc: string }[] = [
+  { id: 'default', label: 'Default', icon: '🔔', desc: 'Nada naik tajam, khas aplikasi pembelajaran' },
+  { id: 'soft', label: 'Lembut', icon: '🍃', desc: 'Nada rendah dan halus, nyaman untuk telinga' },
+  { id: 'retro', label: 'Retro 8-bit', icon: '👾', desc: 'Suara arcade klasik, bernuansa game retro' },
+  { id: 'nature', label: 'Alam', icon: '🌿', desc: 'Nada triangle yang menenangkan seperti alam' },
+  { id: 'none', label: 'Tanpa Suara', icon: '🔇', desc: 'Tidak ada efek suara sama sekali' },
+];
 
 export default function Dashboard() {
   const meta = useAuthoringStore((s) => s.meta);
+  const cp = useAuthoringStore((s) => s.cp);
   const tp = useAuthoringStore((s) => s.tp);
   const atp = useAuthoringStore((s) => s.atp);
   const alur = useAuthoringStore((s) => s.alur);
   const kuis = useAuthoringStore((s) => s.kuis);
+  const skenario = useAuthoringStore((s) => s.skenario);
   const modules = useAuthoringStore((s) => s.modules);
   const games = useAuthoringStore((s) => s.games);
   const materi = useAuthoringStore((s) => s.materi);
@@ -17,6 +27,8 @@ export default function Dashboard() {
   const setActivePanel = useAuthoringStore((s) => s.setActivePanel);
   const newProject = useAuthoringStore((s) => s.newProject);
   const saveToStorage = useAuthoringStore((s) => s.saveToStorage);
+  const sfxConfig = useAuthoringStore((s) => s.sfxConfig);
+  const updateSfxConfig = useAuthoringStore((s) => s.updateSfxConfig);
 
   const completeness = calcCompleteness();
   const isPresetMode = activePreset !== null;
@@ -105,6 +117,31 @@ export default function Dashboard() {
         <p className="text-sm text-zinc-400 mt-1">
           Kelola proyek, pantau kelengkapan, dan export media pembelajaran interaktif.
         </p>
+      </div>
+
+      {/* Kelengkapan Data */}
+      <div className="bg-amber-500/10 border border-amber-500/20 rounded-xl p-4">
+        <h3 className="text-sm font-bold text-amber-400">📋 Kelengkapan Data</h3>
+        <div className="grid grid-cols-2 gap-2 mt-3">
+          {[
+            { done: !!meta.judulPertemuan, msg: 'Judul Pertemuan belum diisi' },
+            { done: !!cp.capaianFase, msg: 'Capaian Pembelajaran belum diisi' },
+            { done: tp.length > 0, msg: 'Tujuan Pembelajaran belum ditambahkan' },
+            { done: kuis.length > 0, msg: 'Kuis belum ditambahkan' },
+            { done: skenario.length > 0, msg: 'Skenario belum ditambahkan' },
+            { done: materi.blok.length > 0, msg: 'Materi belum ditambahkan' },
+            { done: modules.length > 0, msg: 'Modul belum ditambahkan' },
+          ].map((item, i) => (
+            <div key={i} className="flex items-center gap-1.5 text-xs">
+              <span className={item.done ? 'text-emerald-400' : 'text-amber-400'}>
+                {item.done ? '✅' : '⚠'}
+              </span>
+              <span className={item.done ? 'text-zinc-400 line-through' : 'text-zinc-300'}>
+                {item.msg}
+              </span>
+            </div>
+          ))}
+        </div>
       </div>
 
       {/* Welcome Banner */}
@@ -266,6 +303,93 @@ export default function Dashboard() {
               <span className={c.done ? 'text-zinc-200' : 'text-zinc-500'}>{c.label}</span>
             </div>
           ))}
+        </div>
+      </div>
+
+      {/* Sound Effects Configuration */}
+      <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-5">
+        <h3 className="text-sm font-bold text-zinc-200 mb-1">🔊 Efek Suara (Sound Effects)</h3>
+        <p className="text-xs text-zinc-500 mb-3">Pilih tema suara yang diputar saat siswa menjawab kuis, memilih skenario, dan berinteraksi dengan game.</p>
+
+        {/* Theme selection */}
+        <div className="grid grid-cols-1 sm:grid-cols-5 gap-2 mb-4">
+          {SFX_THEMES.map((theme) => (
+            <button
+              key={theme.id}
+              onClick={() => updateSfxConfig('theme', theme.id)}
+              className={`rounded-lg p-3 text-center transition-colors cursor-pointer ${
+                sfxConfig.theme === theme.id
+                  ? 'bg-emerald-500/15 border-2 border-emerald-500/50 ring-1 ring-emerald-500/30'
+                  : 'bg-zinc-800/50 border border-zinc-700/50 hover:border-emerald-500/30'
+              }`}
+            >
+              <div className="text-xl mb-1">{theme.icon}</div>
+              <div className="text-xs font-semibold text-zinc-200">{theme.label}</div>
+              <div className="text-[0.6rem] text-zinc-500 mt-0.5 leading-tight">{theme.desc}</div>
+            </button>
+          ))}
+        </div>
+
+        {/* Volume slider */}
+        <div className="flex items-center gap-3">
+          <span className="text-xs text-zinc-400 w-16">Volume</span>
+          <input
+            type="range"
+            min="0"
+            max="100"
+            value={Math.round(sfxConfig.volume * 100)}
+            onChange={(e) => updateSfxConfig('volume', parseInt(e.target.value) / 100)}
+            className="flex-1 h-1.5 bg-zinc-700 rounded-lg appearance-none cursor-pointer accent-emerald-500"
+          />
+          <span className="text-xs text-zinc-400 w-10 text-right">{Math.round(sfxConfig.volume * 100)}%</span>
+        </div>
+
+        {/* Preview button */}
+        <div className="mt-3 flex items-center gap-2">
+          <button
+            onClick={() => {
+              try {
+                const ac = new (window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext)();
+                const vol = sfxConfig.volume * 0.15;
+                const themes: Record<string, { freq: number; dur: number; type: OscillatorType; ramp: number }> = {
+                  default: { freq: 523, dur: 0.1, type: 'sine', ramp: 784 },
+                  soft: { freq: 440, dur: 0.15, type: 'sine', ramp: 580 },
+                  retro: { freq: 880, dur: 0.06, type: 'square', ramp: 1320 },
+                  nature: { freq: 392, dur: 0.12, type: 'triangle', ramp: 659 },
+                  none: { freq: 0, dur: 0, type: 'sine', ramp: 0 },
+                };
+                const t = themes[sfxConfig.theme] || themes.default;
+                if (t.freq === 0) return;
+                const o = ac.createOscillator();
+                const g = ac.createGain();
+                o.type = t.type;
+                o.frequency.setValueAtTime(t.freq, ac.currentTime);
+                o.frequency.linearRampToValueAtTime(t.ramp, ac.currentTime + t.dur);
+                g.gain.setValueAtTime(vol, ac.currentTime);
+                g.gain.exponentialRampToValueAtTime(0.001, ac.currentTime + t.dur);
+                o.connect(g);
+                g.connect(ac.destination);
+                o.start();
+                o.stop(ac.currentTime + t.dur + 0.05);
+                setTimeout(() => {
+                  const o2 = ac.createOscillator();
+                  const g2 = ac.createGain();
+                  o2.type = t.type;
+                  o2.frequency.setValueAtTime(t.ramp, ac.currentTime);
+                  g2.gain.setValueAtTime(vol * 0.8, ac.currentTime);
+                  g2.gain.exponentialRampToValueAtTime(0.001, ac.currentTime + t.dur * 1.5);
+                  o2.connect(g2);
+                  g2.connect(ac.destination);
+                  o2.start();
+                  o2.stop(ac.currentTime + t.dur * 1.5 + 0.05);
+                }, t.dur * 1000 + 50);
+              } catch { /* Audio not supported */ }
+            }}
+            className="px-3 py-1.5 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 text-xs rounded-lg transition-colors border border-zinc-700"
+          >
+            🔈 Preview Suara
+          </button>
+          <span className="text-[0.6rem] text-zinc-600">Dengarkan contoh suara "correct" untuk tema yang dipilih</span>
         </div>
       </div>
 

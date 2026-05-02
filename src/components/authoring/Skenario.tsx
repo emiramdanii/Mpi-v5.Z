@@ -31,6 +31,13 @@ const INPUT_CLS =
 
 const TEXTAREA_CLS = INPUT_CLS + ' resize-none';
 
+const INPUT_INVALID_CLS =
+  'w-full bg-zinc-800 border border-red-500/50 rounded-lg px-3 py-2 text-sm text-zinc-200 placeholder:text-zinc-600 focus:outline-none focus:ring-2 focus:ring-red-500/50 focus:border-red-500/50 transition-colors';
+
+const TEXTAREA_INVALID_CLS = INPUT_INVALID_CLS + ' resize-none';
+
+const VALIDATION_MSG = 'text-[10px] text-red-400/80 mt-1';
+
 // ── Helper: field label ─────────────────────────────────────────
 function FieldLabel({ children }: { children: React.ReactNode }) {
   return <label className="block text-xs font-medium text-zinc-400 mb-1.5">{children}</label>;
@@ -126,6 +133,8 @@ function ChapterCard({
         <div className="flex-1 min-w-0">
           <h3 className="text-sm font-semibold text-zinc-200 truncate">
             {chapter.title || 'Bab Tanpa Judul'}
+            {!chapter.title && <span className="text-[9px] text-red-400/80">⚠ Belum berjudul</span>}
+            {chapter.choices.length === 0 && <span className="text-[9px] text-red-400/80">⚠ Belum ada pilihan</span>}
           </h3>
           <div className="flex flex-wrap items-center gap-2 mt-1.5">
             <span className="inline-flex items-center gap-1 text-xs text-zinc-400 bg-zinc-800 px-2 py-0.5 rounded-md">
@@ -187,12 +196,15 @@ function SetupEditor({ chapterIndex }: { chapterIndex: number }) {
         {chapter.setup.map((s, i) => (
           <div key={i} className="p-3 bg-zinc-800/50 rounded-lg border border-zinc-700/50 space-y-2">
             <div className="flex items-center gap-2">
-              <input
-                className={`${INPUT_CLS} w-40`}
-                placeholder="Pembicara (NARRATOR, TOKOH…)"
-                value={s.speaker}
-                onChange={(e) => updateSetup(chapterIndex, i, 'speaker', e.target.value)}
-              />
+              <div className="flex-1 w-40">
+                <input
+                  className={!s.speaker ? `${INPUT_INVALID_CLS} w-full` : `${INPUT_CLS} w-full`}
+                  placeholder="Pembicara (NARRATOR, TOKOH…)"
+                  value={s.speaker}
+                  onChange={(e) => updateSetup(chapterIndex, i, 'speaker', e.target.value)}
+                />
+                {!s.speaker && <p className={VALIDATION_MSG}>⚠ Pembicara belum diisi</p>}
+              </div>
               {chapter.setup.length > 1 && (
                 <button
                   onClick={() => removeSetup(chapterIndex, i)}
@@ -202,13 +214,16 @@ function SetupEditor({ chapterIndex }: { chapterIndex: number }) {
                 </button>
               )}
             </div>
-            <textarea
-              className={TEXTAREA_CLS}
-              rows={2}
-              placeholder="Isi dialog / narasi…"
-              value={s.text}
-              onChange={(e) => updateSetup(chapterIndex, i, 'text', e.target.value)}
-            />
+            <div>
+              <textarea
+                className={!s.text ? TEXTAREA_INVALID_CLS : TEXTAREA_CLS}
+                rows={2}
+                placeholder="Isi dialog / narasi…"
+                value={s.text}
+                onChange={(e) => updateSetup(chapterIndex, i, 'text', e.target.value)}
+              />
+              {!s.text && <p className={VALIDATION_MSG}>⚠ Isi dialog belum diisi</p>}
+            </div>
           </div>
         ))}
       </div>
@@ -276,11 +291,12 @@ function ChoiceEditor({
         <div>
           <FieldLabel>Label Pilihan</FieldLabel>
           <input
-            className={INPUT_CLS}
+            className={!choice.label ? INPUT_INVALID_CLS : INPUT_CLS}
             placeholder="Label singkat…"
             value={choice.label || ''}
             onChange={(e) => updateChoice(chapterIndex, choiceIndex, 'label', e.target.value)}
           />
+          {!choice.label && <p className={VALIDATION_MSG}>⚠ Label pilihan belum diisi</p>}
         </div>
         <div>
           <FieldLabel>Detail / Penjelasan</FieldLabel>
@@ -343,22 +359,24 @@ function ChoiceEditor({
       <div>
         <FieldLabel>Teks Norma</FieldLabel>
         <input
-          className={INPUT_CLS}
+          className={!choice.norma ? INPUT_INVALID_CLS : INPUT_CLS}
           placeholder="Norma yang terkait dengan pilihan ini…"
           value={choice.norma || ''}
           onChange={(e) => updateChoice(chapterIndex, choiceIndex, 'norma', e.target.value)}
         />
+        {!choice.norma && <p className={VALIDATION_MSG}>⚠ Teks norma belum diisi</p>}
       </div>
 
       {/* Result */}
       <div className="space-y-2">
         <FieldLabel>Hasil (Result)</FieldLabel>
         <input
-          className={INPUT_CLS}
+          className={!choice.resultTitle ? INPUT_INVALID_CLS : INPUT_CLS}
           placeholder="Judul hasil…"
           value={choice.resultTitle || ''}
           onChange={(e) => updateChoice(chapterIndex, choiceIndex, 'resultTitle', e.target.value)}
         />
+        {!choice.resultTitle && <p className={VALIDATION_MSG}>⚠ Judul hasil belum diisi</p>}
         <textarea
           className={TEXTAREA_CLS}
           rows={2}
@@ -462,11 +480,12 @@ function ChapterDetail({
         <div>
           <FieldLabel>Judul Bab</FieldLabel>
           <input
-            className={INPUT_CLS}
+            className={!chapter.title ? INPUT_INVALID_CLS : INPUT_CLS}
             placeholder="Judul bab skenario…"
             value={chapter.title || ''}
             onChange={(e) => updateChapter(chapterIndex, 'title', e.target.value)}
           />
+          {!chapter.title && <p className={VALIDATION_MSG}>⚠ Judul bab belum diisi</p>}
         </div>
 
         {/* Background theme selector */}
@@ -540,11 +559,12 @@ function ChapterDetail({
         <div>
           <FieldLabel>Pertanyaan Pilihan</FieldLabel>
           <input
-            className={INPUT_CLS}
+            className={!chapter.choicePrompt ? INPUT_INVALID_CLS : INPUT_CLS}
             placeholder="Apa yang akan kamu lakukan?"
             value={chapter.choicePrompt || ''}
             onChange={(e) => updateChapter(chapterIndex, 'choicePrompt', e.target.value)}
           />
+          {!chapter.choicePrompt && <p className={VALIDATION_MSG}>⚠ Pertanyaan pilihan belum diisi</p>}
         </div>
 
         {/* Choices list */}

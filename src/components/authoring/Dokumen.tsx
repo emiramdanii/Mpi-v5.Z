@@ -46,14 +46,18 @@ function AccordionSection({
 const fieldLabel = 'block text-xs font-medium text-zinc-400 mb-1.5';
 const fieldInput = 'w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-sm text-zinc-200 placeholder:text-zinc-600 focus:outline-none focus:ring-2 focus:ring-amber-500/50 focus:border-amber-500/50 transition-colors';
 const fieldTextarea = 'w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-sm text-zinc-200 placeholder:text-zinc-600 focus:outline-none focus:ring-2 focus:ring-amber-500/50 focus:border-amber-500/50 transition-colors resize-none';
+const requiredMark = <span className="text-red-400 ml-0.5">*</span>;
+const fieldInputInvalid = 'w-full bg-zinc-800 border border-red-500/50 rounded-lg px-3 py-2 text-sm text-zinc-200 placeholder:text-zinc-600 focus:outline-none focus:ring-2 focus:ring-red-500/50 focus:border-red-500/50 transition-colors';
+const fieldTextareaInvalid = 'w-full bg-zinc-800 border border-red-500/50 rounded-lg px-3 py-2 text-sm text-zinc-200 placeholder:text-zinc-600 focus:outline-none focus:ring-2 focus:ring-red-500/50 focus:border-red-500/50 transition-colors resize-none';
+const validationMsg = 'text-[10px] text-red-400/80 mt-1';
 
 // ── Identitas Media ─────────────────────────────────────────────
 function MetaSection() {
   const meta = useAuthoringStore((s) => s.meta);
   const updateMeta = useAuthoringStore((s) => s.updateMeta);
 
-  const fields: { key: keyof typeof meta; label: string; placeholder: string; type?: string; maxLength?: number }[] = [
-    { key: 'judulPertemuan', label: 'Judul Pertemuan', placeholder: 'Pertemuan 1 – Hakikat Norma' },
+  const fields: { key: keyof typeof meta; label: string; placeholder: string; type?: string; maxLength?: number; required?: boolean }[] = [
+    { key: 'judulPertemuan', label: 'Judul Pertemuan', placeholder: 'Pertemuan 1 – Hakikat Norma', required: true },
     { key: 'subjudul', label: 'Subjudul / Pertanyaan Pemantik', placeholder: 'Mengapa manusia membutuhkan norma?' },
     { key: 'ikon', label: 'Ikon Cover (emoji)', placeholder: '🧑‍🤝‍🧑', maxLength: 8 },
     { key: 'durasi', label: 'Durasi', placeholder: '2 × 40 menit' },
@@ -68,15 +72,18 @@ function MetaSection() {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
         {fields.map((f) => (
           <div key={f.key}>
-            <label className={fieldLabel}>{f.label}</label>
+            <label className={fieldLabel}>{f.label}{f.required && requiredMark}</label>
             <input
               type={f.type || 'text'}
-              className={fieldInput}
+              className={f.required && !meta[f.key] ? fieldInputInvalid : fieldInput}
               placeholder={f.placeholder}
               maxLength={f.maxLength}
               value={meta[f.key]}
               onChange={(e) => updateMeta(f.key, e.target.value)}
             />
+            {f.required && !meta[f.key] && (
+              <p className={validationMsg}>⚠ {f.label} wajib diisi</p>
+            )}
           </div>
         ))}
       </div>
@@ -127,12 +134,15 @@ function CpSection() {
       <div>
         <label className={fieldLabel}>Capaian Fase (narasi lengkap)</label>
         <textarea
-          className={fieldTextarea}
+          className={!cp.capaianFase ? fieldTextareaInvalid : fieldTextarea}
           rows={4}
           placeholder="Peserta didik mampu…"
           value={cp.capaianFase}
           onChange={(e) => updateCp('capaianFase', e.target.value)}
         />
+        {!cp.capaianFase && (
+          <p className={validationMsg}>⚠ Capaian Pembelajaran belum diisi</p>
+        )}
       </div>
       <div>
         <label className={fieldLabel}>
@@ -210,6 +220,7 @@ function TpSection() {
       <div className="text-center py-8">
         <div className="text-3xl mb-2">🎯</div>
         <p className="text-sm text-zinc-500">Belum ada Tujuan Pembelajaran.</p>
+        <p className="text-[10px] text-red-400/80 mt-1">⚠ Tujuan Pembelajaran belum ditambahkan</p>
         <button
           onClick={addTp}
           className="mt-3 px-4 py-2 bg-amber-500 hover:bg-amber-400 text-black font-semibold text-sm rounded-lg transition-colors"
@@ -278,12 +289,15 @@ function TpSection() {
           <div>
             <label className={fieldLabel}>Deskripsi</label>
             <textarea
-              className={fieldTextarea}
+              className={!item.desc ? fieldTextareaInvalid : fieldTextarea}
               rows={2}
               placeholder="jelaskan tujuan pembelajaran…"
               value={item.desc}
               onChange={(e) => updateTp(i, 'desc', e.target.value)}
             />
+            {!item.desc && (
+              <p className={validationMsg}>⚠ Deskripsi TP belum diisi</p>
+            )}
           </div>
 
           {/* Color Picker */}
@@ -361,11 +375,14 @@ function AtpSection() {
                 <div>
                   <label className={fieldLabel}>Judul Pertemuan</label>
                   <input
-                    className={fieldInput}
+                    className={!p.judul ? fieldInputInvalid : fieldInput}
                     placeholder="Hakikat Norma"
                     value={p.judul}
                     onChange={(e) => updateAtpPertemuan(i, 'judul', e.target.value)}
                   />
+                  {!p.judul && (
+                    <p className={validationMsg}>⚠ Judul pertemuan belum diisi</p>
+                  )}
                 </div>
                 <div>
                   <label className={fieldLabel}>Durasi</label>
@@ -389,12 +406,15 @@ function AtpSection() {
               <div>
                 <label className={fieldLabel}>Kegiatan Pembelajaran</label>
                 <textarea
-                  className={fieldTextarea}
+                  className={!p.kegiatan ? fieldTextareaInvalid : fieldTextarea}
                   rows={2}
                   placeholder="Apersepsi → Materi → Diskusi…"
                   value={p.kegiatan}
                   onChange={(e) => updateAtpPertemuan(i, 'kegiatan', e.target.value)}
                 />
+                {!p.kegiatan && (
+                  <p className={validationMsg}>⚠ Kegiatan pembelajaran belum diisi</p>
+                )}
               </div>
               <div>
                 <label className={fieldLabel}>Penilaian</label>

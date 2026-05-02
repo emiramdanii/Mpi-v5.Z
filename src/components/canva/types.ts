@@ -42,15 +42,27 @@ export interface CanvaElement {
 // ── Template System Types ─────────────────────────────────────
 
 export type PageTemplateType =
-  | 'cover'      // Cover / judul halaman
-  | 'dokumen'    // CP / TP / ATP display
-  | 'materi'     // Materi pembelajaran
-  | 'kuis'       // Kuis interaktif
-  | 'game'       // Game interaktif (sub-type from modules)
-  | 'hasil'      // Hasil / apresiasi
-  | 'hero'       // Hero banner
-  | 'skenario'   // Skenario interaktif
-  | 'custom';    // Blank canvas (legacy element mode)
+  | 'cover'             // Cover / judul halaman
+  | 'dokumen'           // CP / TP / ATP display (combined tabs)
+  | 'tujuan'            // Tujuan Pembelajaran (TP only)
+  | 'review'            // Review / recap page
+  | 'materi'            // Materi pembelajaran (generic)
+  | 'materi-tabicons'   // Materi with interactive tab-icons module
+  | 'materi-accordion'  // Materi with accordion module
+  | 'diskusi-timer'     // Diskusi kelompok with countdown timer
+  | 'sortir-game'       // Sorting game
+  | 'roda-game'         // Wheel game
+  | 'hubungan-konsep'   // Concept map / relationship diagram
+  | 'flashcard'         // Flashcard game
+  | 'kuis'              // Kuis interaktif
+  | 'game'              // Game interaktif (launcher)
+  | 'skenario'          // Skenario interaktif
+  | 'hasil'             // Hasil / apresiasi / skor
+  | 'refleksi'          // Refleksi mandiri
+  | 'penutup'           // Penutup / closing page
+  | 'hero'              // Hero banner
+  | 'custom'            // Blank canvas (legacy element mode)
+  | 'html-page';        // Raw HTML page from imported file
 
 export interface ColorPalette {
   colors: string[];             // Extracted hex colors (up to 8)
@@ -62,7 +74,9 @@ export interface NavConfig {
   showPrevNext: boolean;
   showScore: boolean;
   showProgress: boolean;
-  navbarStyle: 'colorful' | 'minimal' | 'glass';
+  navbarStyle: 'colorful' | 'minimal' | 'glass' | 'pill' | 'rounded' | 'floating';
+  navbarPosition: 'top' | 'bottom';
+  navButtonStyle: 'circle' | 'pill' | 'arrow' | 'icon';
 }
 
 export interface CanvaPage {
@@ -124,15 +138,31 @@ export interface TemplateInfo {
 }
 
 export const TEMPLATE_TYPES: TemplateInfo[] = [
-  { id: 'cover',    icon: '🏠', name: 'Cover',       desc: 'Halaman judul & pembuka',     color: '#f9c82e', category: 'utama' },
-  { id: 'dokumen',  icon: '📋', name: 'Dokumen',     desc: 'CP, TP, ATP',                color: '#3ecfcf', category: 'utama' },
-  { id: 'hero',     icon: '🚀', name: 'Hero',        desc: 'Banner dengan gradient',      color: '#fb923c', category: 'konten' },
-  { id: 'materi',   icon: '📝', name: 'Materi',      desc: 'Konten pembelajaran',         color: '#a78bfa', category: 'konten' },
-  { id: 'skenario', icon: '🎭', name: 'Skenario',    desc: 'Cerita interaktif pilihan',   color: '#f472b6', category: 'interaktif' },
-  { id: 'kuis',     icon: '❓', name: 'Kuis',        desc: 'Soal pilihan ganda',          color: '#f5c842', category: 'interaktif' },
-  { id: 'game',     icon: '🎮', name: 'Game',        desc: 'Game interaktif',             color: '#3ecfcf', category: 'interaktif' },
-  { id: 'hasil',    icon: '🏆', name: 'Hasil',       desc: 'Skor & apresiasi',            color: '#34d399', category: 'penutup' },
-  { id: 'custom',   icon: '⬜', name: 'Kosong',      desc: 'Canvas kosong (bebas)',       color: '#6366f1', category: 'utama' },
+  // ── Utama (Main) ──
+  { id: 'cover',            icon: '🏠', name: 'Cover',            desc: 'Halaman judul & pembuka',            color: '#f9c82e', category: 'utama' },
+  { id: 'dokumen',          icon: '📋', name: 'Dokumen',          desc: 'CP, TP, ATP (gabungan tab)',         color: '#3ecfcf', category: 'utama' },
+  { id: 'tujuan',           icon: '🎯', name: 'Tujuan',           desc: 'Tujuan Pembelajaran (TP saja)',      color: '#a78bfa', category: 'utama' },
+  { id: 'custom',           icon: '⬜', name: 'Kosong',           desc: 'Canvas kosong (bebas)',              color: '#6366f1', category: 'utama' },
+  { id: 'html-page',        icon: '📄', name: 'HTML Import',      desc: 'Halaman dari file HTML',             color: '#06b6d4', category: 'utama' },
+  // ── Konten (Content) ──
+  { id: 'hero',             icon: '🚀', name: 'Hero',             desc: 'Banner dengan gradient',             color: '#fb923c', category: 'konten' },
+  { id: 'materi',           icon: '📝', name: 'Materi',           desc: 'Konten pembelajaran (umum)',         color: '#a78bfa', category: 'konten' },
+  { id: 'materi-tabicons',  icon: '🗂️', name: 'Materi Tab-Icons', desc: 'Materi + tab interaktif (Fungsi)',    color: '#f59e0b', category: 'konten' },
+  { id: 'materi-accordion', icon: '📋', name: 'Materi Accordion', desc: 'Materi + accordion (Macam-Macam)',   color: '#8b5cf6', category: 'konten' },
+  { id: 'review',           icon: '🔄', name: 'Review',           desc: 'Ringkasan / ulasan materi',          color: '#06b6d4', category: 'konten' },
+  { id: 'hubungan-konsep',  icon: '🔗', name: 'Hubungan Konsep',  desc: 'Peta konsep & hubungan',             color: '#ec4899', category: 'konten' },
+  // ── Interaktif ──
+  { id: 'skenario',         icon: '🎭', name: 'Skenario',         desc: 'Cerita interaktif pilihan',          color: '#f472b6', category: 'interaktif' },
+  { id: 'diskusi-timer',    icon: '💬', name: 'Diskusi+Timer',    desc: 'Diskusi kelompok + hitung mundur',   color: '#14b8a6', category: 'interaktif' },
+  { id: 'kuis',             icon: '❓', name: 'Kuis',             desc: 'Soal pilihan ganda',                 color: '#f5c842', category: 'interaktif' },
+  { id: 'sortir-game',      icon: '📂', name: 'Sortir Game',      desc: 'Kelompokkan kartu ke kategori',      color: '#3ecfcf', category: 'interaktif' },
+  { id: 'roda-game',        icon: '🎡', name: 'Roda Game',        desc: 'Putar roda + jawab soal',            color: '#f97316', category: 'interaktif' },
+  { id: 'flashcard',        icon: '🃏', name: 'Flashcard',        desc: 'Kartu balik (depan-belakang)',        color: '#8b5cf6', category: 'interaktif' },
+  { id: 'game',             icon: '🎮', name: 'Game',             desc: 'Game interaktif (launcher)',          color: '#3ecfcf', category: 'interaktif' },
+  // ── Penutup (Closing) ──
+  { id: 'hasil',            icon: '🏆', name: 'Hasil',            desc: 'Skor & apresiasi',                   color: '#34d399', category: 'penutup' },
+  { id: 'refleksi',         icon: '💭', name: 'Refleksi',         desc: 'Refleksi mandiri siswa',             color: '#a78bfa', category: 'penutup' },
+  { id: 'penutup',          icon: '🏁', name: 'Penutup',          desc: 'Halaman penutup & langkah selanjutnya', color: '#06b6d4', category: 'penutup' },
 ];
 
 // ── Gradient Presets ──────────────────────────────────────────
@@ -165,4 +195,6 @@ export const DEFAULT_NAV_CONFIG: NavConfig = {
   showScore: true,
   showProgress: true,
   navbarStyle: 'colorful',
+  navbarPosition: 'top',
+  navButtonStyle: 'pill',
 };

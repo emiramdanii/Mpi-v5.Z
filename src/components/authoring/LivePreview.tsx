@@ -5,13 +5,14 @@ import { useAuthoringStore } from '@/store/authoring-store';
 import { generateExportHtml } from '@/lib/export-html';
 
 // ── Screen definitions for navigation ────────────────────────────
-const SCREEN_OPTIONS = [
-  { id: 's-cover', label: '🎬 Cover' },
-  { id: 's-cp', label: '📋 CP / TP / ATP' },
-  { id: 's-sk', label: '🎭 Skenario' },
-  { id: 's-materi', label: '📖 Materi & Fungsi' },
-  { id: 's-kuis', label: '❓ Kuis' },
-  { id: 's-hasil', label: '📊 Hasil' },
+const ALL_SCREEN_OPTIONS = [
+  { id: 's-cover', label: '🎬 Cover', requires: null },
+  { id: 's-cp', label: '📋 CP / TP / ATP', requires: null },
+  { id: 's-sk', label: '🎭 Skenario', requires: 'skenario' },
+  { id: 's-modules', label: '🧩 Modul', requires: 'modules' },
+  { id: 's-materi', label: '📖 Materi & Fungsi', requires: 'materi' },
+  { id: 's-kuis', label: '❓ Kuis', requires: 'kuis' },
+  { id: 's-hasil', label: '📊 Hasil', requires: null },
 ];
 
 // ── Device mode options ──────────────────────────────────────────
@@ -42,6 +43,17 @@ export default function LivePreview() {
   const modules = useAuthoringStore((s) => s.modules);
   const games = useAuthoringStore((s) => s.games);
   const dirty = useAuthoringStore((s) => s.dirty);
+  const sfxConfig = useAuthoringStore((s) => s.sfxConfig);
+
+  // Compute available screens based on content
+  const screenOptions = useMemo(() => {
+    const hasSkenario = skenario.length > 0;
+    const hasModules = modules.length > 0;
+    const hasMateri = materi.blok.length > 0;
+    const hasKuis = kuis.length > 0;
+    const contentMap: Record<string, boolean> = { skenario: hasSkenario, modules: hasModules, materi: hasMateri, kuis: hasKuis };
+    return ALL_SCREEN_OPTIONS.filter(s => !s.requires || contentMap[s.requires]);
+  }, [skenario, modules, materi.blok, kuis]);
 
   // Generate HTML with debounce
   useEffect(() => {
@@ -49,7 +61,7 @@ export default function LivePreview() {
     debounceRef.current = setTimeout(() => {
       try {
         const html = generateExportHtml({
-          meta, cp, tp, atp, alur, skenario, kuis, materi, modules, games,
+          meta, cp, tp, atp, alur, skenario, kuis, materi, modules, games, sfxConfig,
         });
         setHtmlContent(html);
       } catch (err) {
@@ -57,7 +69,7 @@ export default function LivePreview() {
       }
     }, 500);
     return () => { if (debounceRef.current) clearTimeout(debounceRef.current); };
-  }, [meta, cp, tp, atp, alur, skenario, kuis, materi, modules, games]);
+  }, [meta, cp, tp, atp, alur, skenario, kuis, materi, modules, games, sfxConfig]);
 
   // Build srcdoc with navigation override — ONLY depends on htmlContent
   // activeScreen is NOT in dependencies so iframe doesn't re-render on screen change
@@ -149,7 +161,7 @@ export default function LivePreview() {
           onChange={(e) => handleScreenSelect(e.target.value)}
           className="bg-zinc-800 border border-zinc-700 text-zinc-200 text-xs rounded-lg px-3 py-1.5 focus:outline-none focus:ring-1 focus:ring-emerald-500/50 cursor-pointer"
         >
-          {SCREEN_OPTIONS.map((s) => (
+          {screenOptions.map((s) => (
             <option key={s.id} value={s.id}>
               {s.label}
             </option>

@@ -30,7 +30,12 @@ const BLOCK_TYPES = [
 const INPUT_CLS =
   'w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-sm text-zinc-200 placeholder:text-zinc-600 focus:outline-none focus:ring-2 focus:ring-amber-500/50 focus:border-amber-500/50 transition-colors';
 
+const INPUT_INVALID_CLS =
+  'w-full bg-zinc-800 border border-red-500/50 rounded-lg px-3 py-2 text-sm text-zinc-200 placeholder:text-zinc-600 focus:outline-none focus:ring-2 focus:ring-red-500/50 focus:border-red-500/50 transition-colors';
+
 const TEXTAREA_CLS = INPUT_CLS + ' resize-none';
+const TEXTAREA_INVALID_CLS = INPUT_INVALID_CLS + ' resize-none';
+const VALIDATION_MSG = 'text-[10px] text-red-400/80 mt-1';
 
 function blockTypeInfo(tipe: string) {
   return BLOCK_TYPES.find((b) => b.id === tipe) || { id: 'unknown', icon: '📦', label: tipe, color: '#71717a' };
@@ -83,7 +88,10 @@ function TeksEditor({ blok, idx }: { blok: MateriBlok; idx: number }) {
       </div>
       <div>
         <FieldLabel>Isi Paragraf</FieldLabel>
-        <textarea className={TEXTAREA_CLS} rows={4} placeholder="Tulis isi paragraf di sini…" value={blok.isi || ''} onChange={(e) => update(idx, 'isi', e.target.value)} />
+        <textarea className={!blok.isi ? TEXTAREA_INVALID_CLS : TEXTAREA_CLS} rows={4} placeholder="Tulis isi paragraf di sini…" value={blok.isi || ''} onChange={(e) => update(idx, 'isi', e.target.value)} />
+        {!blok.isi && (
+          <p className={VALIDATION_MSG}>⚠ Isi paragraf belum diisi</p>
+        )}
       </div>
     </div>
   );
@@ -96,11 +104,17 @@ function DefinisiEditor({ blok, idx }: { blok: MateriBlok; idx: number }) {
     <div className="space-y-3">
       <div>
         <FieldLabel>Istilah / Judul</FieldLabel>
-        <input className={INPUT_CLS} placeholder="Contoh: Norma…" value={blok.judul || ''} onChange={(e) => update(idx, 'judul', e.target.value)} />
+        <input className={!blok.judul ? INPUT_INVALID_CLS : INPUT_CLS} placeholder="Contoh: Norma…" value={blok.judul || ''} onChange={(e) => update(idx, 'judul', e.target.value)} />
+        {!blok.judul && (
+          <p className={VALIDATION_MSG}>⚠ Istilah belum diisi</p>
+        )}
       </div>
       <div>
         <FieldLabel>Definisi</FieldLabel>
-        <textarea className={TEXTAREA_CLS} rows={3} placeholder="Tulis definisi…" value={blok.isi || ''} onChange={(e) => update(idx, 'isi', e.target.value)} />
+        <textarea className={!blok.isi ? TEXTAREA_INVALID_CLS : TEXTAREA_CLS} rows={3} placeholder="Tulis definisi…" value={blok.isi || ''} onChange={(e) => update(idx, 'isi', e.target.value)} />
+        {!blok.isi && (
+          <p className={VALIDATION_MSG}>⚠ Definisi belum diisi</p>
+        )}
       </div>
     </div>
   );
@@ -144,7 +158,7 @@ function PoinEditor({ blok, idx }: { blok: MateriBlok; idx: number }) {
           {butir.map((b, i) => (
             <div key={i} className="flex items-center gap-2">
               <span className="text-zinc-500 text-sm flex-shrink-0">•</span>
-              <input className={INPUT_CLS} placeholder={`Poin ${i + 1}…`} value={b} onChange={(e) => updateButir(i, e.target.value)} />
+              <input className={!b ? INPUT_INVALID_CLS : INPUT_CLS} placeholder={`Poin ${i + 1}…`} value={b} onChange={(e) => updateButir(i, e.target.value)} />
               <button
                 onClick={() => removeButir(i)}
                 className="text-zinc-600 hover:text-red-400 transition-colors flex-shrink-0 text-sm p-1"
@@ -158,6 +172,9 @@ function PoinEditor({ blok, idx }: { blok: MateriBlok; idx: number }) {
         <button onClick={addButir} className="mt-2 text-xs text-amber-500 hover:text-amber-400 transition-colors">
           ＋ Tambah Poin
         </button>
+        {butir.some((b) => !b) && (
+          <p className={VALIDATION_MSG}>⚠ Ada poin yang masih kosong</p>
+        )}
       </div>
     </div>
   );
@@ -660,11 +677,17 @@ function StudiEditor({ blok, idx }: { blok: MateriBlok; idx: number }) {
       </div>
       <div>
         <FieldLabel>Situasi</FieldLabel>
-        <textarea className={TEXTAREA_CLS} rows={3} placeholder="Jelaskan situasi kasus…" value={blok.situasi || ''} onChange={(e) => update(idx, 'situasi', e.target.value)} />
+        <textarea className={!blok.situasi ? TEXTAREA_INVALID_CLS : TEXTAREA_CLS} rows={3} placeholder="Jelaskan situasi kasus…" value={blok.situasi || ''} onChange={(e) => update(idx, 'situasi', e.target.value)} />
+        {!blok.situasi && (
+          <p className={VALIDATION_MSG}>⚠ Situasi belum diisi</p>
+        )}
       </div>
       <div>
         <FieldLabel>Pertanyaan untuk Siswa</FieldLabel>
-        <textarea className={TEXTAREA_CLS} rows={2} placeholder="Pertanyaan diskusi…" value={blok.pertanyaan || ''} onChange={(e) => update(idx, 'pertanyaan', e.target.value)} />
+        <textarea className={!blok.pertanyaan ? TEXTAREA_INVALID_CLS : TEXTAREA_CLS} rows={2} placeholder="Pertanyaan diskusi…" value={blok.pertanyaan || ''} onChange={(e) => update(idx, 'pertanyaan', e.target.value)} />
+        {!blok.pertanyaan && (
+          <p className={VALIDATION_MSG}>⚠ Pertanyaan belum diisi</p>
+        )}
       </div>
       <div>
         <FieldLabel>Pesan / Pesan Moral</FieldLabel>
@@ -1306,12 +1329,15 @@ function KuisTab() {
               <div>
                 <label className="block text-xs font-medium text-zinc-400 mb-1.5">Pertanyaan</label>
                 <textarea
-                  className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-sm text-zinc-200 placeholder:text-zinc-600 focus:outline-none focus:ring-2 focus:ring-amber-500/50 focus:border-amber-500/50 transition-colors resize-none"
+                  className={!soal.q ? TEXTAREA_INVALID_CLS : 'w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-sm text-zinc-200 placeholder:text-zinc-600 focus:outline-none focus:ring-2 focus:ring-amber-500/50 focus:border-amber-500/50 transition-colors resize-none'}
                   rows={2}
                   placeholder="Tulis pertanyaan…"
                   value={soal.q}
                   onChange={(e) => updateKuis(i, 'q', e.target.value)}
                 />
+                {!soal.q && (
+                  <p className={VALIDATION_MSG}>⚠ Pertanyaan belum diisi</p>
+                )}
               </div>
 
               {/* Options */}
@@ -1326,7 +1352,9 @@ function KuisTab() {
                       className={`flex items-center gap-2.5 p-2 rounded-lg cursor-pointer transition-colors ${
                         soal.ans === j
                           ? 'bg-cyan-500/10 border border-cyan-500/30'
-                          : 'bg-zinc-800/50 border border-zinc-700/50 hover:border-zinc-600'
+                          : soal.opts[j] === ''
+                            ? 'bg-zinc-800/50 border border-red-500/30 hover:border-red-500/50'
+                            : 'bg-zinc-800/50 border border-zinc-700/50 hover:border-zinc-600'
                       }`}
                     >
                       <input
@@ -1346,6 +1374,12 @@ function KuisTab() {
                     </label>
                   ))}
                 </div>
+                {soal.opts.some((opt) => opt === '') && (
+                  <p className={VALIDATION_MSG}>⚠ Ada opsi jawaban yang kosong</p>
+                )}
+                {soal.ans < 0 && (
+                  <p className={VALIDATION_MSG}>⚠ Jawaban benar belum dipilih</p>
+                )}
               </div>
 
               {/* Explanation */}

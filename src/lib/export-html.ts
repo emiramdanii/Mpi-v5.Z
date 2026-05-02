@@ -5,7 +5,7 @@
 
 import type {
   MetaState, CpState, TpItem, AtpState, AlurItem,
-  KuisItem, MateriState, MateriBlok,
+  KuisItem, MateriState, MateriBlok, SfxConfig,
 } from '@/store/authoring-store';
 
 // ── Fungsi Norma Preset Data (hardcoded, matches data.js PRESETS.fungsi) ──
@@ -79,6 +79,60 @@ export interface ExportState {
   materi: MateriState;
   modules: Array<Record<string, unknown>>;
   games: Array<Record<string, unknown>>;
+  sfxConfig?: SfxConfig;
+}
+
+// ── SFX Theme Builder ────────────────────────────────────────────────
+function buildSfxThemeJS(theme: string, volMul: number): string {
+  const v = (base: number) => +(base * volMul).toFixed(3);
+  switch (theme) {
+    case 'none':
+      return `var SFX={correct:function(){},wrong:function(){},click:function(){},flip:function(){},spin:function(){},buzz:function(){},complete:function(){},popup:function(){}};`;
+    case 'soft':
+      return `var SFX={
+correct:function(){playTone(440,.15,'sine',${v(.08)},520);setTimeout(function(){playTone(520,.2,'sine',${v(.06)},580)},150)},
+wrong:function(){playTone(280,.2,'sine',${v(.05)},200)},
+click:function(){playTone(600,.05,'sine',${v(.04)})},
+flip:function(){playTone(400,.08,'sine',${v(.05)},550)},
+spin:function(){playTone(350,.04,'sine',${v(.03)},700)},
+buzz:function(){playTone(160,.25,'sine',${v(.06)},120)},
+complete:function(){playTone(440,.15,'sine',${v(.08)},520);setTimeout(function(){playTone(520,.15,'sine',${v(.06)},580)},150);setTimeout(function(){playTone(580,.3,'sine',${v(.08)},660)},300)},
+popup:function(){playTone(350,.1,'sine',${v(.05)},700)}
+};`;
+    case 'retro':
+      return `var SFX={
+correct:function(){playTone(880,.06,'square',${v(.07)},1100);setTimeout(function(){playTone(1100,.08,'square',${v(.06)},1320)},80)},
+wrong:function(){playTone(220,.12,'square',${v(.06)},110)},
+click:function(){playTone(1000,.03,'square',${v(.04)})},
+flip:function(){playTone(660,.05,'square',${v(.06)},990)},
+spin:function(){playTone(550,.04,'square',${v(.04)},1100)},
+buzz:function(){playTone(150,.15,'square',${v(.08)},80)},
+complete:function(){playTone(880,.08,'square',${v(.07)},1100);setTimeout(function(){playTone(1100,.08,'square',${v(.06)},1320)},100);setTimeout(function(){playTone(1320,.2,'square',${v(.07)},1760)},200)},
+popup:function(){playTone(550,.06,'square',${v(.05)},1100)}
+};`;
+    case 'nature':
+      return `var SFX={
+correct:function(){playTone(392,.12,'triangle',${v(.09)},523);setTimeout(function(){playTone(523,.18,'triangle',${v(.07)},659)},120)},
+wrong:function(){playTone(247,.2,'triangle',${v(.06)},185)},
+click:function(){playTone(784,.04,'triangle',${v(.05)})},
+flip:function(){playTone(523,.07,'triangle',${v(.06)},784)},
+spin:function(){playTone(440,.04,'triangle',${v(.04)},880)},
+buzz:function(){playTone(196,.22,'triangle',${v(.07)},147)},
+complete:function(){playTone(392,.12,'triangle',${v(.09)},523);setTimeout(function(){playTone(523,.12,'triangle',${v(.07)},659)},120);setTimeout(function(){playTone(659,.28,'triangle',${v(.09)},784)},240)},
+popup:function(){playTone(440,.09,'triangle',${v(.06)},880)}
+};`;
+    default: // 'default'
+      return `var SFX={
+correct:function(){playTone(523,.1,'sine',${v(.12)},659);setTimeout(function(){playTone(659,.15,'sine',${v(.1)},784)},100)},
+wrong:function(){playTone(330,.15,'sawtooth',${v(.08)},220)},
+click:function(){playTone(800,.04,'sine',${v(.06)})},
+flip:function(){playTone(600,.06,'triangle',${v(.08)},900)},
+spin:function(){playTone(440,.03,'sine',${v(.04)},880)},
+buzz:function(){playTone(200,.2,'sawtooth',${v(.1)},150)},
+complete:function(){playTone(523,.12,'sine',${v(.12)},659);setTimeout(function(){playTone(659,.12,'sine',${v(.1)},784)},120);setTimeout(function(){playTone(784,.25,'sine',${v(.12)},1047)},240)},
+popup:function(){playTone(440,.08,'sine',${v(.08)},880)}
+};`;
+  }
 }
 
 // ── HTML Entity Escaping ──────────────────────────────────────────
@@ -165,15 +219,35 @@ export function generateExportHtml(state: ExportState): string {
   const kuisJS = JSON.stringify(kuisData.map(s => ({ q: s.q, opts: s.opts || ['', '', '', ''], ans: s.ans, ex: s.ex })));
   const fungsiJS = JSON.stringify(FUNGSI_NORMA);
 
+  // ── Dynamic Screen Order ──────────────────────────────────────────
+  const activeScreens: string[] = ['s-cover', 's-cp'];
+  if (hasSkenario) activeScreens.push('s-sk');
+  if (hasModules) activeScreens.push('s-modules');
+  if (hasMateri) activeScreens.push('s-materi');
+  if (hasKuis) activeScreens.push('s-kuis');
+  activeScreens.push('s-hasil');
+  const activeScreensJS = JSON.stringify(activeScreens);
+
   // ── CP Button ────────────────────────────────────────────────────
   let cpNextScreen = 's-sk';
-  if (hasModules) cpNextScreen = 's-modules';
-  else if (hasSkenario) cpNextScreen = 's-sk';
+  if (hasSkenario) cpNextScreen = 's-sk';
+  else if (hasModules) cpNextScreen = 's-modules';
   else if (hasMateri) cpNextScreen = 's-materi';
   else if (hasKuis) cpNextScreen = 's-kuis';
+  else cpNextScreen = 's-hasil';
 
   // ── Materi next button ───────────────────────────────────────────
   const materiNextScreen = hasKuis ? 's-kuis' : 's-hasil';
+
+  // ── SFX Theme ────────────────────────────────────────────────────
+  const sfxConfig = state.sfxConfig || { theme: 'default', volume: 0.6 };
+  const sfxTheme = sfxConfig.theme;
+  const sfxVolume = Math.max(0, Math.min(1, sfxConfig.volume));
+  const sfxVolMultiplier = sfxVolume / 0.15; // normalize to default vol of .15
+
+  // Build SFX object based on theme
+  const sfxJS = buildSfxThemeJS(sfxTheme, sfxVolMultiplier);
+  const sfxOnJS = sfxTheme === 'none' ? 'false' : 'true';
 
   // ── Build the complete HTML ──────────────────────────────────────
   return `<!DOCTYPE html>
@@ -182,6 +256,8 @@ export function generateExportHtml(state: ExportState): string {
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
 <title>${esc(M.judulPertemuan || 'Media Pembelajaran')} | ${esc(M.mapel || '')} ${esc(M.kelas || '')}</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&family=Fredoka+One&display=swap" rel="stylesheet">
 <style>
 :root{--bg:#0e1c2f;--bg2:#13243a;--card:#182d45;--border:rgba(255,255,255,.09);
@@ -199,6 +275,8 @@ body{font-family:'Nunito',sans-serif;background:var(--bg);color:var(--text);min-
 .nav-prog{flex:1;height:6px;background:rgba(255,255,255,.08);border-radius:99px;overflow:hidden;margin:0 8px;}
 .nav-prog-fill{height:100%;background:linear-gradient(90deg,var(--y),var(--c));border-radius:99px;transition:width .5s;}
 .nav-score{font-size:.8rem;font-weight:800;color:var(--y);white-space:nowrap;}
+.nav-prev,.nav-next{background:rgba(255,255,255,.08);border:1px solid var(--border);color:var(--text);width:28px;height:28px;border-radius:50%;display:none;align-items:center;justify-content:center;cursor:pointer;font-size:.85rem;font-weight:900;padding:0;transition:all .15s;}
+.nav-prev:hover,.nav-next:hover{background:rgba(255,255,255,.15);border-color:var(--c);}
 .main{flex:1;padding:22px 16px;max-width:860px;width:100%;margin:0 auto;}
 .btn{display:inline-flex;align-items:center;gap:6px;padding:10px 24px;border-radius:99px;
   font-family:'Nunito',sans-serif;font-weight:800;font-size:.9rem;border:none;cursor:pointer;transition:all .18s;}
@@ -217,7 +295,7 @@ body{font-family:'Nunito',sans-serif;background:var(--bg);color:var(--text);min-
 .def-box{border-left:4px solid var(--y);background:rgba(249,193,46,.07);border-radius:0 11px 11px 0;padding:13px 15px;margin:13px 0;font-size:.91rem;line-height:1.7;}
 #s-cover{background:radial-gradient(ellipse 90% 60% at 50% 0%,rgba(249,193,46,.18),transparent 60%),linear-gradient(180deg,#0e1c2f,#09121f);}
 .cover-wrap{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:36px 18px;}
-.cover-icon{font-size:4.5rem;animation:float 3s ease-in-out infinite;}
+.cover-icon{font-size:4.5rem;animation:float 3s ease-in-out infinite;will-change:transform}
 @keyframes float{0%,100%{transform:translateY(0);}50%{transform:translateY(-12px);}}
 .cover-title{font-family:'Fredoka One',cursive;font-size:clamp(1.7rem,5.5vw,2.8rem);line-height:1.1;margin:10px 0 6px;}
 .cover-chips{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin:14px 0 26px;}
@@ -269,7 +347,7 @@ body{font-family:'Nunito',sans-serif;background:var(--bg);color:var(--text);min-
 .sk-dialogue{position:absolute;bottom:0;left:0;right:0;background:rgba(8,16,30,.92);border-top:2px solid #1e3a5a;padding:12px 14px;min-height:76px;}
 .sk-speaker{font-size:.7rem;font-weight:800;color:var(--c);margin-bottom:4px;text-transform:uppercase;letter-spacing:.06em;}
 .sk-text{font-size:.85rem;font-weight:700;line-height:1.5;color:#e8f2ff;}
-.sk-tap{font-size:.68rem;color:var(--muted);margin-top:5px;animation:tapP 1.4s ease-in-out infinite;}
+.sk-tap{font-size:.68rem;color:var(--muted);margin-top:5px;animation:tapP 1.4s ease-in-out infinite;will-change:opacity}
 @keyframes tapP{0%,100%{opacity:1;}50%{opacity:.3;}}
 .sk-choices{padding:14px;}
 .sk-choice-prompt{font-size:.83rem;font-weight:800;color:var(--y);margin-bottom:10px;text-align:center;}
@@ -305,13 +383,72 @@ body{font-family:'Nunito',sans-serif;background:var(--bg);color:var(--text);min-
 .refl-item{border-radius:12px;padding:12px;border:1px solid rgba(255,255,255,.08);margin-bottom:10px;}
 .refl-item label{font-size:.78rem;font-weight:800;display:block;margin-bottom:5px;}
 .refl-item textarea{width:100%;background:rgba(255,255,255,.05);border:1px solid var(--border);border-radius:8px;padding:8px;color:var(--text);font-family:'Nunito',sans-serif;font-size:.8rem;resize:vertical;min-height:58px;}
-.conf{position:fixed;border-radius:2px;animation:confFall linear both;pointer-events:none;z-index:9999;}
+.conf{position:fixed;border-radius:2px;animation:confFall linear both;pointer-events:none;z-index:9999;will-change:transform,opacity}
 @keyframes confFall{to{transform:translateY(110vh) rotate(720deg);opacity:0;}}
 #confWrap{position:fixed;inset:0;pointer-events:none;z-index:9998;}
+
+/* ── Responsive / Mobile ────────────────────────── */
+@media(max-width:640px){
+  .navbar{padding:6px 10px;gap:6px}
+  .nav-logo{font-size:.75rem;max-width:80px}
+  .main{padding:14px 10px}
+  .h2{font-size:1.2rem}
+  .card{padding:14px;border-radius:12px}
+  .cover-icon{font-size:3rem}
+  .cover-title{font-size:1.3rem!important}
+  .cover-chips{gap:4px}
+  .chip{font-size:.65rem;padding:2px 8px}
+  .btn{padding:8px 16px;font-size:.82rem}
+  .q-opt{padding:8px 10px;font-size:.78rem}
+  .sk-scene{height:140px}
+  .sk-dialogue{padding:8px 10px}
+  .sk-text{font-size:.78rem}
+  .hasil-circle{width:100px;height:100px}
+  .hasil-score div:first-child{font-size:1.5rem!important}
+  .atp-p-card{padding:10px}
+  .tp-item{padding:8px 10px}
+  .alur-step{padding:8px 10px}
+}
+@media(max-width:380px){
+  .nav-prog{display:none}
+  .main{padding:10px 6px}
+  .h2{font-size:1.05rem}
+}
+
+/* ── High Contrast Mode ──────────────────────────── */
+body.high-contrast{background:#000!important}
+body.high-contrast .card{background:#111!important;border-color:rgba(255,255,255,.3)!important}
+body.high-contrast .sub,body.high-contrast .q-text,body.high-contrast [class*=muted]{color:#ccc!important}
+body.high-contrast .btn{font-weight:900}
+body.high-contrast .q-opt{border-color:rgba(255,255,255,.3)!important}
+body.high-contrast .def-box{background:rgba(255,255,255,.08)!important;border-left-color:#fff!important}
+body.high-contrast .navbar{background:rgba(0,0,0,.98)!important}
+
+/* ── Print-friendly ─────────────────────────────── */
+@media print{
+  .contrast-toggle{display:none!important}
+  .skip-link{display:none!important}
+  .sfx-toggle{display:none!important}
+  .navbar,.btn,.btn-row,.sk-tap,#confWrap{display:none!important}
+  .screen{display:block!important;min-height:auto;page-break-after:always}
+  .screen.active{display:block!important}
+  body{background:#fff;color:#1a1a2e}
+  .card{border:1px solid #e5e7eb;background:#f9fafb}
+  .h2,.hl{color:#92400e}
+  .sub,.q-text{color:#4b5563}
+  *{text-shadow:none!important;box-shadow:none!important}
+  .hasil-circle{border:3px solid #34d399;background:transparent}
+  .hasil-circle::before{background:#fff}
+  .refl-item textarea{border:1px solid #d1d5db;background:#fff;color:#1a1a2e}
+  .q-opt{border:1px solid #d1d5db;background:#f9fafb;color:#374151}
+  .q-opt.ok{background:#ecfdf5;border-color:#6ee7b7}
+  .q-opt.no{background:#fef2f2;border-color:#fca5a5}
+}
 </style>
 </head>
 <body>
 <div id="confWrap"></div>
+<a href="#main-content" class="skip-link" style="position:absolute;top:-100px;left:0;background:var(--y);color:#0e1c2f;padding:8px 16px;font-weight:800;font-size:.9rem;z-index:9999;transition:top .2s" onfocus="this.style.top='0'" onblur="this.style.top='-100px'">Lompat ke Konten</a>
 
 <!-- ═══ COVER ═══ -->
 <div class="screen active" id="s-cover">
@@ -332,10 +469,13 @@ body{font-family:'Nunito',sans-serif;background:var(--bg);color:var(--text);min-
 <div class="screen" id="s-cp">
   <nav class="navbar">
     <span class="nav-logo">${esc(M.namaBab || M.judulPertemuan || 'Media')}</span>
+    <button class="sfx-toggle" onclick="toggleSfx()" style="background:none;border:none;cursor:pointer;font-size:1rem;padding:0 4px" title="Suara on/off">🔊</button><button class="contrast-toggle" onclick="toggleContrast()" style="background:none;border:none;cursor:pointer;font-size:12px;padding:0 4px" title="Kontras tinggi">🔲</button>
     <div class="nav-prog"><div class="nav-prog-fill" style="width:16%"></div></div>
     <span class="nav-score">0 ⭐</span>
+    <button class="nav-prev" onclick="goPrev()" title="Halaman sebelumnya">←</button>
+    <button class="nav-next" onclick="goNext()" title="Halaman berikutnya">→</button>
   </nav>
-  <div class="main">
+  <div class="main" id="main-content">
     <div class="card">
       <div class="h2">📋 <span class="hl">Dokumen</span> Pembelajaran</div>
       <div class="ktab-row">
@@ -378,8 +518,11 @@ body{font-family:'Nunito',sans-serif;background:var(--bg);color:var(--text);min-
 <div class="screen" id="s-sk">
   <nav class="navbar">
     <span class="nav-logo">${esc(M.namaBab || 'Media')}</span>
+    <button class="sfx-toggle" onclick="toggleSfx()" style="background:none;border:none;cursor:pointer;font-size:1rem;padding:0 4px" title="Suara on/off">🔊</button><button class="contrast-toggle" onclick="toggleContrast()" style="background:none;border:none;cursor:pointer;font-size:12px;padding:0 4px" title="Kontras tinggi">🔲</button>
     <div class="nav-prog"><div class="nav-prog-fill" style="width:33%"></div></div>
     <span class="nav-score" id="navScore2">0 ⭐</span>
+    <button class="nav-prev" onclick="goPrev()" title="Halaman sebelumnya">←</button>
+    <button class="nav-next" onclick="goNext()" title="Halaman berikutnya">→</button>
   </nav>
   <div class="main">
     <div class="sk-shell">
@@ -399,8 +542,11 @@ body{font-family:'Nunito',sans-serif;background:var(--bg);color:var(--text);min-
 <div class="screen" id="s-modules">
   <nav class="navbar">
     <span class="nav-logo">${esc(M.namaBab || 'Media')}</span>
+    <button class="sfx-toggle" onclick="toggleSfx()" style="background:none;border:none;cursor:pointer;font-size:1rem;padding:0 4px" title="Suara on/off">🔊</button><button class="contrast-toggle" onclick="toggleContrast()" style="background:none;border:none;cursor:pointer;font-size:12px;padding:0 4px" title="Kontras tinggi">🔲</button>
     <div class="nav-prog"><div class="nav-prog-fill" style="width:45%"></div></div>
     <span class="nav-score">0 ⭐</span>
+    <button class="nav-prev" onclick="goPrev()" title="Halaman sebelumnya">←</button>
+    <button class="nav-next" onclick="goNext()" title="Halaman berikutnya">→</button>
   </nav>
   <div class="main" id="modulesContainer"></div>
 </div>
@@ -409,8 +555,11 @@ body{font-family:'Nunito',sans-serif;background:var(--bg);color:var(--text);min-
 <div class="screen" id="s-materi">
   <nav class="navbar">
     <span class="nav-logo">${esc(M.namaBab || 'Media')}</span>
+    <button class="sfx-toggle" onclick="toggleSfx()" style="background:none;border:none;cursor:pointer;font-size:1rem;padding:0 4px" title="Suara on/off">🔊</button><button class="contrast-toggle" onclick="toggleContrast()" style="background:none;border:none;cursor:pointer;font-size:12px;padding:0 4px" title="Kontras tinggi">🔲</button>
     <div class="nav-prog"><div class="nav-prog-fill" style="width:55%"></div></div>
     <span class="nav-score">0 ⭐</span>
+    <button class="nav-prev" onclick="goPrev()" title="Halaman sebelumnya">←</button>
+    <button class="nav-next" onclick="goNext()" title="Halaman berikutnya">→</button>
   </nav>
   <div class="main">
     ${materiHtml}
@@ -431,8 +580,11 @@ body{font-family:'Nunito',sans-serif;background:var(--bg);color:var(--text);min-
 <div class="screen" id="s-kuis">
   <nav class="navbar">
     <span class="nav-logo">${esc(M.namaBab || 'Media')}</span>
+    <button class="sfx-toggle" onclick="toggleSfx()" style="background:none;border:none;cursor:pointer;font-size:1rem;padding:0 4px" title="Suara on/off">🔊</button><button class="contrast-toggle" onclick="toggleContrast()" style="background:none;border:none;cursor:pointer;font-size:12px;padding:0 4px" title="Kontras tinggi">🔲</button>
     <div class="nav-prog"><div class="nav-prog-fill" style="width:75%"></div></div>
     <span class="nav-score">0 ⭐</span>
+    <button class="nav-prev" onclick="goPrev()" title="Halaman sebelumnya">←</button>
+    <button class="nav-next" onclick="goNext()" title="Halaman berikutnya">→</button>
   </nav>
   <div class="main">
     <div class="card" style="margin-bottom:14px">
@@ -450,8 +602,11 @@ body{font-family:'Nunito',sans-serif;background:var(--bg);color:var(--text);min-
 <div class="screen" id="s-hasil">
   <nav class="navbar">
     <span class="nav-logo">${esc(M.namaBab || 'Media')}</span>
+    <button class="sfx-toggle" onclick="toggleSfx()" style="background:none;border:none;cursor:pointer;font-size:1rem;padding:0 4px" title="Suara on/off">🔊</button><button class="contrast-toggle" onclick="toggleContrast()" style="background:none;border:none;cursor:pointer;font-size:12px;padding:0 4px" title="Kontras tinggi">🔲</button>
     <div class="nav-prog"><div class="nav-prog-fill" style="width:100%"></div></div>
     <span class="nav-score">⭐</span>
+    <button class="nav-prev" onclick="goPrev()" title="Halaman sebelumnya">←</button>
+    <button class="nav-next" onclick="goNext()" title="Halaman berikutnya">→</button>
   </nav>
   <div class="main" style="text-align:center">
     <div class="hasil-circle" id="hasilCircle">
@@ -486,6 +641,50 @@ const HAS_KUIS = ${hasKuis};
 let S = { score:0, skScore:0 };
 let kuisAnswers = {};
 
+// ── SOUND EFFECTS (Web Audio API) ───────────────────
+var _ac=null; var SFX_ON=${sfxOnJS};
+function getAC(){if(!_ac)try{_ac=new(window.AudioContext||window.webkitAudioContext)}catch(e){}return _ac}
+function playTone(freq,dur,type,vol,ramp){
+  if(!SFX_ON)return;var ac=getAC();if(!ac)return;
+  var o=ac.createOscillator(),g=ac.createGain();
+  o.type=type||'sine';o.frequency.setValueAtTime(freq,ac.currentTime);
+  if(ramp)o.frequency.linearRampToValueAtTime(ramp,ac.currentTime+dur);
+  g.gain.setValueAtTime(vol||.15,ac.currentTime);
+  g.gain.exponentialRampToValueAtTime(.001,ac.currentTime+dur);
+  o.connect(g);g.connect(ac.destination);o.start();o.stop(ac.currentTime+dur);
+}
+${sfxJS}
+function toggleSfx(){
+  SFX_ON=!SFX_ON;
+  document.querySelectorAll('.sfx-toggle').forEach(function(b){b.textContent=SFX_ON?'\uD83D\uDD0A':'\uD83D\uDD07'});
+  if(SFX_ON)SFX.click();
+}
+
+// ── HIGH CONTRAST MODE ──────────────────────────────
+var HIGH_CONTRAST=false;
+function toggleContrast(){
+  HIGH_CONTRAST=!HIGH_CONTRAST;
+  document.body.classList.toggle('high-contrast',HIGH_CONTRAST);
+  document.querySelectorAll('.contrast-toggle').forEach(function(b){b.textContent=HIGH_CONTRAST?'\uD83D\uDF36':'\uD83D\uDD32'});
+  SFX.click();
+}
+
+// ── NAVBAR UPDATE ────────────────────────────────────
+const SCREEN_ORDER = ${activeScreensJS};
+function getActiveScreenIdx(){ for(let i=0;i<SCREEN_ORDER.length;i++){ var el=document.getElementById(SCREEN_ORDER[i]); if(el&&el.classList.contains('active')) return i; } return 0; }
+function updateNavScore(){
+  var total=S.score+S.skScore;
+  document.querySelectorAll('.nav-score').forEach(function(el){ if(el.id!=='navScoreFinal') el.textContent=total+' ⭐'; });
+  var idx=getActiveScreenIdx();
+  var pct=Math.round(((idx+1)/SCREEN_ORDER.length)*100);
+  document.querySelectorAll('.nav-prog-fill').forEach(function(el){ el.style.width=pct+'%'; });
+  // Update prev/next button visibility
+  document.querySelectorAll('.nav-prev').forEach(function(b){b.style.display=idx>0?'inline-flex':'none'});
+  document.querySelectorAll('.nav-next').forEach(function(b){b.style.display=idx<SCREEN_ORDER.length-1?'inline-flex':'none'});
+}
+function goPrev(){var idx=getActiveScreenIdx();if(idx>0)goScreen(SCREEN_ORDER[idx-1]);}
+function goNext(){var idx=getActiveScreenIdx();if(idx<SCREEN_ORDER.length-1)goScreen(SCREEN_ORDER[idx+1]);}
+
 // ── SCREEN NAV ─────────────────────────────────────
 function goScreen(id){
   document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
@@ -495,6 +694,8 @@ function goScreen(id){
   if(id==='s-modules') renderModules();
   if(id==='s-materi') initFtab();
   if(id==='s-kuis')   renderKuis();
+  updateNavScore();
+  SFX.click();
 }
 
 // ── CP TABS ─────────────────────────────────────────
@@ -565,7 +766,7 @@ function showChoices(){
     '<div class="sk-choices">'+
       '<div class="sk-choice-prompt">'+(ch.choicePrompt||'Apa yang kamu lakukan?')+'</div>'+
       ch.choices.map((c,i)=>
-        '<div class="sk-choice" onclick="pickChoice('+i+')">'+
+        '<div class="sk-choice" tabindex="0" role="button" aria-label="'+(c.label||'')+'" onclick="pickChoice('+i+')" onkeydown="if(event.key===\\'Enter\\'||event.key===\\' \\')pickChoice('+i+')">'+
           '<span style="font-size:1.3rem">'+(c.icon||'')+'</span>'+
           '<div><div>'+(c.label||'')+'</div>'+
           '<div style="font-size:.72rem;color:var(--muted);font-weight:600">'+(c.detail||'')+'</div></div>'+
@@ -576,6 +777,7 @@ function showChoices(){
 function pickChoice(i){
   const ch=CHAPTERS[skCh]; const c=ch.choices[i];
   S.skScore+=(c.pts||0);
+  if((c.level||'mid')==='bad') SFX.wrong(); else SFX.correct();
   const icons={good:'🌟',mid:'🤔',bad:'⚠️'};
   document.getElementById('skBody').innerHTML=
     '<div class="sk-result">'+
@@ -598,8 +800,10 @@ function pickChoice(i){
       '</div>'+
     '</div>';
   document.getElementById('skScoreBadge').textContent=S.skScore+' poin';
+  updateNavScore();
 }
 function endSk(){
+  SFX.complete();
   document.getElementById('skBody').innerHTML=
     '<div style="padding:20px;text-align:center;background:#060d18;border-top:2px solid #1e3a5a">'+
       '<div style="font-size:3rem;margin-bottom:10px">🎭</div>'+
@@ -645,7 +849,7 @@ function renderKuis(){
       '<div class="q-text">'+(i+1)+'. '+s.q+'</div>'+
       '<div class="q-opts">'+
         (s.opts||[]).map((o,j)=>
-          '<div class="q-opt" id="qo_'+i+'_'+j+'" onclick="answerQ('+i+','+j+','+s.ans+')">'+
+          '<div class="q-opt" id="qo_'+i+'_'+j+'" role="button" tabindex="0" aria-label="Opsi '+'ABCD'[j]+': '+s.opts[j]+'" onclick="answerQ('+i+','+j+','+s.ans+')" onkeydown="if(event.key===\\'Enter\\'||event.key===\\' \\')answerQ('+i+','+j+','+s.ans+')">'+
             '<span style="font-weight:900;color:var(--c)">'+'ABCD'[j]+'.</span> '+o+
           '</div>'
         ).join('')+
@@ -664,12 +868,16 @@ function answerQ(qi,choice,correct){
   fb.style.display='block';
   fb.className='q-fb '+(choice===correct?'ok':'no');
   fb.textContent=(choice===correct?'✅ Benar! ':'❌ Salah. ')+(KUIS_SOAL[qi].ex||'');
+  if(choice===correct) SFX.correct(); else SFX.wrong();
   if(Object.keys(kuisAnswers).length===KUIS_SOAL.length)
     document.getElementById('btnKuisSubmit').style.display='inline-flex';
+  S.score=KUIS_SOAL.filter((_,i)=>kuisAnswers[i]===KUIS_SOAL[i].ans).length*10;
+  updateNavScore();
 }
 function submitKuis(){
   const correct=KUIS_SOAL.filter((_,i)=>kuisAnswers[i]===KUIS_SOAL[i].ans).length;
   const skor=Math.round((correct/KUIS_SOAL.length)*100);
+  if(skor>=70) SFX.complete(); else SFX.wrong();
   goScreen('s-hasil');
   const hc=document.getElementById('hasilCircle');
   hc.style.setProperty('--prog',skor+'%');
@@ -683,6 +891,7 @@ function submitKuis(){
 
 // ── CONFETTI ─────────────────────────────────────────
 function launchConfetti(){
+  SFX.complete();
   const w=document.getElementById('confWrap');
   const cols=['#f9c12e','#3ecfcf','#ff6b6b','#a78bfa','#34d399'];
   for(let i=0;i<80;i++){
@@ -742,7 +951,7 @@ function renderModVideo(m){
   else if(platform==='youtube'&&url.includes('youtu.be/')) embed='https://www.youtube.com/embed/'+url.split('youtu.be/')[1].split('?')[0];
   const pertanyaan=(m.pertanyaan||[]);
   return '<div style="margin-top:12px">'+(m.instruksi?'<p style="font-size:.84rem;color:var(--muted);margin-bottom:10px">'+esc(m.instruksi)+'</p>':'')+
-    (embed?'<iframe src="'+esc(embed)+'" style="width:100%;aspect-ratio:16/9;border:none;border-radius:12px;background:#000" allowfullscreen></iframe>':'<p style="color:var(--muted)">URL video belum diisi.</p>')+
+    (embed?'<iframe src="'+esc(embed)+'" loading="lazy" style="width:100%;aspect-ratio:16/9;border:none;border-radius:12px;background:#000" allowfullscreen></iframe>':'<p style="color:var(--muted)">URL video belum diisi.</p>')+
     (pertanyaan.length?'<div style="margin-top:14px"><div style="font-weight:800;font-size:.88rem;margin-bottom:8px">📝 Pertanyaan Refleksi</div>'+pertanyaan.map((p,i)=>'<div style="background:rgba(255,255,255,.04);border:1px solid var(--border);border-radius:10px;padding:12px;margin-bottom:8px"><p style="font-size:.84rem;font-weight:700">'+(i+1)+'. '+esc(p.teks||'')+'</p>'+(p.wajib?'<span style="font-size:.7rem;color:var(--r);font-weight:800">* Wajib dijawab</span>':'')+'</div>').join('')+'</div>':'')+'</div>';
 }
 function renderModFlashcard(m){
@@ -827,7 +1036,7 @@ function renderModDebat(m){
 }
 function renderModTrueFalse(m){
   const soal=m.soal||[];
-  return '<p style="font-size:.84rem;color:var(--muted);margin-top:8px">'+(esc(m.instruksi)||'Tentukan benar atau salah.')+'</p><div style="margin-top:12px">'+soal.map((s,i)=>'<div class="card mt14" style="padding:14px"><p style="font-size:.86rem;font-weight:700;margin-bottom:10px">'+(i+1)+'. '+esc(s.teks||'')+'</p><div style="display:flex;gap:8px"><button onclick="tfAnswer(this,'+i+',true,'+s.jawaban+')" class="btn btn-sm btn-ghost tf-btn" style="flex:1;justify-content:center">✅ Benar</button><button onclick="tfAnswer(this,'+i+',false,'+s.jawaban+')" class="btn btn-sm btn-ghost tf-btn" style="flex:1;justify-content:center">❌ Salah</button></div><div id="tf-fb-'+i+'" style="display:none;margin-top:8px;font-size:.8rem;font-weight:700;padding:8px 12px;border-radius:8px"></div></div>').join('')+'</div>';
+  return '<p style="font-size:.84rem;color:var(--muted);margin-top:8px">'+(esc(m.instruksi)||'Tentukan benar atau salah.')+'</p><div style="margin-top:12px">'+soal.map((s,i)=>{const jaw=String(s.jawaban).toLowerCase()==='true'||s.jawaban===true||s.jawaban===1;return '<div class="card mt14" style="padding:14px" data-penjelasan="'+esc(s.penjelasan||s.explain||'')+'"><p style="font-size:.86rem;font-weight:700;margin-bottom:10px">'+(i+1)+'. '+esc(s.teks||'')+'</p><div style="display:flex;gap:8px"><button onclick="tfAnswer(this,'+i+',true,'+jaw+')" class="btn btn-sm btn-ghost tf-btn" style="flex:1;justify-content:center">✅ Benar</button><button onclick="tfAnswer(this,'+i+',false,'+jaw+')" class="btn btn-sm btn-ghost tf-btn" style="flex:1;justify-content:center">❌ Salah</button></div><div id="tf-fb-'+i+'" style="display:none;margin-top:8px;font-size:.8rem;font-weight:700;padding:8px 12px;border-radius:8px"></div></div>';}).join('')+'</div>';
 }
 function renderModMemory(m){
   const pasangan=m.pasangan||[];
@@ -867,7 +1076,7 @@ function renderModHotspot(m){
 // Module helper functions
 function switchModTab(i){document.querySelectorAll('.mod-tab').forEach(t=>t.classList.remove('active'));document.querySelectorAll('.mod-tab-content').forEach(c=>c.style.display='none');document.getElementById('modtab-'+i).classList.add('active');document.getElementById('modtabcontent-'+i).style.display='block';}
 function checkMatching(){var ok=true;document.querySelectorAll('[data-mid^="l-"]').forEach(function(l){var idx=l.getAttribute('data-mid').split('-')[1];var r=document.querySelector('[data-mid="r-'+idx+'"]');if(r){if(l.style.borderColor==='var(--g)')l.style.borderColor='var(--border)';if(r.style.borderColor==='var(--g)')r.style.borderColor='var(--border)';}});var res=document.getElementById('matchResult');if(res)res.innerHTML='<span style="color:var(--g)">✔ Jawaban tersimpan!</span>';}
-function tfAnswer(btn,qi,ans,correct){var p=btn.parentNode;var fb=document.getElementById('tf-fb-'+qi);var btns=p.querySelectorAll('.tf-btn');btns.forEach(function(b){b.disabled=true;b.style.opacity='.5';});fb.style.display='block';if(ans===correct){btn.style.borderColor='var(--g)';btn.style.color='var(--g)';fb.style.background='rgba(52,211,153,.1)';fb.style.color='var(--g)';fb.textContent='✅ Benar! '+(btns[0].closest('.card').__penjelasan||'');}else{btn.style.borderColor='var(--r)';btn.style.color='var(--r)';fb.style.background='rgba(255,107,107,.1)';fb.style.color='var(--r)';fb.textContent='❌ Salah.';btns[ans?0:1].style.borderColor='var(--g)';btns[ans?0:1].style.color='var(--g)';}}
+function tfAnswer(btn,qi,ans,correct){var p=btn.parentNode;var card=p.closest('.card')||p.parentNode;var fb=document.getElementById('tf-fb-'+qi);var btns=p.querySelectorAll('.tf-btn');btns.forEach(function(b){b.disabled=true;b.style.opacity='.5';});fb.style.display='block';var penjelasan=card?card.getAttribute('data-penjelasan')||'':'';if(ans===correct){btn.style.borderColor='var(--g)';btn.style.color='var(--g)';fb.style.background='rgba(52,211,153,.1)';fb.style.color='var(--g)';fb.textContent='✅ Benar! '+penjelasan;}else{btn.style.borderColor='var(--r)';btn.style.color='var(--r)';fb.style.background='rgba(255,107,107,.1)';fb.style.color='var(--r)';fb.textContent='❌ Salah. '+(penjelasan?'Penjelasan: '+penjelasan:'');btns[correct?0:1].style.borderColor='var(--g)';btns[correct?0:1].style.color='var(--g)';}}
 function votePoll(i){var opts=document.querySelectorAll('.poll-opt');opts.forEach(function(o,j){o.style.borderColor=j===i?'var(--y)':'var(--border)';o.style.background=j===i?'rgba(249,193,46,.12)':'rgba(255,255,255,.04)';});}
 function memFlip(i){var el=document.getElementById('mem-'+i);if(el){el.style.background=el.style.background==='transparent'?'var(--card)':'transparent';el.style.color=el.style.color==='transparent'?'var(--text)':'transparent';}}
 function spinRoda(){var svg=document.getElementById('rodaSvg');if(svg){svg.style.transition='transform 3s cubic-bezier(0.17,0.67,0.12,0.99)';svg.style.transform='rotate('+(1440+Math.random()*360)+'deg)';}var res=document.getElementById('rodaResult');if(res)res.textContent='🎡 Memutar...';setTimeout(function(){if(res)res.textContent='✅ Selesai!';},3200);}

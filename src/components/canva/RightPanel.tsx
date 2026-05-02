@@ -3,8 +3,9 @@
 import { useRef, useState } from 'react';
 import { useCanvaStore } from '@/store/canva-store';
 import type { NavConfig, PageTemplateType } from './types';
-import { getPaletteColor } from '@/lib/color-palette';
 import { TEMPLATE_TYPES } from './types';
+import { getPaletteColor } from '@/lib/color-palette';
+import TemplateCustomizer from './TemplateCustomizer';
 
 export default function RightPanel() {
   const {
@@ -141,12 +142,13 @@ export default function RightPanel() {
       )}
 
       {/* ── Navigation Config ───────────────────────────────────── */}
-      <Section title="🧭 Navigasi" collapsed={collapsed.nav} onToggle={() => toggleCollapse('nav')}>
+      <Section title="🧭 Navigasi" collapsed={collapsed.nav} onToggle={() => toggleCollapse('nav')} aria-label="Konfigurasi navigasi">
         <label className="flex items-center gap-1.5 mb-1 cursor-pointer">
           <input
             type="checkbox"
             checked={page?.navConfig?.showNavbar ?? true}
             onChange={e => updateNavConfig({ showNavbar: e.target.checked })}
+            aria-label="Tampilkan navbar"
             className="accent-amber-500 w-3 h-3"
           />
           <span className="text-[9px] text-zinc-400">Navbar</span>
@@ -157,6 +159,7 @@ export default function RightPanel() {
             type="checkbox"
             checked={page?.navConfig?.showPrevNext ?? true}
             onChange={e => updateNavConfig({ showPrevNext: e.target.checked })}
+            aria-label="Tampilkan tombol prev/next"
             className="accent-amber-500 w-3 h-3"
           />
           <span className="text-[9px] text-zinc-400">Tombol Prev/Next</span>
@@ -167,6 +170,7 @@ export default function RightPanel() {
             type="checkbox"
             checked={page?.navConfig?.showScore ?? true}
             onChange={e => updateNavConfig({ showScore: e.target.checked })}
+            aria-label="Tampilkan skor"
             className="accent-amber-500 w-3 h-3"
           />
           <span className="text-[9px] text-zinc-400">Tampilkan Skor</span>
@@ -177,10 +181,24 @@ export default function RightPanel() {
             type="checkbox"
             checked={page?.navConfig?.showProgress ?? true}
             onChange={e => updateNavConfig({ showProgress: e.target.checked })}
+            aria-label="Tampilkan progress bar"
             className="accent-amber-500 w-3 h-3"
           />
           <span className="text-[9px] text-zinc-400">Progress Bar</span>
         </label>
+
+        {/* Navbar position */}
+        <div className="mt-1.5">
+          <label className="text-[9px] text-zinc-500 block mb-1">Posisi Navbar</label>
+          <select
+            value={page?.navConfig?.navbarPosition || 'top'}
+            onChange={e => updateNavConfig({ navbarPosition: e.target.value as 'top' | 'bottom' })}
+            className="w-full h-6 px-1 text-[9px] text-zinc-200 bg-zinc-800 border border-zinc-700/50 rounded focus:border-amber-500/50 focus:outline-none"
+          >
+            <option value="top">⬆️ Atas</option>
+            <option value="bottom">⬇️ Bawah</option>
+          </select>
+        </div>
 
         {/* Navbar style */}
         <div className="mt-1.5">
@@ -193,7 +211,29 @@ export default function RightPanel() {
             <option value="colorful">🌈 Colorful</option>
             <option value="minimal">☐ Minimal</option>
             <option value="glass">🔮 Glass</option>
+            <option value="pill">💊 Pill</option>
+            <option value="rounded">🔲 Rounded</option>
+            <option value="floating">☁️ Floating</option>
           </select>
+        </div>
+
+        {/* Nav button style */}
+        <div className="mt-1.5">
+          <label className="text-[9px] text-zinc-500 block mb-1">Model Tombol Nav</label>
+          <select
+            value={page?.navConfig?.navButtonStyle || 'pill'}
+            onChange={e => updateNavConfig({ navButtonStyle: e.target.value as NavConfig['navButtonStyle'] })}
+            className="w-full h-6 px-1 text-[9px] text-zinc-200 bg-zinc-800 border border-zinc-700/50 rounded focus:border-amber-500/50 focus:outline-none"
+          >
+            <option value="circle">⭕ Circle</option>
+            <option value="pill">💊 Pill</option>
+            <option value="arrow">➡️ Arrow</option>
+            <option value="icon">🎮 Icon</option>
+          </select>
+          {/* Mini visual preview of button style */}
+          <div className="mt-1.5 flex items-center justify-center gap-1 p-1.5 rounded bg-zinc-800/40">
+            <NavButtonPreview style={page?.navConfig?.navButtonStyle || 'pill'} />
+          </div>
         </div>
       </Section>
 
@@ -257,33 +297,9 @@ export default function RightPanel() {
         </Section>
       )}
 
-      {/* ── Template Edit Info (template mode) ──────────────────── */}
+      {/* ── Template Customizer (template mode) ────────────────── */}
       {isTemplateMode && (
-        <Section title="📝 Edit Template" collapsed={collapsed.templateEdit} onToggle={() => toggleCollapse('templateEdit')}>
-          <div className="text-[8px] text-zinc-500 p-2 rounded-lg bg-zinc-800/40">
-            Klik langsung teks di canvas untuk mengedit. Data otomatis diambil dari panel authoring.
-          </div>
-
-          {/* Quick edit for common template fields */}
-          {page.templateData && (
-            <div className="mt-2 space-y-1">
-              {Object.entries(page.templateData)
-                .filter(([_, v]) => typeof v === 'string' && v.length < 100)
-                .slice(0, 5)
-                .map(([key, value]) => (
-                  <div key={key}>
-                    <label className="text-[8px] text-zinc-500 block mb-0.5">{key}</label>
-                    <input
-                      type="text"
-                      value={String(value)}
-                      onChange={e => updateTemplateData(key, e.target.value)}
-                      className="w-full h-6 px-1.5 text-[9px] text-zinc-200 bg-zinc-800 border border-zinc-700/50 rounded focus:border-amber-500/50 focus:outline-none"
-                    />
-                  </div>
-                ))}
-            </div>
-          )}
-        </Section>
+        <TemplateCustomizer />
       )}
 
       {/* ── Layers Mini ─────────────────────────────────────────── */}
@@ -312,14 +328,16 @@ function Section({
   collapsed: isCollapsed,
   onToggle,
   children,
+  'aria-label': ariaLabel,
 }: {
   title: string;
   collapsed: boolean;
   onToggle: () => void;
   children: React.ReactNode;
+  'aria-label'?: string;
 }) {
   return (
-    <div className="border-b border-zinc-700/30">
+    <div className="border-b border-zinc-700/30" aria-label={ariaLabel}>
       <button
         onClick={onToggle}
         className="w-full p-2 flex items-center justify-between hover:bg-zinc-800/30 transition-colors"
@@ -400,5 +418,42 @@ function LayerMiniList() {
         );
       })}
     </div>
+  );
+}
+
+/* ── Nav Button Preview (mini visual in RightPanel) ──────── */
+
+function NavButtonPreview({ style }: { style: string }) {
+  const baseBtn = 'inline-flex items-center justify-center border border-white/15 bg-white/[0.08] text-white/80';
+  if (style === 'circle') {
+    return (
+      <>
+        <span className={`${baseBtn} w-5 h-5 rounded-full text-[7px] font-black`}>◀</span>
+        <span className={`${baseBtn} w-5 h-5 rounded-full text-[7px] font-black`}>▶</span>
+      </>
+    );
+  }
+  if (style === 'pill') {
+    return (
+      <>
+        <span className={`${baseBtn} px-2 py-0.5 rounded-full text-[7px] font-bold`}>◀ Prev</span>
+        <span className={`${baseBtn} px-2 py-0.5 rounded-full text-[7px] font-bold`}>Next ▶</span>
+      </>
+    );
+  }
+  if (style === 'arrow') {
+    return (
+      <>
+        <span className={`${baseBtn} px-1.5 py-0.5 rounded text-[9px] font-black`}>←</span>
+        <span className={`${baseBtn} px-1.5 py-0.5 rounded text-[9px] font-black`}>→</span>
+      </>
+    );
+  }
+  // icon
+  return (
+    <>
+      <span className={`${baseBtn} px-1.5 py-0.5 rounded-lg text-[8px] font-bold`}>⬅</span>
+      <span className={`${baseBtn} px-1.5 py-0.5 rounded-lg text-[8px] font-bold`}>➡</span>
+    </>
   );
 }

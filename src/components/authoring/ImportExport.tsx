@@ -120,21 +120,52 @@ export default function ImportExport() {
     toast.success('✅ JSON berhasil diekspor!');
   }, []);
 
-  // ── Existing: Export Student HTML ──────────────────────────────
-  const exportStudentHtml = useCallback(() => {
+  // ── NEW: Validation check ──────────────────────────────────────
+  const [validationOpen, setValidationOpen] = useState(false);
+  const [validationIssues, setValidationIssues] = useState<string[]>([]);
+  const [validationWarnings, setValidationWarnings] = useState<string[]>([]);
+
+  const runValidation = useCallback((): { issues: string[]; warnings: string[] } => {
     const s = useAuthoringStore.getState();
+    const issues: string[] = [];
+    const warnings: string[] = [];
 
-    // ── Pre-export validation warnings ─────────────────────────
-    if (!s.meta.judulPertemuan?.trim()) {
-      toast.warning('⚠️ Judul pertemuan kosong. Isi terlebih dahulu di panel Dokumen.');
-    }
-    if (s.kuis.length === 0) {
-      toast.warning('⚠️ Belum ada soal kuis.');
-    }
-    if (s.materi.blok.length === 0) {
-      toast.warning('⚠️ Materi kosong.');
-    }
+    // Critical — should block
+    if (!s.meta.judulPertemuan?.trim()) issues.push('Judul Pertemuan belum diisi (panel Dokumen)');
+    if (!s.meta.kelas?.trim()) issues.push('Kelas belum diisi (panel Dokumen)');
+    if (s.kuis.length === 0) issues.push('Belum ada soal Kuis');
 
+    // Warnings — nice to have
+    if (!s.cp.capaianFase?.trim()) warnings.push('Capaian Pembelajaran belum diisi');
+    if (s.tp.length === 0) warnings.push('Belum ada Tujuan Pembelajaran');
+    if (s.alur.length === 0) warnings.push('Alur Kegiatan belum diisi');
+    if (s.materi.blok.length === 0 && s.modules.length === 0) warnings.push('Belum ada Materi atau Modul');
+    if (s.skenario.length === 0) warnings.push('Belum ada Skenario Interaktif');
+
+    // Check kuis quality
+    s.kuis.forEach((k, i) => {
+      if (!k.q?.trim()) warnings.push(`Kuis #${i + 1}: soal kosong`);
+      const emptyOpts = k.opts.filter(o => !o?.trim()).length;
+      if (emptyOpts > 0) warnings.push(`Kuis #${i + 1}: ${emptyOpts} opsi kosong`);
+    });
+
+    return { issues, warnings };
+  }, []);
+
+  const exportStudentHtml = useCallback(() => {
+    const { issues, warnings } = runValidation();
+    if (issues.length > 0 || warnings.length > 0) {
+      setValidationIssues(issues);
+      setValidationWarnings(warnings);
+      setValidationOpen(true);
+      return;
+    }
+    doExportHtml();
+  }, [runValidation]);
+
+  const doExportHtml = useCallback(() => {
+    const s = useAuthoringStore.getState();
+    setValidationOpen(false);
     try {
       const html = generateExportHtml({
         meta: s.meta, cp: s.cp, tp: s.tp, atp: s.atp, alur: s.alur,
@@ -863,6 +894,65 @@ export default function ImportExport() {
           </li>
         </ul>
       </div>
+
+      {/* ── Validation Dialog ──────────────────────────────── */}
+      <Dialog open={validationOpen} onOpenChange={setValidationOpen}>
+        <DialogContent className="bg-zinc-900 border-zinc-700 text-zinc-100 sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-lg font-bold text-zinc-100 flex items-center gap-2">
+              <AlertTriangle className="size-5 text-amber-400" />
+              Validasi Export
+            </DialogTitle>
+            <DialogDescription className="text-zinc-400 text-sm">
+              Beberapa data belum lengkap sebelum export.
+            </DialogDescription>
+          </DialogHeader>
+
+          {validationIssues.length > 0 && (
+            <div className="space-y-2">
+              <h4 className="text-xs font-semibold text-red-400 uppercase tracking-wider">Wajib Diisi</h4>
+              <ul className="space-y-1.5">
+                {validationIssues.map((issue, i) => (
+                  <li key={i} className="flex items-start gap-2 text-sm text-red-300">
+                    <span className="text-red-500 flex-shrink-0 mt-0.5">✗</span>
+                    {issue}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          {validationWarnings.length > 0 && (
+            <div className="space-y-2 mt-3">
+              <h4 className="text-xs font-semibold text-amber-400 uppercase tracking-wider">Peringatan</h4>
+              <ul className="space-y-1.5">
+                {validationWarnings.map((w, i) => (
+                  <li key={i} className="flex items-start gap-2 text-sm text-amber-300/80">
+                    <span className="text-amber-500 flex-shrink-0 mt-0.5">⚠</span>
+                    {w}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          <DialogFooter className="gap-2 mt-2">
+            <button
+              onClick={() => setValidationOpen(false)}
+              className="px-4 py-2 text-sm font-medium text-zinc-400 hover:text-zinc-200 bg-zinc-800 hover:bg-zinc-700 rounded-lg transition-colors"
+            >
+              Batal
+            </button>
+            <button
+              onClick={doExportHtml}
+              className="px-5 py-2 text-sm font-semibold text-black bg-amber-500 hover:bg-amber-400 rounded-lg transition-colors flex items-center gap-2"
+            >
+              <Download className="size-4" />
+              Export Tetap
+            </button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

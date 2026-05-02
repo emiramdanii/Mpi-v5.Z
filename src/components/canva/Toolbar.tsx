@@ -27,7 +27,7 @@ export default function Toolbar() {
   const label = page?.label || 'Untitled';
 
   const handlePreview = () => {
-    const html = exportPageHTML();
+    const html = exportSlideshowHTML();
     const win = window.open('', '_blank');
     if (win) { win.document.write(html); win.document.close(); }
     toast.success('Preview dibuka di tab baru');
